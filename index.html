@@ -1056,7 +1056,7 @@
     d.className = "dot"; d.style.background = c; d.title = c;
     d.addEventListener("click", () => {
       state[popTarget] = c;
-      syncChips(); update(popTarget === "fg"); hidePop();
+      syncChips(); update(popTarget === "fg"); // palette stays open — keep exploring
     });
     $("popSwatches").appendChild(d);
   });
