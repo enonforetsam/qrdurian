@@ -268,6 +268,7 @@
     cursor: pointer; font-family: inherit; transition: all .15s ease;
   }
   .chip-color:hover { border-color: var(--muted); }
+  .chip-color.compact { padding: 7px 9px; }
   .cdot { width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--border-2); }
 
   .color-pop {
@@ -338,7 +339,7 @@
       display: flex; gap: 6px;
       background: rgba(255,255,255,.82);
       backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
-      border: 1px solid var(--border);
+      border: none;
       border-radius: 999px; padding: 7px;
     }
     [data-theme="dark"] .bottom-nav {
@@ -369,7 +370,8 @@
       margin: 0 auto; max-width: 480px;
       bottom: calc(88px + env(safe-area-inset-bottom));
       border-radius: 26px;
-      max-height: min(44vh, 430px); overflow-y: auto;
+      border: none; /* clean, no outline */
+      max-height: min(48vh, 460px); overflow-y: auto;
       /* pop in/out from the card's own center — no vertical travel */
       transform: scale(.92);
       opacity: 0;
@@ -382,43 +384,34 @@
         visibility 0s linear .26s;
       box-shadow: none; /* flat, hairline border only */
     }
-    /* enter: swell past full size, dip back, settle — a real bounce */
-    @keyframes cardIn {
-      0%   { transform: scale(.92);  opacity: 0; animation-timing-function: cubic-bezier(.18, .6, .3, 1); }
-      55%  { transform: scale(1.025); opacity: 1; animation-timing-function: cubic-bezier(.4, 0, .5, 1); }
-      82%  { transform: scale(.995); animation-timing-function: cubic-bezier(.4, 0, .55, 1); }
-      100% { transform: scale(1); }
-    }
     .card.controls.visible, .export-sheet.visible {
       transform: scale(1);
       opacity: 1;
       visibility: visible;
     }
-    /* one-shot entrance — applied only when opening from closed, then removed */
-    .card.controls.opening, .export-sheet.opening { animation: cardIn .52s both; }
-    /* switching cards: same bounce, gentler since the card is already on screen */
-    @keyframes sheetPop {
-      0%   { transform: scale(.96);  opacity: .65; animation-timing-function: cubic-bezier(.2, .6, .35, 1); }
-      50%  { transform: scale(1.02); opacity: 1;   animation-timing-function: cubic-bezier(.4, 0, .5, 1); }
-      80%  { transform: scale(.996); animation-timing-function: cubic-bezier(.4, 0, .55, 1); }
-      100% { transform: scale(1); }
-    }
-    .card.controls.pop, .export-sheet.pop { animation: sheetPop .44s; }
+    /* enter/switch bounces are driven by the Web Animations API in JS */
 
     @media (prefers-reduced-motion: reduce) {
       .card.controls, .export-sheet,
       .card.controls.visible, .export-sheet.visible {
         transition: opacity .15s ease, visibility 0s linear .15s;
         transform: none;
-        animation: none !important;
       }
-      .card.controls.pop, .export-sheet.pop,
-      .card.controls.opening, .export-sheet.opening,
       #artboard.shaking { animation: none !important; }
     }
     .card.controls .panel { display: none; }
     .card.controls .panel.active { display: block; }
     .card.controls .divider { display: none; }
+
+    /* subtle step indicator — lines brighten as you move through the flow */
+    .steps { display: flex; gap: 6px; justify-content: center; margin: -4px 0 12px; }
+    .step {
+      width: 30px; height: 3px; border-radius: 999px;
+      background: var(--text); opacity: .09;
+      transition: opacity .35s ease, background .35s ease;
+    }
+    .step.done { opacity: .3; }
+    .step.current { background: var(--accent); opacity: 1; }
 
     .sheet-head {
       display: flex; align-items: center; justify-content: space-between;
@@ -426,6 +419,10 @@
     }
     .sheet-title { font-size: 15px; font-weight: 700; }
     .sheet-nav { display: flex; gap: 6px; }
+    /* step nav pinned at the card's bottom-right — same screen spot on every card */
+    .sheet-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+    .sheet-foot .sheet-close { width: 38px; height: 38px; }
+    .sheet-foot .sheet-close svg { width: 17px; height: 17px; }
     .sheet-close {
       border: 1px solid var(--border); background: var(--panel-2); color: var(--muted);
       width: 30px; height: 30px; border-radius: 999px; cursor: pointer; font-size: 13px;
@@ -480,13 +477,15 @@
   <main>
     <!-- LEFT: controls (desktop column / mobile bottom sheets) -->
     <section class="card controls" id="controlsCard">
+      <div class="steps" aria-hidden="true">
+        <span class="step" data-step="content"></span>
+        <span class="step" data-step="style"></span>
+        <span class="step" data-step="scene"></span>
+        <span class="step" data-step="export"></span>
+      </div>
       <div class="sheet-head">
         <span class="sheet-title" id="sheetTitle">Design</span>
-        <div class="sheet-nav">
-          <button class="sheet-close" id="navBack" aria-label="Back"><i data-lucide="chevron-left"></i></button>
-          <button class="sheet-close" id="navNext" aria-label="Next"><i data-lucide="chevron-right"></i></button>
-          <button class="sheet-close" id="sheetClose">✕</button>
-        </div>
+        <button class="sheet-close" id="sheetClose">✕</button>
       </div>
 
       <div class="panel active" data-panel="content">
@@ -551,6 +550,13 @@
       </div>
 
       <div class="crow">
+        <span class="clabel">Outline</span>
+        <button class="chip-color compact" id="outChip" aria-label="Outline color"><span class="cdot" id="outDot"></span></button>
+        <input type="range" id="outlineW" min="0" max="10" value="0" />
+        <span class="val" id="outlineWVal">0</span>
+      </div>
+
+      <div class="crow">
         <span class="clabel">Logo</span>
         <div class="logo-mini">
           <div class="logo-prev" id="logoPrev">—</div>
@@ -592,6 +598,11 @@
         <input type="text" id="caption" placeholder="None" value="SCAN ME" style="flex:1; max-width:230px;" />
       </div>
       </div>
+
+      <div class="sheet-foot">
+        <button class="sheet-close" id="navBack" aria-label="Back"><i data-lucide="chevron-left"></i></button>
+        <button class="sheet-close" id="navNext" aria-label="Next"><i data-lucide="chevron-right"></i></button>
+      </div>
     </section>
 
     <!-- Artboard -->
@@ -605,12 +616,15 @@
   <div class="sheet-backdrop" id="sheetBackdrop"></div>
 
   <div class="export-sheet" id="exportSheet">
+    <div class="steps" aria-hidden="true">
+      <span class="step" data-step="content"></span>
+      <span class="step" data-step="style"></span>
+      <span class="step" data-step="scene"></span>
+      <span class="step" data-step="export"></span>
+    </div>
     <div class="sheet-head">
       <span class="sheet-title">Export</span>
-      <div class="sheet-nav">
-        <button class="sheet-close" id="navBack2" aria-label="Back"><i data-lucide="chevron-left"></i></button>
-        <button class="sheet-close" id="exportClose">✕</button>
-      </div>
+      <button class="sheet-close" id="exportClose">✕</button>
     </div>
     <label class="lbl">Size</label>
     <button class="select" id="fmtSelect">
@@ -628,6 +642,10 @@
     <div class="hint" id="ftHint" style="margin-top:-4px;">Full design with ink texture and background.</div>
     <div class="export-actions">
       <button class="btn primary" id="downloadBtn"><i data-lucide="download"></i> Download</button>
+      <button class="btn" id="shareBtn"><i data-lucide="share-2"></i> Share</button>
+    </div>
+    <div class="sheet-foot">
+      <button class="sheet-close" id="navBack2" aria-label="Back"><i data-lucide="chevron-left"></i></button>
     </div>
   </div>
 
@@ -654,7 +672,9 @@
     cornerType: "extra-rounded",
     fg: "#18181b",
     base: "#ffffff", /* the card under the QR */
-    bg: "#f0f0eb",   /* page / scene background */
+    bg: "#FFE14D",   /* page / scene background — bright durian yellow */
+    outline: "#163300",
+    outlineW: 0,     /* 0 = no outline */
     margin: 2,
     logo: undefined,
     format: "square",
@@ -664,7 +684,7 @@
     caption: "SCAN ME",
   };
 
-  const swatchSet = ["#163300","#18181b","#ffffff","#9FE870","#ef4444","#6366f1","#10b981","#ec4899","#0ea5e9","#f97316"];
+  const swatchSet = ["#FFE14D","#163300","#18181b","#ffffff","#9FE870","#ef4444","#6366f1","#ec4899","#0ea5e9","#f97316"];
 
   // ================= QR rendering (cached image) =================
   function currentOpts(size, transparentBg = false) {
@@ -731,8 +751,6 @@
 
   // generate-animation state (preview only)
   const fx = { blur: 0, alpha: 1 };
-  // while the Export card is open, outline the artboard so size choices are visible
-  let showFrame = false;
 
   function drawQrRounded(ctx, img, x, y, size, r, fxBlur = 0, fxAlpha = 1) {
     ctx.save();
@@ -854,29 +872,22 @@
       }
     } else {
       ctx.clearRect(0, 0, W, H);
-      if (showFrame) {
-        ctx.save();
-        ctx.strokeStyle = state.fg;
-        ctx.globalAlpha = .15;
-        const lw = Math.max(1, Math.min(W, H) * 0.006);
-        ctx.lineWidth = lw;
-        ctx.setLineDash([lw * 5, lw * 4]);
-        roundRectPath(ctx, lw / 2, lw / 2, W - lw, H - lw, Math.min(W, H) * 0.05);
-        ctx.stroke();
-        ctx.restore();
-      }
     }
 
     const { u, qs, pad, cardSize, capGap, x, y, cap } = sceneLayout(W, H);
 
-    // the one layer: a rounded square with a smooth hairline outline, no shadow
+    // the one layer: a clean rounded square
     ctx.save();
     ctx.fillStyle = cardColor();
     roundRectPath(ctx, x, y, cardSize, cardSize, cardSize * 0.16);
     ctx.fill();
-    ctx.strokeStyle = bgLum() < 140 ? "rgba(255,255,255,.14)" : "rgba(0,0,0,.08)";
-    ctx.lineWidth = Math.max(1, u * 0.0035);
-    ctx.stroke();
+    if (state.outlineW > 0) {
+      const lw = cardSize * 0.0045 * state.outlineW;
+      ctx.strokeStyle = state.outline;
+      ctx.lineWidth = lw;
+      roundRectPath(ctx, x + lw / 2, y + lw / 2, cardSize - lw, cardSize - lw, Math.max(2, cardSize * 0.16 - lw / 2));
+      ctx.stroke();
+    }
     ctx.restore();
 
     if (qrImage) {
@@ -901,7 +912,8 @@
   const ctx = canvas.getContext("2d");
 
   function fitPreview() {
-    const fmt = FORMATS[state.format];
+    // preview is format-independent: the QR stays put; aspect ratio applies only to the exported file
+    const fmt = { w: 1, h: 1 };
     const wrap = $("artboardWrap");
     const wrapW = Math.min(wrap.clientWidth || wrap.parentElement.clientWidth, 440);
     // static: always leave room below for a sheet, so the QR never moves
@@ -992,6 +1004,7 @@
     $("fgDot").style.background = state.fg;
     $("baseDot").style.background = state.base;
     $("bgDot").style.background = state.bg;
+    $("outDot").style.background = state.outline;
   }
   swatchSet.forEach((c) => {
     const d = document.createElement("div");
@@ -1007,6 +1020,7 @@
     $("fgChip").classList.toggle("editing", open && popTarget === "fg");
     $("baseChip").classList.toggle("editing", open && popTarget === "base");
     $("bgChip").classList.toggle("editing", open && popTarget === "bg");
+    $("outChip").classList.toggle("editing", open && popTarget === "outline");
   }
   function showPop(target) {
     const pop = $("colorPop");
@@ -1019,6 +1033,12 @@
   $("fgChip").addEventListener("click", (e) => { e.stopPropagation(); showPop("fg"); });
   $("baseChip").addEventListener("click", (e) => { e.stopPropagation(); showPop("base"); });
   $("bgChip").addEventListener("click", (e) => { e.stopPropagation(); showPop("bg"); });
+  $("outChip").addEventListener("click", (e) => { e.stopPropagation(); showPop("outline"); });
+  $("outlineW").addEventListener("input", (e) => {
+    state.outlineW = +e.target.value;
+    $("outlineWVal").textContent = e.target.value;
+    update(false);
+  });
   $("popCustom").addEventListener("click", () => {
     const inp = $("popInput");
     inp.value = state[popTarget];
@@ -1071,7 +1091,6 @@
     syncFmtSelect();
     $("fmtList").hidden = true;
     $("fmtSelect").classList.remove("open");
-    drawPreview();
   }
   $("fmtSelect").addEventListener("click", (e) => {
     e.stopPropagation();
@@ -1105,6 +1124,9 @@
     b.addEventListener("click", () => setFormat(k));
     $("fmtList").appendChild(b);
   });
+  // the card is a transformed ancestor (pop animations), which hijacks the
+  // dropdown's position:fixed — host it on <body> so it floats over everything
+  document.body.appendChild($("fmtList"));
 
   // ================= Export =================
   async function busy(btn, fn) {
@@ -1129,7 +1151,7 @@
     });
   }
 
-  async function exportScenePng() {
+  async function renderSceneCanvas() {
     const fmt = FORMATS[state.format];
     const realQs = sceneLayout(fmt.w, fmt.h).qs;
     const hiSize = Math.min(4096, Math.max(1024, Math.round(realQs)));
@@ -1137,7 +1159,21 @@
     const c = document.createElement("canvas");
     c.width = fmt.w; c.height = fmt.h;
     drawScene(c.getContext("2d"), fmt.w, fmt.h, hiRes);
-    await downloadCanvas(c, `qrdurian-${state.format}.png`);
+    return c;
+  }
+  async function exportScenePng() {
+    await downloadCanvas(await renderSceneCanvas(), `qrdurian-${state.format}.png`);
+  }
+  async function shareScene() {
+    const c = await renderSceneCanvas();
+    const blob = await new Promise((res) => c.toBlob(res, "image/png"));
+    const file = new File([blob], `qrdurian-${state.format}.png`, { type: "image/png" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file], title: "QR Durian" }); }
+      catch (e) { /* user dismissed the share sheet — not an error */ }
+    } else {
+      alert("Sharing isn't supported in this browser — use Download instead.");
+    }
   }
   function exportSvg() {
     return new QRCodeStyling({ ...currentOpts(1024), type: "svg" }).download({ name: "qrdurian-vector", extension: "svg" });
@@ -1159,18 +1195,35 @@
   $("downloadBtn").addEventListener("click", () =>
     busy($("downloadBtn"), () => fileType === "png" ? exportScenePng() : exportSvg())
   );
+  $("shareBtn").addEventListener("click", () => busy($("shareBtn"), shareScene));
 
   // ================= Mobile nav + sheets =================
   const PANEL_TITLES = { content: "Content", style: "QR style", scene: "Artboard" };
   let openPanel = null;
 
+  // card bounces via Web Animations API — plays unconditionally, no class juggling
+  let cardAnim = null;
+  const REDUCED_MOTION = matchMedia("(prefers-reduced-motion: reduce)");
+  function bounceCard(el, fromScale, fromOpacity, duration) {
+    if (REDUCED_MOTION.matches) return;
+    if (cardAnim) cardAnim.cancel();
+    cardAnim = el.animate([
+      { transform: `scale(${fromScale})`, opacity: fromOpacity, easing: "cubic-bezier(.2,.6,.35,1)" },
+      { transform: "scale(1.022)", opacity: 1, offset: .52, easing: "cubic-bezier(.4,0,.5,1)" },
+      { transform: "scale(.996)", offset: .8, easing: "cubic-bezier(.4,0,.55,1)" },
+      { transform: "scale(1)", opacity: 1 }
+    ], { duration });
+  }
+
   function closeSheet() {
     openPanel = null;
+    if (cardAnim) cardAnim.cancel(); // let the exit transition own the element
     document.body.classList.remove("sheet-open");
-    $("controlsCard").classList.remove("visible", "opening", "pop");
-    $("exportSheet").classList.remove("visible", "opening", "pop");
+    $("controlsCard").classList.remove("visible");
+    $("exportSheet").classList.remove("visible");
     document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
-    if (showFrame) { showFrame = false; drawPreview(); }
+    $("fmtList").hidden = true;
+    $("fmtSelect").classList.remove("open");
   }
   function openSheet(name) {
     const prev = openPanel;
@@ -1186,28 +1239,27 @@
       $("sheetTitle").textContent = PANEL_TITLES[name];
     }
     $("navBack").disabled = name === "content";
-    if (showFrame !== isExport) { showFrame = isExport; drawPreview(); }
+    if (!isExport) { $("fmtList").hidden = true; $("fmtSelect").classList.remove("open"); }
+    const idx = PANEL_ORDER.indexOf(name);
+    document.querySelectorAll(".step").forEach((s) => {
+      const i = PANEL_ORDER.indexOf(s.dataset.step);
+      s.classList.toggle("current", i === idx);
+      s.classList.toggle("done", i < idx);
+    });
     const target = isExport ? $("exportSheet") : $("controlsCard");
     if (prev && prev !== name) {
-      // switching cards while already open: pop the incoming card
+      // switching while already open: snap the old card away, bounce the new one
       const outgoing = prev === "export" ? $("exportSheet") : $("controlsCard");
       if (outgoing !== target) {
-        // snap the old card away — no exit slide peeking through the pop
         outgoing.style.transition = "none";
-        outgoing.classList.remove("visible", "opening", "pop");
+        outgoing.classList.remove("visible");
         void outgoing.offsetWidth;
         outgoing.style.transition = "";
       }
-      target.classList.remove("pop", "opening");
-      void target.offsetWidth; // restart the animation
-      target.classList.add("pop");
-      target.addEventListener("animationend", () => target.classList.remove("pop"), { once: true });
+      bounceCard(target, .96, .65, 440);
     } else if (!prev) {
-      // opening from closed: one-shot entrance bounce
-      target.classList.remove("pop", "opening");
-      void target.offsetWidth;
-      target.classList.add("opening");
-      target.addEventListener("animationend", () => target.classList.remove("opening"), { once: true });
+      // opening from closed: full entrance bounce
+      bounceCard(target, .92, 0, 520);
     }
   }
   document.querySelectorAll(".nav-item").forEach(n => {
