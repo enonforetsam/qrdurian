@@ -32,9 +32,9 @@
     --muted: #71717a;
     --border: #e4e4e7;
     --border-2: #ededf0;
-    --accent: #163300;   /* dark durian green */
+    --accent: #2E7D32;   /* durian-leaf green */
     --accent-ink: #ffffff; /* text/icons on accent */
-    --ring: rgba(22,51,0,.22);
+    --ring: rgba(46,125,50,.28);
     --shadow: 0 1px 2px rgba(0,0,0,.04), 0 12px 40px rgba(0,0,0,.08);
     --radius: 18px;
     --sat: env(safe-area-inset-top, 0px);
@@ -358,14 +358,13 @@
     .nav-item {
       width: 48px; height: 48px; border-radius: 50%;
       display: grid; place-items: center;
-      border: none; background: transparent; color: #163300;
+      border: none; background: transparent; color: var(--accent);
       cursor: pointer; transition: all .18s ease;
     }
-    [data-theme="dark"] .nav-item { color: var(--accent); }
     .nav-item svg { width: 21px; height: 21px; }
     .nav-item:active { transform: scale(.92); }
     .nav-item.active { background: var(--accent); color: var(--accent-ink); }
-    .nav-item.export { background: var(--accent); color: var(--accent-ink); }
+    .nav-item.export { background: #101113; color: #fff; } /* black = download, everywhere */
 
     /* invisible click-catcher — QR stays bright while editing */
     .sheet-backdrop {
@@ -380,7 +379,7 @@
       margin: 0 auto; max-width: 480px;
       bottom: calc(88px + env(safe-area-inset-bottom));
       border-radius: 26px;
-      border: 3px solid #18181b; /* matches the QR's black outline */
+      border: none;
       max-height: min(46vh, 420px); overflow-y: auto;
       scrollbar-width: none; /* content is designed to fit — no visible scroll */
       /* pop in/out from the card's own center — no vertical travel */
