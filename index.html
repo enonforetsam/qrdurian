@@ -1038,14 +1038,38 @@
   });
   $("caption").addEventListener("input", (e) => { state.caption = e.target.value; update(false); });
 
-  // logo
+  // logo — corners rounded to match the QR design language
+  function roundLogo(dataUrl) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const cap = 1024;
+        const scale = Math.min(1, cap / Math.max(img.width, img.height));
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+        const c = document.createElement("canvas");
+        c.width = w; c.height = h;
+        const cx = c.getContext("2d");
+        roundRectPath(cx, 0, 0, w, h, Math.min(w, h) * 0.18);
+        cx.clip();
+        cx.drawImage(img, 0, 0, w, h);
+        resolve(c.toDataURL("image/png"));
+      };
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
+  }
   $("logoBtn").addEventListener("click", () => $("logoInput").click());
   $("logoInput").addEventListener("change", (e) => {
     const file = e.target.files[0]; if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      state.logo = ev.target.result;
-      $("logoPrev").innerHTML = `<img src="${ev.target.result}" alt="logo" />`;
+    reader.onload = async (ev) => {
+      try {
+        state.logo = await roundLogo(ev.target.result);
+      } catch (err) {
+        state.logo = ev.target.result; // unreadable as image? use as-is
+      }
+      $("logoPrev").innerHTML = `<img src="${state.logo}" alt="logo" />`;
       update(true);
     };
     reader.readAsDataURL(file);
