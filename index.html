@@ -373,7 +373,7 @@
       bottom: calc(88px + env(safe-area-inset-bottom));
       border-radius: 26px;
       border: none; /* clean, no outline */
-      max-height: min(48vh, 460px); overflow-y: auto;
+      max-height: min(40vh, 400px); overflow-y: auto;
       /* pop in/out from the card's own center — no vertical travel */
       transform: scale(.92);
       opacity: 0;
@@ -578,22 +578,9 @@
         </div>
       </div>
       <div class="crow">
-        <span class="clabel">QR size</span>
-        <input type="range" id="qrScale" min="35" max="80" value="58" />
-        <span class="val" id="qrScaleVal">58%</span>
-      </div>
-      <div class="crow">
         <span class="clabel">Margin</span>
         <input type="range" id="margin" min="0" max="10" value="2" />
         <span class="val" id="marginVal">2</span>
-      </div>
-      <div class="crow">
-        <span class="clabel">Position</span>
-        <div class="mini-presets" id="posPresets">
-          <button class="preset sm txt" data-pos="top"><div class="ptxt">Top</div></button>
-          <button class="preset sm txt active" data-pos="center"><div class="ptxt">Center</div></button>
-          <button class="preset sm txt" data-pos="bottom"><div class="ptxt">Bottom</div></button>
-        </div>
       </div>
       <div class="crow">
         <span class="clabel">Caption</span>
@@ -919,7 +906,8 @@
     const wrap = $("artboardWrap");
     const wrapW = Math.min(wrap.clientWidth || wrap.parentElement.clientWidth, 440);
     // static: always leave room below for a sheet, so the QR never moves
-    const sheetH = Math.min(window.innerHeight * 0.44, 430);
+    // must match the cards' CSS max-height, or an open card covers the caption
+    const sheetH = Math.min(window.innerHeight * 0.40, 400);
     const sat = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--sat")) || 0;
     const chrome = (window.innerWidth > 1400 ? 290 : window.innerWidth > 880 ? 270 : 205) + sat; // header grows with logo + notch
     const zoneH = Math.max(150, window.innerHeight - sheetH - chrome);
@@ -1007,7 +995,6 @@
   hookPresets("dotPresets", "dot", "dotType", true);
   hookPresets("cornerPresets", "corner", "cornerType", true);
   hookPresets("bgStylePresets", "scenebg", "sceneBg", false);
-  hookPresets("posPresets", "pos", "pos", false);
 
   // colors: compact chips → popup picker (swatches + native custom)
   let popTarget = "fg";
@@ -1066,11 +1053,6 @@
 
   $("margin").addEventListener("input", (e) => {
     state.margin = +e.target.value; $("marginVal").textContent = e.target.value; update(true);
-  });
-  $("qrScale").addEventListener("input", (e) => {
-    state.qrScale = +e.target.value / 100;
-    $("qrScaleVal").textContent = e.target.value + "%";
-    update(false);
   });
   $("caption").addEventListener("input", (e) => { state.caption = e.target.value; update(false); });
 
