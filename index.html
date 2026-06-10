@@ -504,24 +504,6 @@
 
       <div class="panel" data-panel="style">
       <div class="crow">
-        <span class="clabel">Modules</span>
-        <div class="mini-presets" id="dotPresets">
-          <button class="preset sm active" data-dot="rounded" aria-label="Rounded">
-            <svg class="swatch" viewBox="0 0 30 30"><rect x="2" y="2" width="8" height="8" rx="3"/><rect x="20" y="2" width="8" height="8" rx="3"/><rect x="2" y="20" width="8" height="8" rx="3"/><rect x="11" y="11" width="8" height="8" rx="3"/></svg>
-          </button>
-          <button class="preset sm" data-dot="dots" aria-label="Dots">
-            <svg class="swatch" viewBox="0 0 30 30"><circle cx="6" cy="6" r="4"/><circle cx="24" cy="6" r="4"/><circle cx="6" cy="24" r="4"/><circle cx="15" cy="15" r="4"/></svg>
-          </button>
-          <button class="preset sm" data-dot="classy-rounded" aria-label="Classy">
-            <svg class="swatch" viewBox="0 0 30 30"><path d="M2 6a4 4 0 014-4h4v8H2z"/><path d="M20 2h4a4 4 0 014 4v4h-8z"/><path d="M2 20h8v4a4 4 0 01-4 4H2z"/><rect x="11" y="11" width="8" height="8" rx="2"/></svg>
-          </button>
-          <button class="preset sm" data-dot="square" aria-label="Square">
-            <svg class="swatch" viewBox="0 0 30 30"><rect x="2" y="2" width="8" height="8"/><rect x="20" y="2" width="8" height="8"/><rect x="2" y="20" width="8" height="8"/><rect x="11" y="11" width="8" height="8"/></svg>
-          </button>
-        </div>
-      </div>
-
-      <div class="crow">
         <span class="clabel">Corners</span>
         <div class="mini-presets" id="cornerPresets">
           <button class="preset sm active" data-corner="extra-rounded" aria-label="Rounded">
@@ -558,15 +540,6 @@
         <span class="val" id="outlineWVal">0</span>
       </div>
 
-      <div class="crow">
-        <span class="clabel">Logo</span>
-        <div class="logo-mini">
-          <div class="logo-prev" id="logoPrev">—</div>
-          <button class="mini-btn" id="logoBtn">Upload</button>
-          <button class="mini-btn ghost" id="logoClear">✕</button>
-          <input type="file" id="logoInput" accept="image/*" hidden />
-        </div>
-      </div>
       </div>
 
       <div class="panel" data-panel="scene">
@@ -585,6 +558,15 @@
       <div class="crow">
         <span class="clabel">Caption</span>
         <input type="text" id="caption" placeholder="None" value="SCAN ME" style="flex:1; max-width:230px;" />
+      </div>
+      <div class="crow">
+        <span class="clabel">Logo</span>
+        <div class="logo-mini">
+          <div class="logo-prev" id="logoPrev">—</div>
+          <button class="mini-btn" id="logoBtn">Upload</button>
+          <button class="mini-btn ghost" id="logoClear">✕</button>
+          <input type="file" id="logoInput" accept="image/*" hidden />
+        </div>
       </div>
       </div>
 
@@ -989,7 +971,6 @@
       });
     });
   }
-  hookPresets("dotPresets", "dot", "dotType", true);
   hookPresets("cornerPresets", "corner", "cornerType", true);
   hookPresets("bgStylePresets", "scenebg", "sceneBg", false);
 
