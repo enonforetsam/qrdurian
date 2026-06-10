@@ -547,12 +547,6 @@
         </div>
       </div>
 
-      <div class="color-pop" id="colorPop" hidden>
-        <div class="swatches" id="popSwatches"></div>
-        <button class="mini-btn" id="popCustom">Custom…</button>
-        <input type="color" id="popInput" class="vhid" />
-      </div>
-
       <div class="crow">
         <span class="clabel">QR Outline</span>
         <button class="chip-color compact" id="outChip" aria-label="Outline color"><span class="cdot" id="outDot"></span></button>
@@ -584,7 +578,8 @@
       </div>
       <div class="crow">
         <span class="clabel">Caption</span>
-        <input type="text" id="caption" placeholder="None" value="SCAN ME" style="flex:1; max-width:230px;" />
+        <button class="chip-color compact" id="capChip" aria-label="Caption color"><span class="cdot" id="capDot"></span></button>
+        <input type="text" id="caption" placeholder="None" value="SCAN ME" style="flex:1; max-width:190px;" />
       </div>
       <div class="crow">
         <span class="clabel">Logo</span>
@@ -595,6 +590,12 @@
           <input type="file" id="logoInput" accept="image/*" hidden />
         </div>
       </div>
+      </div>
+
+      <div class="color-pop" id="colorPop" hidden>
+        <div class="swatches" id="popSwatches"></div>
+        <button class="mini-btn" id="popCustom">Custom…</button>
+        <input type="color" id="popInput" class="vhid" />
       </div>
 
       <div class="sheet-foot">
@@ -671,6 +672,7 @@
     bg: "#FFE14D",   /* page / scene background — bright durian yellow */
     outline: "#18181b",
     outlineW: 7,     /* 0 = no outline */
+    capColor: "#18181b",
     margin: 2,
     logo: undefined,
     format: "square",
@@ -937,8 +939,7 @@
 
     if (cap) {
       ctx.save();
-      ctx.fillStyle = state.fg;
-      ctx.globalAlpha = .62;
+      ctx.fillStyle = state.capColor;
       ctx.textAlign = "center";
       let fs = Math.round(u * 0.042);
       const fontFor = (px) => `700 ${px}px Urbanist, 'Open Sans', -apple-system, Arial, sans-serif`;
@@ -1061,6 +1062,7 @@
     $("baseDot").style.background = state.base;
     $("bgDot").style.background = state.bg;
     $("outDot").style.background = state.outline;
+    $("capDot").style.background = state.capColor;
   }
   swatchSet.forEach((c) => {
     const d = document.createElement("div");
@@ -1077,6 +1079,7 @@
     $("baseChip").classList.toggle("editing", open && popTarget === "base");
     $("bgChip").classList.toggle("editing", open && popTarget === "bg");
     $("outChip").classList.toggle("editing", open && popTarget === "outline");
+    $("capChip").classList.toggle("editing", open && popTarget === "capColor");
   }
   function showPop(target) {
     const pop = $("colorPop");
@@ -1090,6 +1093,7 @@
   $("baseChip").addEventListener("click", (e) => { e.stopPropagation(); showPop("base"); });
   $("bgChip").addEventListener("click", (e) => { e.stopPropagation(); showPop("bg"); });
   $("outChip").addEventListener("click", (e) => { e.stopPropagation(); showPop("outline"); });
+  $("capChip").addEventListener("click", (e) => { e.stopPropagation(); showPop("capColor"); });
   $("outlineW").addEventListener("input", (e) => {
     state.outlineW = +e.target.value;
     $("outlineWVal").textContent = e.target.value;
@@ -1266,7 +1270,7 @@
     do { i = Math.floor(Math.random() * THEMES.length); } while (i === lastTheme);
     lastTheme = i;
     const t = THEMES[i];
-    state.fg = t.fg; state.base = t.base; state.bg = t.bg; state.outline = t.out;
+    state.fg = t.fg; state.base = t.base; state.bg = t.bg; state.outline = t.out; state.capColor = t.fg;
     syncChips();
     setTexture(t.tex);
     update(true);
