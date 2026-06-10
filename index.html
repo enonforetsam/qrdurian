@@ -71,7 +71,17 @@
     display: flex; align-items: center; justify-content: center;
     padding: calc(18px + var(--sat)) 28px 18px;
     width: 100%;
+    position: relative;
   }
+  .shuffle-btn {
+    position: absolute; right: 18px; top: 50%; transform: translateY(-50%);
+    width: 42px; height: 42px; border-radius: 50%; border: none;
+    background: var(--panel); color: var(--accent);
+    display: grid; place-items: center; cursor: pointer;
+    transition: background .2s ease;
+  }
+  .shuffle-btn:hover { background: var(--panel-2); }
+  .shuffle-btn svg { width: 19px; height: 19px; }
   /* display face: Urbanist for brand, titles, labels, buttons */
   .brand, .sheet-title, .lbl, .clabel, .btn, .chip-color, .mini-btn,
   .fmt-row .fname, .preset .ptxt, .divider {
@@ -487,6 +497,7 @@
         </svg>
       </span>
     </div>
+    <button class="shuffle-btn" id="shuffleBtn" aria-label="Random design"><i data-lucide="refresh-cw"></i></button>
   </header>
 
   <main>
@@ -562,7 +573,7 @@
       <div class="crow">
         <span class="clabel">Texture</span>
         <button class="select" id="texSelect" style="flex:1; max-width:230px;">
-          <span id="texSelLabel">None</span>
+          <span id="texSelLabel">Waves</span>
           <i data-lucide="chevron-down"></i>
         </button>
       </div>
@@ -664,7 +675,7 @@
     logo: undefined,
     format: "square",
     sceneBg: "gradient",
-    texture: "none",
+    texture: "waves",
     qrScale: 0.58,
     pos: "center",
     caption: "SCAN ME",
@@ -1232,6 +1243,40 @@
       list.hidden = true;
       $("texSelect").classList.remove("open");
     }
+  });
+
+  // shuffle: curated themes only — every roll looks good
+  const THEMES = [
+    { fg: "#18181b", base: "#ffffff", bg: "#FFE14D", out: "#18181b", tex: "waves" },    // durian classic
+    { fg: "#163300", base: "#E8F5D0", bg: "#9FE870", out: "#163300", tex: "leaves" },   // matcha
+    { fg: "#163300", base: "#9FE870", bg: "#0B1F00", out: "#9FE870", tex: "topo" },     // midnight grove
+    { fg: "#0B2942", base: "#ffffff", bg: "#8ED6F0", out: "#0B2942", tex: "waves" },    // ocean
+    { fg: "#4A0E2E", base: "#FFE3EE", bg: "#EC4899", out: "#4A0E2E", tex: "dots" },     // berry
+    { fg: "#5A1C00", base: "#FFF3E0", bg: "#F97316", out: "#5A1C00", tex: "stripes" },  // tangerine
+    { fg: "#101113", base: "#ffffff", bg: "#E6E6E3", out: "#101113", tex: "grid" },     // studio mono
+    { fg: "#2E1065", base: "#F3E8FF", bg: "#A78BFA", out: "#2E1065", tex: "hex" },      // lavender
+    { fg: "#0C4A6E", base: "#ffffff", bg: "#BAE6FD", out: "#0C4A6E", tex: "crosses" },  // sky
+    { fg: "#4C1D95", base: "#FFF7E6", bg: "#FDBA74", out: "#4C1D95", tex: "spikes" },   // sunset
+    { fg: "#064E3B", base: "#ECFDF5", bg: "#6EE7B7", out: "#064E3B", tex: "dots" },     // mint
+    { fg: "#1C1917", base: "#ffffff", bg: "#F5F0E6", out: "#1C1917", tex: "topo" },     // paper
+  ];
+  let lastTheme = -1;
+  $("shuffleBtn").addEventListener("click", () => {
+    let i;
+    do { i = Math.floor(Math.random() * THEMES.length); } while (i === lastTheme);
+    lastTheme = i;
+    const t = THEMES[i];
+    state.fg = t.fg; state.base = t.base; state.bg = t.bg; state.outline = t.out;
+    syncChips();
+    setTexture(t.tex);
+    update(true);
+    canvas.classList.add("shaking");
+    canvas.addEventListener("animationend", () => canvas.classList.remove("shaking"), { once: true });
+    animateGenerate(700);
+    $("shuffleBtn").animate(
+      [{ transform: "translateY(-50%) rotate(0deg)" }, { transform: "translateY(-50%) rotate(360deg)" }],
+      { duration: 500, easing: "ease" }
+    );
   });
 
   // ================= Export =================
