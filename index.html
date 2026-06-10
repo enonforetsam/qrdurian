@@ -17,12 +17,12 @@
 <link rel="icon" type="image/svg+xml" href="durian.svg" />
 <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 <link rel="manifest" href="manifest.json" />
-<meta name="theme-color" content="#9FE870" />
+<meta name="theme-color" content="#163300" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@500;600;700;800&family=Open+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/qr-code-styling@1.6.0-rc.1/lib/qr-code-styling.js"></script>
-<script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://unpkg.com/lucide@0.452.0"></script>
 <style>
   :root {
     --bg: #f4f4f5;
@@ -32,9 +32,9 @@
     --muted: #71717a;
     --border: #e4e4e7;
     --border-2: #ededf0;
-    --accent: #9FE870;   /* Wise bright green */
-    --accent-ink: #163300; /* Wise forest green */
-    --ring: rgba(159,232,112,.45);
+    --accent: #163300;   /* dark durian green */
+    --accent-ink: #ffffff; /* text/icons on accent */
+    --ring: rgba(22,51,0,.22);
     --shadow: 0 1px 2px rgba(0,0,0,.04), 0 12px 40px rgba(0,0,0,.08);
     --radius: 18px;
     --sat: env(safe-area-inset-top, 0px);
@@ -47,6 +47,9 @@
     --muted: #a1a1aa;
     --border: #27272a;
     --border-2: #2a2a2e;
+    --accent: #9FE870;     /* bright green stays for dark backgrounds — visibility */
+    --accent-ink: #163300;
+    --ring: rgba(159,232,112,.45);
     --shadow: 0 1px 2px rgba(0,0,0,.4), 0 20px 50px rgba(0,0,0,.5);
   }
 
@@ -98,7 +101,7 @@
     /* clear the Dynamic Island, then a little extra so the logo isn't cramped */
     header { padding: calc(26px + var(--sat)) 18px 12px; }
     main { padding-top: 16px; }
-    .card { padding: 16px 18px; }
+    .card.controls, .export-sheet { padding: 16px 18px; } /* outranks the base .card rule */
   }
   .card.controls::-webkit-scrollbar, .export-sheet::-webkit-scrollbar { display: none; }
 
@@ -186,6 +189,8 @@
   .preset.active .ptxt { color: var(--accent-ink); }
   .preset .swatch { width: 30px; height: 30px; margin: 0 auto 6px; }
   .preset .swatch path, .preset .swatch rect, .preset .swatch circle { fill: var(--text); }
+  .preset .swatch [fill="none"] { fill: none !important; } /* keep outline-style icons hollow */
+  .preset.active { color: var(--accent-ink); } /* currentColor strokes flip with the fill */
   .preset .ptxt { font-size: 11px; font-weight: 600; color: var(--muted); }
   .preset.txt { padding: 11px 4px; }
   .preset.txt .ptxt { font-size: 12.5px; }
@@ -291,10 +296,9 @@
     margin-top: 10px; text-align: right;
     font-size: 13px; font-weight: 650;
     font-family: "Urbanist", "Open Sans", system-ui, sans-serif;
-    color: var(--accent-ink);
+    color: var(--accent);
     animation: fadeup .35s ease;
   }
-  [data-theme="dark"] .gen-msg { color: var(--accent); }
   .gen-msg[hidden] { display: none; }
 
   .logo-mini { display: flex; align-items: center; gap: 8px; }
@@ -318,15 +322,15 @@
   .select:hover { border-color: var(--muted); }
   .select svg { width: 16px; height: 16px; transition: transform .2s ease; }
   .select.open svg { transform: rotate(180deg); }
-  /* floating dropdown — overlays the page, never changes the card's height */
-  #fmtList {
+  /* floating dropdowns — overlay the page, never change the card's height */
+  #fmtList, #texList {
     position: fixed; z-index: 80;
     background: var(--panel); border: 1px solid var(--border);
     border-radius: 14px; padding: 8px;
     max-height: 250px; overflow-y: auto;
   }
-  #fmtList .fmt-row { margin-bottom: 6px; }
-  #fmtList .fmt-row:last-child { margin-bottom: 0; }
+  #fmtList .fmt-row, #texList .fmt-row { margin-bottom: 6px; }
+  #fmtList .fmt-row:last-child, #texList .fmt-row:last-child { margin-bottom: 0; }
   .fmt-row .fcol { display: flex; flex-direction: column; gap: 2px; }
   .fmt-row .fname { font-size: 14px; font-weight: 650; }
   .fmt-row .fdims { font-size: 11.5px; color: var(--muted); }
@@ -334,6 +338,7 @@
   .fmt-row.active { border-color: var(--accent); }
   .fmt-row.active .tick { opacity: 1; color: var(--accent); }
   .export-actions { display: flex; gap: 8px; margin-top: 14px; }
+  .export-actions .btn.primary { background: #101113; color: #fff; box-shadow: 0 4px 14px rgba(0,0,0,.22); }
 
     /* Wise-style floating pill nav */
     .bottom-nav {
@@ -341,7 +346,7 @@
       bottom: calc(14px + env(safe-area-inset-bottom));
       z-index: 60;
       display: flex; gap: 6px;
-      background: rgba(255,255,255,.82);
+      background: #ffffff;
       backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
       border: none;
       border-radius: 999px; padding: 7px;
@@ -352,13 +357,13 @@
     .nav-item {
       width: 48px; height: 48px; border-radius: 50%;
       display: grid; place-items: center;
-      border: none; background: transparent; color: var(--accent-ink);
+      border: none; background: transparent; color: #163300;
       cursor: pointer; transition: all .18s ease;
     }
     [data-theme="dark"] .nav-item { color: var(--accent); }
     .nav-item svg { width: 21px; height: 21px; }
     .nav-item:active { transform: scale(.92); }
-    .nav-item.active { background: var(--accent-ink); color: var(--accent); }
+    .nav-item.active { background: var(--accent); color: var(--accent-ink); }
     .nav-item.export { background: var(--accent); color: var(--accent-ink); }
 
     /* invisible click-catcher — QR stays bright while editing */
@@ -538,7 +543,7 @@
       </div>
 
       <div class="crow">
-        <span class="clabel">Outline</span>
+        <span class="clabel">QR Outline</span>
         <button class="chip-color compact" id="outChip" aria-label="Outline color"><span class="cdot" id="outDot"></span></button>
         <input type="range" id="outlineW" min="0" max="10" value="0" />
         <span class="val" id="outlineWVal">0</span>
@@ -553,6 +558,13 @@
           <button class="preset sm txt active" data-scenebg="gradient"><div class="ptxt">Gradient</div></button>
           <button class="preset sm txt" data-scenebg="solid"><div class="ptxt">Solid</div></button>
         </div>
+      </div>
+      <div class="crow">
+        <span class="clabel">Texture</span>
+        <button class="select" id="texSelect" style="flex:1; max-width:230px;">
+          <span id="texSelLabel">None</span>
+          <i data-lucide="chevron-down"></i>
+        </button>
       </div>
       <div class="crow">
         <span class="clabel">Margin</span>
@@ -604,6 +616,7 @@
       <i data-lucide="chevron-down"></i>
     </button>
     <div id="fmtList" hidden></div>
+    <div id="texList" hidden></div>
     <div class="crow" style="margin-top:14px;">
       <span class="clabel">File type</span>
       <div class="mini-presets" id="fileTypePresets">
@@ -651,6 +664,7 @@
     logo: undefined,
     format: "square",
     sceneBg: "gradient",
+    texture: "none",
     qrScale: 0.58,
     pos: "center",
     caption: "SCAN ME",
@@ -677,10 +691,13 @@
   async function qrImageAt(size, transparentBg = false) {
     const blob = await new QRCodeStyling(currentOpts(size, transparentBg)).getRawData("png");
     const img = new Image();
+    const url = URL.createObjectURL(blob);
     await new Promise((res, rej) => {
       img.onload = res; img.onerror = rej;
-      img.src = URL.createObjectURL(blob);
+      img.src = url;
     });
+    if (img.decode) await img.decode().catch(() => {});
+    URL.revokeObjectURL(url); // don't leak a blob per regeneration
     return img;
   }
 
@@ -719,6 +736,35 @@
     ctx.arcTo(x, y + h, x, y, r);
     ctx.arcTo(x, y, x + w, y, r);
     ctx.closePath();
+  }
+
+  // ================= Background textures =================
+  const STAR = "M16 4.9L19.39 8.2L24.1 7.85L24.57 12.55L28.41 15.31L25.75 19.22L26.91 23.8L22.36 25.08L20.31 29.34L16 27.4L11.69 29.34L9.64 25.08L5.09 23.8L6.25 19.22L3.59 15.31L7.43 12.55L7.9 7.85L12.61 8.2Z";
+  const TEXTURE_NAMES = {
+    none: "None", durians: "Durians", topo: "Topography", dots: "Dots", grid: "Grid",
+    stripes: "Stripes", waves: "Waves", crosses: "Crosses", spikes: "Spikes", leaves: "Leaves", hex: "Hexagons",
+  };
+  function textureSVG(key) {
+    const ink = bgLum() < 140 ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.08)";
+    const T = {
+      durians: [96, `<g fill="none" stroke="${ink}" stroke-width="2.4" stroke-linejoin="round"><path transform="translate(8,8) scale(.5)" d="${STAR}"/><path transform="translate(56,56) scale(.5)" d="${STAR}"/></g>`],
+      topo: [88, `<g fill="none" stroke="${ink}" stroke-width="1.4"><path d="M44 16 C60 16 70 28 68 42 C66 56 54 64 42 62 C28 60 18 50 20 38 C22 26 30 16 44 16 Z"/><path d="M44 26 C54 26 60 33 59 42 C58 51 50 56 42 54 C33 52 28 46 29 38 C30 30 36 26 44 26 Z"/><path d="M44 35 C49 35 52 38 51.5 42 C51 46 47 48 43 47 C39 46 37 43 37.5 40 C38 37 40 35 44 35 Z"/></g>`],
+      dots: [22, `<g fill="${ink}"><circle cx="5.5" cy="5.5" r="1.8"/><circle cx="16.5" cy="16.5" r="1.8"/></g>`],
+      grid: [22, `<path d="M22 .5H.5V22" fill="none" stroke="${ink}" stroke-width="1"/>`],
+      stripes: [22, `<path d="M-5 5L5 -5M0 22L22 0M17 27L27 17" fill="none" stroke="${ink}" stroke-width="1.6"/>`],
+      waves: [26, `<path d="M0 7 Q6.5 0 13 7 T26 7" fill="none" stroke="${ink}" stroke-width="1.6" transform="translate(0,3)"/><path d="M0 7 Q6.5 0 13 7 T26 7" fill="none" stroke="${ink}" stroke-width="1.6" transform="translate(0,16)"/>`],
+      crosses: [28, `<g stroke="${ink}" stroke-width="1.8" stroke-linecap="round" fill="none"><path d="M7 3.5v7M3.5 7h7"/><path d="M21 17.5v7M17.5 21h7"/></g>`],
+      spikes: [26, `<g fill="none" stroke="${ink}" stroke-width="1.5" stroke-linejoin="round"><path d="M7 4l4.5 8H2.5Z"/><path d="M19 14l4.5 8h-9Z"/></g>`],
+      leaves: [30, `<g fill="none" stroke="${ink}" stroke-width="1.5"><path d="M4 13 C4 7 10 4 16 4 C16 10 10 13 4 13Z"/><path d="M16 26 C16 20 21 17 27 17 C27 23 22 26 16 26Z"/></g>`],
+      hex: [32, `<path d="M16 3L27 9.5V22.5L16 29L5 22.5V9.5Z" fill="none" stroke="${ink}" stroke-width="1.4"/>`],
+    };
+    const t = T[key];
+    if (!t) return null;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${t[0]}" height="${t[0]}">${t[1]}</svg>`;
+  }
+  function textureURI() {
+    const svg = state.texture !== "none" ? textureSVG(state.texture) : null;
+    return svg ? `data:image/svg+xml,${encodeURIComponent(svg)}` : null;
   }
 
   // generate-animation state (preview only)
@@ -830,7 +876,7 @@
   }
 
   // paintBg=false for the live preview — the page itself provides the background
-  function drawScene(ctx, W, H, qrImage, paintBg = true) {
+  function drawScene(ctx, W, H, qrImage, paintBg = true, texImg = null) {
     if (paintBg) {
       if (state.sceneBg === "solid") {
         ctx.fillStyle = state.bg;
@@ -841,6 +887,17 @@
         g.addColorStop(1, shade(state.bg, -14));
         ctx.fillStyle = g;
         ctx.fillRect(0, 0, W, H);
+      }
+      if (texImg && texImg.width) {
+        const p = ctx.createPattern(texImg, "repeat");
+        if (p) {
+          ctx.save();
+          const s = Math.min(W, H) / 440; // match the on-screen texture density
+          ctx.scale(s, s);
+          ctx.fillStyle = p;
+          ctx.fillRect(0, 0, W / s, H / s);
+          ctx.restore();
+        }
       }
     } else {
       ctx.clearRect(0, 0, W, H);
@@ -872,8 +929,12 @@
       ctx.fillStyle = state.fg;
       ctx.globalAlpha = .62;
       ctx.textAlign = "center";
-      ctx.font = `700 ${Math.round(u * 0.042)}px Urbanist, 'Open Sans', -apple-system, Arial, sans-serif`;
+      let fs = Math.round(u * 0.042);
+      const fontFor = (px) => `700 ${px}px Urbanist, 'Open Sans', -apple-system, Arial, sans-serif`;
+      ctx.font = fontFor(fs);
       try { ctx.letterSpacing = `${u * 0.008}px`; } catch (e) {}
+      const tw = ctx.measureText(cap).width;
+      if (tw > W * 0.92) { fs = Math.max(9, Math.floor(fs * (W * 0.92) / tw)); ctx.font = fontFor(fs); }
       ctx.fillText(cap, W / 2, y + cardSize + capGap);
       ctx.restore();
     }
@@ -889,10 +950,12 @@
     const wrap = $("artboardWrap");
     const wrapW = Math.min(wrap.clientWidth || wrap.parentElement.clientWidth, 440);
     // static: always leave room below for a sheet, so the QR never moves
-    // must match the cards' CSS max-height, or an open card covers the caption
-    const sheetH = Math.min(window.innerHeight * 0.46, 420);
+    // must match the cards' CSS max-height — including the short-landscape override
+    const sheetH = window.innerHeight <= 500
+      ? window.innerHeight * 0.62
+      : Math.min(window.innerHeight * 0.46, 420);
     const sat = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--sat")) || 0;
-    const chrome = (window.innerWidth > 1400 ? 290 : window.innerWidth > 880 ? 270 : 205) + sat; // header grows with logo + notch
+    const chrome = (window.innerWidth >= 1400 ? 290 : window.innerWidth > 880 ? 270 : 205) + sat; // header grows with logo + notch
     const zoneH = Math.max(150, window.innerHeight - sheetH - chrome);
     const ar = fmt.w / fmt.h;
 
@@ -934,9 +997,11 @@
 
   // the page itself becomes the scene background; chrome flips light/dark to match
   function applyPageBg() {
+    const tex = textureURI();
+    const texLayer = tex ? `url("${tex}"), ` : "";
     document.body.style.background = state.sceneBg === "gradient"
-      ? `linear-gradient(180deg, ${shade(state.bg, 14)}, ${shade(state.bg, -14)})`
-      : state.bg;
+      ? `${texLayer}linear-gradient(180deg, ${shade(state.bg, 14)}, ${shade(state.bg, -14)})`
+      : (tex ? `url("${tex}") ${state.bg}` : state.bg);
     document.documentElement.setAttribute("data-theme", bgLum() < 140 ? "dark" : "light");
   }
 
@@ -1127,6 +1192,48 @@
   // dropdown's position:fixed — host it on <body> so it floats over everything
   document.body.appendChild($("fmtList"));
 
+  // texture dropdown — same floating pattern
+  function setTexture(key) {
+    state.texture = key;
+    $("texSelLabel").textContent = TEXTURE_NAMES[key];
+    document.querySelectorAll("#texList .fmt-row").forEach(x => x.classList.toggle("active", x.dataset.tex === key));
+    $("texList").hidden = true;
+    $("texSelect").classList.remove("open");
+    update(false);
+  }
+  Object.keys(TEXTURE_NAMES).forEach((k) => {
+    const b = document.createElement("button");
+    b.className = "fmt-row" + (k === state.texture ? " active" : "");
+    b.dataset.tex = k;
+    b.innerHTML = `<span class="fname">${TEXTURE_NAMES[k]}</span><span class="tick">●</span>`;
+    b.addEventListener("click", () => setTexture(k));
+    $("texList").appendChild(b);
+  });
+  document.body.appendChild($("texList"));
+  $("texSelect").addEventListener("click", (e) => {
+    e.stopPropagation();
+    const list = $("texList"), sel = $("texSelect");
+    if (!list.hidden) { list.hidden = true; sel.classList.remove("open"); return; }
+    list.hidden = false;
+    sel.classList.add("open");
+    const r = sel.getBoundingClientRect();
+    list.style.left = r.left + "px";
+    list.style.width = r.width + "px";
+    const below = r.bottom + 6;
+    if (below + list.offsetHeight > window.innerHeight - 12) {
+      list.style.top = Math.max(8, r.top - 6 - list.offsetHeight) + "px";
+    } else {
+      list.style.top = below + "px";
+    }
+  });
+  document.addEventListener("click", (e) => {
+    const list = $("texList");
+    if (!list.hidden && !list.contains(e.target)) {
+      list.hidden = true;
+      $("texSelect").classList.remove("open");
+    }
+  });
+
   // ================= Export =================
   async function busy(btn, fn) {
     btn.disabled = true;
@@ -1155,9 +1262,15 @@
     const realQs = sceneLayout(fmt.w, fmt.h).qs;
     const hiSize = Math.min(4096, Math.max(1024, Math.round(realQs)));
     const hiRes = inkify(await qrImageAt(hiSize, true), hiSize);
+    let texImg = null;
+    const tex = textureURI();
+    if (tex) {
+      texImg = new Image();
+      await new Promise((res) => { texImg.onload = res; texImg.onerror = res; texImg.src = tex; });
+    }
     const c = document.createElement("canvas");
     c.width = fmt.w; c.height = fmt.h;
-    drawScene(c.getContext("2d"), fmt.w, fmt.h, hiRes);
+    drawScene(c.getContext("2d"), fmt.w, fmt.h, hiRes, true, texImg);
     return c;
   }
   async function exportScenePng() {
@@ -1222,6 +1335,8 @@
     document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
     $("fmtList").hidden = true;
     $("fmtSelect").classList.remove("open");
+    $("texList").hidden = true;
+    $("texSelect").classList.remove("open");
     drawPreview(); // QR floats back to center
   }
   function openSheet(name) {
@@ -1314,8 +1429,8 @@
       setTimeout(() => {
         b.innerHTML = saved;
         b.disabled = false;
-        openSheet("style");
-        setTimeout(() => { $("genMsg").hidden = true; }, 4000);
+        $("genMsg").hidden = true;
+        if (openPanel === "content") openSheet("style"); // don't re-open if the user closed or moved on
       }, 1400);
     }, 1000);
   });
