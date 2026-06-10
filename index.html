@@ -3,7 +3,17 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>qrdurian</title>
+<title>QR Durian — Free QR Code Designer</title>
+<meta name="description" content="Design beautiful, custom QR codes in seconds. Free, no signup required." />
+<meta property="og:title" content="QR Durian — Free QR Code Designer" />
+<meta property="og:description" content="Design beautiful, custom QR codes in seconds. Free, no signup required." />
+<meta property="og:url" content="https://qrdurian.com" />
+<meta property="og:type" content="website" />
+<meta property="og:image" content="https://qrdurian.com/durian.svg" />
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content="QR Durian — Free QR Code Designer" />
+<meta name="twitter:description" content="Design beautiful, custom QR codes in seconds. Free, no signup required." />
+<meta name="twitter:image" content="https://qrdurian.com/durian.svg" />
 <link rel="icon" type="image/svg+xml" href="durian.svg" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,6 +34,7 @@
     --ring: rgba(159,232,112,.45);
     --shadow: 0 1px 2px rgba(0,0,0,.04), 0 12px 40px rgba(0,0,0,.08);
     --radius: 18px;
+    --sat: env(safe-area-inset-top, 0px);
   }
   [data-theme="dark"] {
     --bg: #09090b;
@@ -65,8 +76,12 @@
   .brand .mark svg { width: 40px; height: 40px; }
   .brand .dim { color: var(--muted); font-weight: 500; }
   @media (min-width: 881px) {
-    .brand { font-size: 23px; gap: 14px; }
-    .brand .mark, .brand .mark svg { width: 54px; height: 54px; }
+    .brand { font-size: 28px; gap: 16px; }
+    .brand .mark, .brand .mark svg { width: 76px; height: 76px; }
+  }
+  @media (min-width: 1400px) {
+    .brand { font-size: 32px; }
+    .brand .mark, .brand .mark svg { width: 92px; height: 92px; }
   }
 
   main {
@@ -240,7 +255,7 @@
   .crow input[type="range"] { flex: 1; max-width: 180px; }
   .crow .val { font-size: 12.5px; font-weight: 650; min-width: 36px; text-align: right; font-variant-numeric: tabular-nums; }
 
-  .color-chips { display: flex; gap: 8px; }
+  .color-chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
   .chip-color {
     display: inline-flex; align-items: center; gap: 7px;
     border: 1px solid var(--border); background: var(--panel-2); color: var(--text);
@@ -260,6 +275,17 @@
   .color-pop .swatches { margin-top: 0; }
   .chip-color.editing { border-color: var(--accent); }
   .vhid { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+  @keyframes fadeup { from { opacity: 0; transform: translateY(5px); } }
+  .gen-msg {
+    margin-top: 10px; text-align: right;
+    font-size: 13px; font-weight: 650;
+    font-family: "Urbanist", "Open Sans", system-ui, sans-serif;
+    color: var(--accent-ink);
+    animation: fadeup .35s ease;
+  }
+  [data-theme="dark"] .gen-msg { color: var(--accent); }
+  .gen-msg[hidden] { display: none; }
 
   .logo-mini { display: flex; align-items: center; gap: 8px; }
   .logo-mini .logo-prev { width: 36px; height: 36px; border-radius: 9px; }
@@ -282,7 +308,15 @@
   .select:hover { border-color: var(--muted); }
   .select svg { width: 16px; height: 16px; transition: transform .2s ease; }
   .select.open svg { transform: rotate(180deg); }
-  #fmtList { margin-top: 8px; }
+  /* floating dropdown — overlays the page, never changes the card's height */
+  #fmtList {
+    position: fixed; z-index: 80;
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 14px; padding: 8px;
+    max-height: 250px; overflow-y: auto;
+  }
+  #fmtList .fmt-row { margin-bottom: 6px; }
+  #fmtList .fmt-row:last-child { margin-bottom: 0; }
   .fmt-row .fcol { display: flex; flex-direction: column; gap: 2px; }
   .fmt-row .fname { font-size: 14px; font-weight: 650; }
   .fmt-row .fdims { font-size: 11.5px; color: var(--muted); }
@@ -423,6 +457,7 @@
         <div style="display:flex; justify-content:flex-end; margin-top:14px;">
           <button class="btn primary" id="generateBtn" style="flex:0 0 auto;"><i data-lucide="qr-code"></i> Generate QR</button>
         </div>
+        <div class="gen-msg" id="genMsg" hidden>✓ QR Generated Successfully!</div>
       </div>
       </div>
 
@@ -464,7 +499,8 @@
         <span class="clabel">Colors</span>
         <div class="color-chips">
           <button class="chip-color" id="fgChip"><span class="cdot" id="fgDot"></span> Ink</button>
-          <button class="chip-color" id="bgChip"><span class="cdot" id="bgDot"></span> Base</button>
+          <button class="chip-color" id="baseChip"><span class="cdot" id="baseDot"></span> Base</button>
+          <button class="chip-color" id="bgChip"><span class="cdot" id="bgDot"></span> Background</button>
         </div>
       </div>
 
@@ -552,7 +588,6 @@
     <div class="hint" id="ftHint" style="margin-top:-4px;">Full design with ink texture and background.</div>
     <div class="export-actions">
       <button class="btn primary" id="downloadBtn"><i data-lucide="download"></i> Download</button>
-      <button class="btn" id="copyBtn2" style="flex:0 0 auto;"><i data-lucide="copy"></i> Copy</button>
     </div>
   </div>
 
@@ -578,7 +613,8 @@
     dotType: "rounded",
     cornerType: "extra-rounded",
     fg: "#18181b",
-    bg: "#ffffff",
+    base: "#ffffff", /* the card under the QR */
+    bg: "#f0f0eb",   /* page / scene background */
     margin: 2,
     logo: undefined,
     format: "square",
@@ -641,7 +677,7 @@
     return 0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255);
   }
   function cardColor() {
-    return bgLum() < 140 ? shade(state.bg, 22) : "#ffffff";
+    return state.base; /* user-chosen card color, independent of the background */
   }
   function roundRectPath(ctx, x, y, w, h, r) {
     ctx.beginPath();
@@ -813,7 +849,7 @@
     const wrapW = Math.min(wrap.clientWidth || wrap.parentElement.clientWidth, 440);
     // static: always leave room below for a sheet, so the QR never moves
     const sheetH = Math.min(window.innerHeight * 0.44, 430);
-    const chrome = window.innerWidth > 880 ? 230 : 180; // bigger logo + raised nav on desktop
+    const chrome = window.innerWidth > 1400 ? 290 : window.innerWidth > 880 ? 270 : 180; // header grows with the logo
     const zoneH = Math.max(150, window.innerHeight - sheetH - chrome);
     const ar = fmt.w / fmt.h;
 
@@ -895,6 +931,7 @@
   let popTarget = "fg";
   function syncChips() {
     $("fgDot").style.background = state.fg;
+    $("baseDot").style.background = state.base;
     $("bgDot").style.background = state.bg;
   }
   swatchSet.forEach((c) => {
@@ -902,13 +939,14 @@
     d.className = "dot"; d.style.background = c; d.title = c;
     d.addEventListener("click", () => {
       state[popTarget] = c;
-      syncChips(); update(true); hidePop();
+      syncChips(); update(popTarget === "fg"); hidePop();
     });
     $("popSwatches").appendChild(d);
   });
   function setChipEditing() {
     const open = !$("colorPop").hidden;
     $("fgChip").classList.toggle("editing", open && popTarget === "fg");
+    $("baseChip").classList.toggle("editing", open && popTarget === "base");
     $("bgChip").classList.toggle("editing", open && popTarget === "bg");
   }
   function showPop(target) {
@@ -920,6 +958,7 @@
   }
   function hidePop() { $("colorPop").hidden = true; setChipEditing(); }
   $("fgChip").addEventListener("click", (e) => { e.stopPropagation(); showPop("fg"); });
+  $("baseChip").addEventListener("click", (e) => { e.stopPropagation(); showPop("base"); });
   $("bgChip").addEventListener("click", (e) => { e.stopPropagation(); showPop("bg"); });
   $("popCustom").addEventListener("click", () => {
     const inp = $("popInput");
@@ -928,7 +967,7 @@
   });
   $("popInput").addEventListener("input", (e) => {
     state[popTarget] = e.target.value;
-    syncChips(); update(true);
+    syncChips(); update(popTarget === "fg");
   });
   document.addEventListener("click", (e) => {
     const pop = $("colorPop");
@@ -975,10 +1014,29 @@
     $("fmtSelect").classList.remove("open");
     drawPreview();
   }
-  $("fmtSelect").addEventListener("click", () => {
+  $("fmtSelect").addEventListener("click", (e) => {
+    e.stopPropagation();
+    const list = $("fmtList"), sel = $("fmtSelect");
+    if (!list.hidden) { list.hidden = true; sel.classList.remove("open"); return; }
+    list.hidden = false;
+    sel.classList.add("open");
+    // anchor to the select; flip upward if there's no room below
+    const r = sel.getBoundingClientRect();
+    list.style.left = r.left + "px";
+    list.style.width = r.width + "px";
+    const below = r.bottom + 6;
+    if (below + list.offsetHeight > window.innerHeight - 12) {
+      list.style.top = Math.max(8, r.top - 6 - list.offsetHeight) + "px";
+    } else {
+      list.style.top = below + "px";
+    }
+  });
+  document.addEventListener("click", (e) => {
     const list = $("fmtList");
-    list.hidden = !list.hidden;
-    $("fmtSelect").classList.toggle("open", !list.hidden);
+    if (!list.hidden && !list.contains(e.target)) {
+      list.hidden = true;
+      $("fmtSelect").classList.remove("open");
+    }
   });
   Object.keys(FORMATS).forEach((k) => {
     const b = document.createElement("button");
@@ -1025,16 +1083,6 @@
   function exportSvg() {
     return new QRCodeStyling({ ...currentOpts(1024), type: "svg" }).download({ name: "qrdurian-vector", extension: "svg" });
   }
-  async function copyScene(b) {
-    try {
-      const blob = await new Promise((res) => canvas.toBlob(res, "image/png"));
-      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
-      const saved = b.innerHTML; b.textContent = "✓ Copied";
-      setTimeout(() => { b.innerHTML = saved; }, 1400);
-    } catch (err) {
-      alert("Copy not supported in this browser — use Export instead.");
-    }
-  }
   // file type → one final Download button
   let fileType = "png";
   const FT_HINTS = {
@@ -1052,7 +1100,6 @@
   $("downloadBtn").addEventListener("click", () =>
     busy($("downloadBtn"), () => fileType === "png" ? exportScenePng() : exportSvg())
   );
-  $("copyBtn2").addEventListener("click", () => copyScene($("copyBtn2")));
 
   // ================= Mobile nav + sheets =================
   const PANEL_TITLES = { content: "Content", style: "QR style", scene: "Artboard" };
@@ -1119,6 +1166,7 @@
     b.disabled = true;
     const saved = b.innerHTML;
     b.textContent = "Generating…";
+    $("genMsg").hidden = true;
 
     update(true); // fresh QR swaps in mid-melt, while everything is ink
     canvas.classList.add("shaking");
@@ -1127,11 +1175,13 @@
 
     setTimeout(() => {
       b.textContent = "✓ Generated!";
+      $("genMsg").hidden = false;
       setTimeout(() => {
         b.innerHTML = saved;
         b.disabled = false;
         openSheet("style");
-      }, 850);
+        setTimeout(() => { $("genMsg").hidden = true; }, 4000);
+      }, 1400);
     }, 1000);
   });
 
