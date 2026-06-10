@@ -263,7 +263,8 @@
   .crow input[type="range"] { flex: 1; max-width: 180px; }
   .crow .val { font-size: 12.5px; font-weight: 650; min-width: 36px; text-align: right; font-variant-numeric: tabular-nums; }
 
-  .color-chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+  .color-chips { display: flex; gap: 7px; flex-wrap: nowrap; width: 100%; }
+  .color-chips .chip-color { flex: 1; justify-content: center; padding: 8px 6px; white-space: nowrap; }
   .chip-color {
     display: inline-flex; align-items: center; gap: 7px;
     border: 1px solid var(--border); background: var(--panel-2); color: var(--text);
@@ -523,7 +524,6 @@
       </div>
 
       <div class="crow" id="colorsRow">
-        <span class="clabel">Colors</span>
         <div class="color-chips">
           <button class="chip-color" id="fgChip"><span class="cdot" id="fgDot"></span> Ink</button>
           <button class="chip-color" id="baseChip"><span class="cdot" id="baseDot"></span> Base</button>
