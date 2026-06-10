@@ -113,6 +113,8 @@
   .preview {
     display: flex; flex-direction: column; align-items: center;
     width: 100%;
+    transition: transform .45s cubic-bezier(.22, 1, .36, 1);
+    will-change: transform;
   }
 
   .artboard-wrap {
@@ -948,6 +950,15 @@
     const dpr = window.devicePixelRatio || 1;
     canvas.width = Math.round(w * dpr);
     canvas.height = Math.round(h * dpr);
+
+    // no card open → float the QR to the center of the free space; card open → dock up top
+    let shift = 0;
+    if (!document.body.classList.contains("sheet-open")) {
+      const headTotal = document.querySelector("header").offsetHeight + (window.innerWidth <= 880 ? 16 : 8);
+      const navTop = window.innerHeight - ((window.innerWidth > 880 ? 32 : 14) + 80);
+      shift = Math.max(0, (navTop - headTotal - Math.min(h, zoneH)) / 2);
+    }
+    canvas.closest(".preview").style.transform = `translateY(${shift}px)`;
   }
 
   // the page itself becomes the scene background; chrome flips light/dark to match
@@ -1224,6 +1235,7 @@
     document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
     $("fmtList").hidden = true;
     $("fmtSelect").classList.remove("open");
+    drawPreview(); // QR floats back to center
   }
   function openSheet(name) {
     const prev = openPanel;
@@ -1258,8 +1270,9 @@
       }
       bounceCard(target, .96, .65, 440);
     } else if (!prev) {
-      // opening from closed: full entrance bounce
+      // opening from closed: full entrance bounce; QR docks up top
       bounceCard(target, .92, 0, 520);
+      drawPreview();
     }
   }
   document.querySelectorAll(".nav-item").forEach(n => {
