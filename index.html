@@ -126,6 +126,7 @@
     overflow: hidden;
   }
   #artboard { transition: width .25s ease, height .25s ease, margin-top .25s ease; }
+  body:not(.sheet-open) #artboard { cursor: pointer; }
   @keyframes qrshake {
     0%, 100% { transform: translate(0,0) rotate(0) scale(1); }
     15% { transform: translate(-3px,2px) rotate(-.7deg) scale(.985); }
@@ -379,7 +380,7 @@
       margin: 0 auto; max-width: 480px;
       bottom: calc(88px + env(safe-area-inset-bottom));
       border-radius: 26px;
-      border: none; /* clean, no outline */
+      border: 3px solid #18181b; /* matches the QR's black outline */
       max-height: min(46vh, 420px); overflow-y: auto;
       scrollbar-width: none; /* content is designed to fit — no visible scroll */
       /* pop in/out from the card's own center — no vertical travel */
@@ -545,8 +546,8 @@
       <div class="crow">
         <span class="clabel">QR Outline</span>
         <button class="chip-color compact" id="outChip" aria-label="Outline color"><span class="cdot" id="outDot"></span></button>
-        <input type="range" id="outlineW" min="0" max="10" value="0" />
-        <span class="val" id="outlineWVal">0</span>
+        <input type="range" id="outlineW" min="0" max="10" value="7" />
+        <span class="val" id="outlineWVal">7</span>
       </div>
 
       </div>
@@ -658,8 +659,8 @@
     fg: "#18181b",
     base: "#ffffff", /* the card under the QR */
     bg: "#FFE14D",   /* page / scene background — bright durian yellow */
-    outline: "#163300",
-    outlineW: 0,     /* 0 = no outline */
+    outline: "#18181b",
+    outlineW: 7,     /* 0 = no outline */
     margin: 2,
     logo: undefined,
     format: "square",
@@ -1382,6 +1383,8 @@
   $("sheetBackdrop").addEventListener("click", closeSheet);
   $("sheetClose").addEventListener("click", closeSheet);
   $("exportClose").addEventListener("click", closeSheet);
+  // tapping the QR itself starts the flow
+  $("artboard").addEventListener("click", () => { if (!openPanel) openSheet("content"); });
 
   // step through the cards in order
   const PANEL_ORDER = ["content", "style", "scene", "export"];
