@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>About QR Durian — Free QR Code Designer</title>
+<meta name="description" content="QR Durian is a free QR code designer. No signup, no watermark. Custom colours, logo overlays, PNG and SVG export. Works on mobile." />
+<meta property="og:title" content="About QR Durian — Free QR Code Designer" />
+<meta property="og:description" content="Free QR code designer. No signup, no watermark. Custom colours, logo overlays, PNG and SVG export." />
+<meta property="og:url" content="https://qrdurian.com/about" />
+<meta property="og:type" content="website" />
+<meta property="og:image" content="https://qrdurian.com/og.png" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:image" content="https://qrdurian.com/og.png" />
+<link rel="canonical" href="https://qrdurian.com/about" />
+<link rel="icon" type="image/svg+xml" href="/durian.svg" />
+<link rel="manifest" href="/manifest.json" />
+<meta name="theme-color" content="#9FE870" />
+<link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@500;600;700;800&family=Open+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "QR Durian",
+  "url": "https://qrdurian.com",
+  "description": "Free QR code designer. No signup, no watermark. Custom colours, logo overlays, PNG and SVG export. Works on mobile.",
+  "applicationCategory": "UtilitiesApplication",
+  "operatingSystem": "Any",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "featureList": [
+    "No signup required",
+    "No watermark",
+    "Custom colours and logo overlay",
+    "PNG and SVG export",
+    "Mobile-first design"
+  ]
+}
+</script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #09090b; color: #fafafa;
+    font-family: "Open Sans", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.7;
+  }
+  a { color: inherit; }
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 32px; border-bottom: 1px solid #27272a;
+    max-width: 860px; margin: 0 auto; width: 100%;
+  }
+  .brand {
+    display: flex; align-items: center; gap: 10px;
+    font-family: "Urbanist", system-ui, sans-serif;
+    font-weight: 800; font-size: 18px; text-decoration: none; color: #fafafa;
+    letter-spacing: -.02em;
+  }
+  .brand svg { width: 32px; height: 32px; }
+  .brand span { color: #9FE870; }
+  .try-btn {
+    background: #9FE870; color: #163300;
+    font-family: "Urbanist", system-ui, sans-serif;
+    font-weight: 700; font-size: 14px;
+    padding: 9px 20px; border-radius: 10px;
+    text-decoration: none; letter-spacing: -.01em;
+    transition: opacity .15s;
+  }
+  .try-btn:hover { opacity: .85; }
+
+  main {
+    max-width: 680px; margin: 0 auto;
+    padding: 64px 24px 96px;
+  }
+
+  h1 {
+    font-family: "Urbanist", system-ui, sans-serif;
+    font-size: clamp(32px, 6vw, 52px);
+    font-weight: 800; letter-spacing: -.03em;
+    line-height: 1.1; margin-bottom: 20px;
+    color: #fafafa;
+  }
+  h1 em { color: #9FE870; font-style: normal; }
+
+  .intro {
+    font-size: 18px; color: #a1a1aa;
+    margin-bottom: 56px; max-width: 560px;
+  }
+
+  h2 {
+    font-family: "Urbanist", system-ui, sans-serif;
+    font-size: 22px; font-weight: 700;
+    letter-spacing: -.02em; margin-bottom: 16px;
+    color: #fafafa;
+  }
+
+  section { margin-bottom: 52px; }
+
+  ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  ul li {
+    display: flex; align-items: flex-start; gap: 10px;
+    font-size: 16px; color: #d4d4d8;
+  }
+  ul li::before {
+    content: "✦"; color: #9FE870;
+    font-size: 12px; margin-top: 4px; flex-shrink: 0;
+  }
+
+  .steps { display: flex; flex-direction: column; gap: 20px; counter-reset: steps; }
+  .step {
+    display: flex; gap: 16px; align-items: flex-start;
+    counter-increment: steps;
+  }
+  .step-num {
+    width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+    background: rgba(159,232,112,0.12); border: 1px solid rgba(159,232,112,0.3);
+    color: #9FE870; font-family: "Urbanist", system-ui, sans-serif;
+    font-weight: 700; font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .step-text { font-size: 16px; color: #d4d4d8; padding-top: 4px; }
+  .step-text strong { color: #fafafa; font-weight: 600; }
+
+  .faq { display: flex; flex-direction: column; gap: 28px; }
+  .faq-item {}
+  .faq-item h3 {
+    font-family: "Urbanist", system-ui, sans-serif;
+    font-size: 17px; font-weight: 700;
+    letter-spacing: -.01em; margin-bottom: 8px;
+    color: #fafafa;
+  }
+  .faq-item p { font-size: 15px; color: #a1a1aa; }
+
+  .cta-block {
+    text-align: center; padding: 52px 24px;
+    background: rgba(159,232,112,0.05);
+    border: 1px solid rgba(159,232,112,0.15);
+    border-radius: 20px; margin-top: 64px;
+  }
+  .cta-block p { font-size: 18px; color: #a1a1aa; margin-bottom: 24px; }
+  .cta-block a {
+    display: inline-block;
+    background: #9FE870; color: #163300;
+    font-family: "Urbanist", system-ui, sans-serif;
+    font-weight: 800; font-size: 16px;
+    padding: 14px 32px; border-radius: 12px;
+    text-decoration: none; letter-spacing: -.01em;
+    transition: opacity .15s;
+  }
+  .cta-block a:hover { opacity: .85; }
+
+  footer {
+    text-align: center; padding: 32px 24px;
+    color: #52525b; font-size: 14px;
+    border-top: 1px solid #27272a;
+  }
+  footer a { color: #71717a; text-decoration: none; }
+  footer a:hover { color: #a1a1aa; }
+
+  @media (max-width: 600px) {
+    header { padding: 16px 20px; }
+    main { padding: 40px 20px 72px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="brand" href="/">
+    <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+      <path d="M16 6 C16 4.4 15.6 3.2 14.7 2.3" fill="none" stroke="#163300" stroke-width="2.1" stroke-linecap="round"/>
+      <path d="M16 4.9L19.39 8.2L24.1 7.85L24.57 12.55L28.41 15.31L25.75 19.22L26.91 23.8L22.36 25.08L20.31 29.34L16 27.4L11.69 29.34L9.64 25.08L5.09 23.8L6.25 19.22L3.59 15.31L7.43 12.55L7.9 7.85L12.61 8.2Z" fill="#9FE870"/>
+      <g clip-path="url(#dc)">
+        <rect x="9" y="10.5" width="8.3" height="8.3" rx="2" fill="#163300"/>
+        <rect x="10.7" y="12.2" width="4.9" height="4.9" rx="1.2" fill="#9FE870"/>
+        <rect x="12.1" y="13.6" width="2.1" height="2.1" rx=".55" fill="#163300"/>
+        <g fill="#163300">
+          <rect x="21" y="10.5" width="2.3" height="2.3" rx=".7"/>
+          <rect x="18" y="13.5" width="2.3" height="2.3" rx=".7"/>
+          <rect x="21" y="16.5" width="2.3" height="2.3" rx=".7"/>
+          <rect x="9" y="19.5" width="2.3" height="2.3" rx=".7"/>
+          <rect x="15" y="19.5" width="2.3" height="2.3" rx=".7"/>
+          <rect x="12" y="22.5" width="2.3" height="2.3" rx=".7"/>
+          <rect x="18" y="22.5" width="2.3" height="2.3" rx=".7"/>
+          <rect x="21" y="22.5" width="2.3" height="2.3" rx=".7"/>
+        </g>
+      </g>
+      <defs><clipPath id="dc"><circle cx="16" cy="17.5" r="10.1"/></clipPath></defs>
+    </svg>
+    QR <span>Durian</span>
+  </a>
+  <a class="try-btn" href="/">Try it free</a>
+</header>
+
+<main>
+
+  <!-- PASTE AI-GENERATED COPY BELOW THIS LINE -->
+
+  <h1><!-- H1 here --></h1>
+  <p class="intro"><!-- Intro here --></p>
+
+  <section>
+    <h2><!-- Why QR Durian heading --></h2>
+    <ul>
+      <!-- Feature bullets here -->
+    </ul>
+  </section>
+
+  <section>
+    <h2><!-- How it works heading --></h2>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div class="step-text"><!-- Step 1 --></div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-text"><!-- Step 2 --></div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-text"><!-- Step 3 --></div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2><!-- FAQ heading --></h2>
+    <div class="faq">
+      <div class="faq-item"><h3><!-- Q1 --></h3><p><!-- A1 --></p></div>
+      <div class="faq-item"><h3><!-- Q2 --></h3><p><!-- A2 --></p></div>
+      <div class="faq-item"><h3><!-- Q3 --></h3><p><!-- A3 --></p></div>
+      <div class="faq-item"><h3><!-- Q4 --></h3><p><!-- A4 --></p></div>
+      <div class="faq-item"><h3><!-- Q5 --></h3><p><!-- A5 --></p></div>
+    </div>
+  </section>
+
+  <!-- PASTE AI-GENERATED COPY ABOVE THIS LINE -->
+
+  <div class="cta-block">
+    <p><!-- CTA sentence here --></p>
+    <a href="/">Start designing free</a>
+  </div>
+
+</main>
+
+<footer>
+  <a href="/">QR Durian</a> · Free QR code designer · No signup required
+</footer>
+
+</body>
+</html>
