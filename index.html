@@ -9,12 +9,14 @@
 <meta property="og:description" content="Design beautiful, custom QR codes in seconds. Free, no signup required." />
 <meta property="og:url" content="https://qrdurian.com" />
 <meta property="og:type" content="website" />
-<meta property="og:image" content="https://qrdurian.com/durian.svg" />
-<meta name="twitter:card" content="summary" />
+<meta property="og:image" content="https://qrdurian.com/og.png" />
+<meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="QR Durian — Free QR Code Designer" />
 <meta name="twitter:description" content="Design beautiful, custom QR codes in seconds. Free, no signup required." />
-<meta name="twitter:image" content="https://qrdurian.com/durian.svg" />
+<meta name="twitter:image" content="https://qrdurian.com/og.png" />
 <link rel="icon" type="image/svg+xml" href="durian.svg" />
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#9FE870" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@500;600;700;800&family=Open+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -63,7 +65,7 @@
 
   header {
     display: flex; align-items: center; justify-content: center;
-    padding: 18px 28px;
+    padding: calc(18px + var(--sat)) 28px 18px;
     width: 100%;
   }
   /* display face: Urbanist for brand, titles, labels, buttons */
@@ -92,7 +94,9 @@
     padding: 8px 20px calc(100px + env(safe-area-inset-bottom));
   }
   @media (max-width: 880px) {
-    header { padding: 14px 18px; }
+    /* clear the Dynamic Island, then a little extra so the logo isn't cramped */
+    header { padding: calc(26px + var(--sat)) 18px 12px; }
+    main { padding-top: 16px; }
     .card { padding: 20px; }
   }
 
@@ -365,16 +369,48 @@
       bottom: calc(88px + env(safe-area-inset-bottom));
       border-radius: 26px;
       max-height: min(44vh, 430px); overflow-y: auto;
-      /* 100% of own height + bottom offset: fully off-screen no matter how short the sheet is */
-      transform: translateY(calc(100% + 140px));
-      transition: transform .28s cubic-bezier(.32,.72,.33,1), visibility 0s linear .28s;
+      /* pop in/out from the card's own center — no vertical travel */
+      transform: scale(.92);
+      opacity: 0;
       visibility: hidden;
+      will-change: transform, opacity;
+      /* exit: unhurried, decisive ease-in */
+      transition:
+        transform .26s cubic-bezier(.4, 0, .7, 1),
+        opacity .22s cubic-bezier(.4, 0, .7, 1),
+        visibility 0s linear .26s;
       box-shadow: none; /* flat, hairline border only */
     }
+    /* enter: swell past full size, dip back, settle — a real bounce */
+    @keyframes cardIn {
+      0%   { transform: scale(.92);  opacity: 0; animation-timing-function: cubic-bezier(.18, .6, .3, 1); }
+      55%  { transform: scale(1.025); opacity: 1; animation-timing-function: cubic-bezier(.4, 0, .5, 1); }
+      82%  { transform: scale(.995); animation-timing-function: cubic-bezier(.4, 0, .55, 1); }
+      100% { transform: scale(1); }
+    }
     .card.controls.visible, .export-sheet.visible {
-      transform: translateY(0);
+      transform: scale(1);
+      opacity: 1;
       visibility: visible;
-      transition: transform .28s cubic-bezier(.32,.72,.33,1);
+      animation: cardIn .52s both;
+    }
+    /* switching cards: same bounce, gentler since the card is already on screen */
+    @keyframes sheetPop {
+      0%   { transform: scale(.96);  opacity: .65; animation-timing-function: cubic-bezier(.2, .6, .35, 1); }
+      50%  { transform: scale(1.02); opacity: 1;   animation-timing-function: cubic-bezier(.4, 0, .5, 1); }
+      80%  { transform: scale(.996); animation-timing-function: cubic-bezier(.4, 0, .55, 1); }
+      100% { transform: scale(1); }
+    }
+    .card.controls.pop, .export-sheet.pop { animation: sheetPop .44s; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .card.controls, .export-sheet,
+      .card.controls.visible, .export-sheet.visible {
+        transition: opacity .15s ease, visibility 0s linear .15s;
+        transform: none;
+        animation: none !important;
+      }
+      .card.controls.pop, .export-sheet.pop, #artboard.shaking { animation: none !important; }
     }
     .card.controls .panel { display: none; }
     .card.controls .panel.active { display: block; }
@@ -849,7 +885,8 @@
     const wrapW = Math.min(wrap.clientWidth || wrap.parentElement.clientWidth, 440);
     // static: always leave room below for a sheet, so the QR never moves
     const sheetH = Math.min(window.innerHeight * 0.44, 430);
-    const chrome = window.innerWidth > 1400 ? 290 : window.innerWidth > 880 ? 270 : 180; // header grows with the logo
+    const sat = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--sat")) || 0;
+    const chrome = (window.innerWidth > 1400 ? 290 : window.innerWidth > 880 ? 270 : 205) + sat; // header grows with logo + notch
     const zoneH = Math.max(150, window.innerHeight - sheetH - chrome);
     const ar = fmt.w / fmt.h;
 
@@ -1113,6 +1150,7 @@
     document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
   }
   function openSheet(name) {
+    const prev = openPanel;
     openPanel = name;
     document.body.classList.add("sheet-open");
     document.querySelectorAll(".nav-item").forEach(n => n.classList.toggle("active", n.dataset.nav === name));
@@ -1125,6 +1163,22 @@
       $("sheetTitle").textContent = PANEL_TITLES[name];
     }
     $("navBack").disabled = name === "content";
+    // switching cards while already open: pop the incoming card
+    if (prev && prev !== name) {
+      const target = isExport ? $("exportSheet") : $("controlsCard");
+      const outgoing = prev === "export" ? $("exportSheet") : $("controlsCard");
+      if (outgoing !== target) {
+        // snap the old card away — no exit slide peeking through the pop
+        outgoing.style.transition = "none";
+        outgoing.classList.remove("visible");
+        void outgoing.offsetWidth;
+        outgoing.style.transition = "";
+      }
+      target.classList.remove("pop");
+      void target.offsetWidth; // restart the animation
+      target.classList.add("pop");
+      target.addEventListener("animationend", () => target.classList.remove("pop"), { once: true });
+    }
   }
   document.querySelectorAll(".nav-item").forEach(n => {
     n.addEventListener("click", () => openPanel === n.dataset.nav ? closeSheet() : openSheet(n.dataset.nav));

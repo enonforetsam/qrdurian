@@ -1,0 +1,17 @@
+{
+  "name": "QR Durian",
+  "short_name": "QR Durian",
+  "description": "Free QR Code Designer — no signup required",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#9FE870",
+  "icons": [
+    {
+      "src": "/durian.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
