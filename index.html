@@ -193,6 +193,7 @@
   .btn:hover { transform: translateY(-1px); border-color: var(--muted); }
   .btn:active { transform: translateY(0); }
   .btn:disabled { opacity: .55; cursor: wait; transform: none; }
+  .btn[hidden] { display: none; }
   .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; box-shadow: 0 4px 14px var(--ring); }
   .btn.primary:hover { box-shadow: 0 6px 20px var(--ring); }
   .btn svg { width: 16px; height: 16px; }
@@ -398,6 +399,16 @@
   .fmt-row.active .tick { opacity: 1; color: var(--accent); }
   .export-actions { display: flex; gap: 8px; margin-top: 14px; }
   .export-actions .btn.primary { background: #101113; color: #fff; box-shadow: 0 4px 14px rgba(0,0,0,.22); }
+  .export-actions .btn { padding: 9px 10px; line-height: 1.15; }
+  .btn .bl { display: flex; flex-direction: column; align-items: flex-start; text-align: left; }
+  .btn .sub { font-size: 10px; font-weight: 600; opacity: .6; letter-spacing: 0; }
+  .textbtn {
+    display: flex; align-items: center; gap: 6px; margin: 10px auto 0;
+    border: none; background: none; color: var(--muted); cursor: pointer;
+    font-family: "Urbanist", sans-serif; font-size: 12.5px; font-weight: 650;
+  }
+  .textbtn svg { width: 13px; height: 13px; }
+  .textbtn:hover { color: var(--text); }
 
     /* Wise-style floating pill nav */
     .bottom-nav {
@@ -706,11 +717,10 @@
     </div>
     <div class="hint" id="ftHint" style="margin-top:-4px;">Full design with ink texture and background.</div>
     <div class="export-actions">
-      <button class="btn primary" id="downloadBtn"><i data-lucide="download"></i> Download</button>
-      <button class="btn" id="shareBtn"><i data-lucide="share-2"></i> Share</button>
-      <button class="btn" id="copyLinkBtn"><i data-lucide="link"></i> Link</button>
+      <button class="btn primary" id="downloadBtn"><i data-lucide="download"></i><span class="bl">Download<span class="sub">to Files</span></span></button>
+      <button class="btn" id="shareBtn"><i data-lucide="image-down"></i><span class="bl">Save to Photos<span class="sub">via share sheet</span></span></button>
     </div>
-    <div class="hint" id="galleryHint" hidden>📷 Save to your photo gallery: tap <b>Photos&nbsp;/&nbsp;Share</b>, then <b>Save&nbsp;Image</b>. Download puts the file in Files/Downloads.</div>
+    <button class="textbtn" id="copyLinkBtn"><i data-lucide="link"></i> Copy design link</button>
     <div class="sheet-foot">
       <button class="sheet-close" id="navBack2" aria-label="Back"><i data-lucide="chevron-left"></i></button>
     </div>
@@ -1826,15 +1836,10 @@
       navigator.canShare({ files: [new File([new Uint8Array(4)], "x.png", { type: "image/png" })] }));
   } catch (e) { /* not supported */ }
   function syncGalleryUI() {
-    const pngMode = fileType === "png";
-    if (canShareFiles && pngMode) {
-      $("shareBtn").innerHTML = '<i data-lucide="image-down"></i> Photos / Share';
-      $("galleryHint").hidden = false;
-    } else {
-      $("shareBtn").innerHTML = '<i data-lucide="share-2"></i> Share';
-      $("galleryHint").hidden = true;
-    }
-    lucide.createIcons();
+    // Photos button only where it works: file-share support + PNG selected
+    $("shareBtn").hidden = !(canShareFiles && fileType === "png");
+    const sub = $("downloadBtn").querySelector(".sub");
+    if (sub) sub.textContent = fileType === "png" ? "to Files" : "SVG file";
   }
   $("copyLinkBtn").addEventListener("click", async () => {
     history.replaceState(null, "", "#d=" + encodeDesign()); // make sure it's fresh
