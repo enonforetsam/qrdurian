@@ -1079,10 +1079,21 @@
       return plain;
     }
 
+    // 0. if a center logo exists, erase its zone from the ink mask — otherwise its
+    // silhouette bleeds into the goo pass and the surrounding modules ink differently
+    let maskSrc = src;
+    if (state.logo) {
+      const ms = mk(), mc = ms.getContext("2d");
+      mc.drawImage(src, 0, 0, s, s);
+      const lw = s * 0.42, l0 = (s - lw) / 2;
+      mc.clearRect(l0, l0, lw, lw);
+      maskSrc = ms;
+    }
+
     // 1. black silhouette of the modules
     const t1 = mk(), c1 = t1.getContext("2d");
     if (hasFilter) c1.filter = "brightness(0)";
-    c1.drawImage(src, 0, 0, s, s);
+    c1.drawImage(maskSrc, 0, 0, s, s);
 
     // 2. fiber wicking: stack jittered copies so edges grow fuzzy hairs
     // (brush mood biases the jitter horizontally — stroke direction)
