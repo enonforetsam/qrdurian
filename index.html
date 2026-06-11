@@ -135,6 +135,25 @@
     width: 100%; display: flex; justify-content: center;
     overflow: hidden;
   }
+  /* Looks strip — browse beauty, tap to wear it */
+  .looks {
+    display: flex; gap: 10px; align-items: center;
+    max-width: 100%; overflow-x: auto; padding: 16px 14px 6px;
+    scrollbar-width: none;
+    opacity: 1; transition: opacity .3s ease;
+  }
+  .looks::-webkit-scrollbar { display: none; }
+  body.sheet-open .looks { opacity: 0; pointer-events: none; }
+  .look {
+    flex: 0 0 auto; width: 56px; height: 56px;
+    border-radius: 16px; border: 2.5px solid transparent;
+    padding: 0; cursor: pointer; overflow: hidden;
+    background: none;
+    transition: transform .15s ease, border-color .2s ease;
+  }
+  .look:active { transform: scale(.9); }
+  .look.active { border-color: var(--accent); }
+  .look canvas { width: 100%; height: 100%; display: block; }
   #artboard { transition: width .25s ease, height .25s ease, margin-top .25s ease; }
   body:not(.sheet-open) #artboard { cursor: pointer; }
   @keyframes qrshake {
@@ -525,7 +544,7 @@
       <div class="panel active" data-panel="content">
       <div class="field">
         <label class="lbl" for="content">What should the code open?</label>
-        <textarea id="content" placeholder="https://your-link.com" style="min-height:44px;">https://danialalias.com</textarea>
+        <textarea id="content" placeholder="https://your-link.com" style="min-height:44px;"></textarea>
         <div class="hint">A link, plain text, email, or Wi-Fi details — the code updates live.</div>
         <div style="display:flex; justify-content:flex-end; margin-top:10px;">
           <button class="btn primary" id="generateBtn" style="flex:0 0 auto;"><i data-lucide="qr-code"></i> Generate QR</button>
@@ -632,6 +651,7 @@
       <div class="artboard-wrap" id="artboardWrap">
         <canvas id="artboard"></canvas>
       </div>
+      <div class="looks" id="looksStrip" aria-label="Theme gallery"></div>
     </section>
   </main>
 
@@ -688,7 +708,7 @@
   };
 
   const state = {
-    data: "https://danialalias.com",
+    data: "https://qrdurian.com",
     dotType: "rounded",
     cornerType: "extra-rounded",
     fg: "#18181b",
@@ -739,14 +759,19 @@
     return img;
   }
 
-  let qrImg = null, qrToken = 0, qrTimer = null;
+  let qrImg = null, qrToken = 0, qrTimer = null, firstInk = true;
   function queueQr() {
     clearTimeout(qrTimer);
     qrTimer = setTimeout(async () => {
       const t = ++qrToken;
       try {
         const img = await qrImageAt(1024, true);
-        if (t === qrToken) { qrImg = inkify(img, 1024); drawPreview(); }
+        if (t === qrToken) {
+          qrImg = inkify(img, 1024);
+          creatureImg = inkify(creatureMask(1024), 1024); // same ink, same mood — same creature
+          drawPreview();
+          if (firstInk) { firstInk = false; animateGenerate(900); } // the QR is born, not loaded
+        }
       } catch (e) { /* invalid data mid-typing — keep last good image */ }
     }, 120);
   }
@@ -848,6 +873,89 @@
 
   // generate-animation state (preview only)
   const fx = { blur: 0, alpha: 1 };
+
+  // ================= Living ink =================
+  // The QR is a creature: it breathes, ripples when poked, and when left
+  // alone melts into a little ink durian-gotchi before reforming.
+  const live = {
+    phase: "qr",            // qr | meltOut | creature | meltBack
+    t0: 0,
+    lastInteract: performance.now(),
+    ripples: [],
+  };
+  let creatureImg = null;
+  const CREATURE_EYES = [[0.385, 0.46], [0.615, 0.46]]; // centers, relative to sprite box
+
+  function creatureMask(s) {
+    const c = document.createElement("canvas");
+    c.width = c.height = s;
+    const x = c.getContext("2d");
+    x.fillStyle = "#000";
+    // body
+    roundRectPath(x, s * .19, s * .26, s * .62, s * .52, s * .17);
+    x.fill();
+    // durian spikes along the top
+    for (let i = 0; i < 5; i++) {
+      const sx = s * (.24 + i * .115);
+      x.beginPath();
+      x.moveTo(sx, s * .28);
+      x.lineTo(sx + s * .05, s * .14);
+      x.lineTo(sx + s * .10, s * .28);
+      x.closePath();
+      x.fill();
+    }
+    // little feet
+    roundRectPath(x, s * .30, s * .76, s * .13, s * .11, s * .05); x.fill();
+    roundRectPath(x, s * .57, s * .76, s * .13, s * .11, s * .05); x.fill();
+    // carve finder-style eyes (ring + dot, like a QR's own eyes)
+    x.globalCompositeOperation = "destination-out";
+    for (const [ex, ey] of CREATURE_EYES) {
+      roundRectPath(x, s * ex - s * .075, s * ey - s * .075, s * .15, s * .15, s * .045);
+      x.fill();
+    }
+    x.globalCompositeOperation = "source-over";
+    for (const [ex, ey] of CREATURE_EYES) {
+      roundRectPath(x, s * ex - s * .032, s * ey - s * .032, s * .064, s * .064, s * .02);
+      x.fill();
+    }
+    // carve a smile
+    x.globalCompositeOperation = "destination-out";
+    x.lineWidth = s * .028;
+    x.lineCap = "round";
+    x.beginPath();
+    x.arc(s * .5, s * .56, s * .085, Math.PI * .15, Math.PI * .85);
+    x.stroke();
+    x.globalCompositeOperation = "source-over";
+    return c;
+  }
+
+  // jelly renderer: horizontal strips with sine offsets + poke ripples + breathing
+  function drawSpriteLive(ctx, img, x, y, size, r, now) {
+    ctx.save();
+    roundRectPath(ctx, x - size * .04, y - size * .04, size * 1.08, size * 1.08, r + size * .04);
+    ctx.clip();
+    if (typeof ctx.filter === "string" && fx.blur > 0.1) ctx.filter = `blur(${fx.blur}px)`;
+    ctx.globalAlpha = fx.alpha;
+    // breathe: slow, tiny squash-and-stretch around the center
+    const cx = x + size / 2, cy = y + size / 2;
+    const br = 1 + 0.0045 * Math.sin(now / 1150);
+    ctx.translate(cx, cy);
+    ctx.scale(br, 2 - br);
+    ctx.translate(-cx, -cy);
+    const strips = 24, sh = size / strips, ih = img.height / strips;
+    live.ripples = live.ripples.filter((rp) => now - rp.start < 700);
+    for (let i = 0; i < strips; i++) {
+      const sy = y + i * sh;
+      let off = size * 0.0035 * Math.sin(now / 800 + i * 0.5);
+      for (const rp of live.ripples) {
+        const age = (now - rp.start) / 700;
+        const dist = (sy - rp.y) / (size * 0.22);
+        off += Math.exp(-dist * dist) * Math.sin(age * Math.PI * 3) * (1 - age) * size * 0.03;
+      }
+      ctx.drawImage(img, 0, i * ih, img.width, ih, x + off, sy, size, sh + 0.6);
+    }
+    ctx.restore();
+  }
 
   function drawQrRounded(ctx, img, x, y, size, r, fxBlur = 0, fxAlpha = 1) {
     ctx.save();
@@ -966,7 +1074,8 @@
   }
 
   // paintBg=false for the live preview — the page itself provides the background
-  function drawScene(ctx, W, H, qrImage, paintBg = true, texImg = null) {
+  // liveNow (timestamp) enables the living-ink renderer; null = static (exports)
+  function drawScene(ctx, W, H, qrImage, paintBg = true, texImg = null, liveNow = null) {
     if (paintBg) {
       if (state.sceneBg === "solid") {
         ctx.fillStyle = state.bg;
@@ -1010,8 +1119,31 @@
     ctx.restore();
 
     if (qrImage) {
-      drawQrRounded(ctx, qrImage, x + pad, y + pad, qs, qs * 0.05,
-        paintBg ? 0 : fx.blur, paintBg ? 1 : fx.alpha);
+      if (liveNow !== null) {
+        drawSpriteLive(ctx, qrImage, x + pad, y + pad, qs, qs * 0.05, liveNow);
+        // creature blink — eyelids of card-color, a closed-eye line of ink
+        if (live.phase === "creature" && qrImage === creatureImg) {
+          const tC = liveNow - live.t0;
+          if (tC > 700 && (tC % 2300) < 170) {
+            for (const [ex, ey] of CREATURE_EYES) {
+              const exp = x + pad + ex * qs, eyp = y + pad + ey * qs;
+              ctx.fillStyle = cardColor();
+              roundRectPath(ctx, exp - qs * .085, eyp - qs * .085, qs * .17, qs * .17, qs * .05);
+              ctx.fill();
+              ctx.strokeStyle = state.fg;
+              ctx.lineWidth = qs * .022;
+              ctx.lineCap = "round";
+              ctx.beginPath();
+              ctx.moveTo(exp - qs * .055, eyp);
+              ctx.lineTo(exp + qs * .055, eyp);
+              ctx.stroke();
+            }
+          }
+        }
+      } else {
+        drawQrRounded(ctx, qrImage, x + pad, y + pad, qs, qs * 0.05,
+          paintBg ? 0 : fx.blur, paintBg ? 1 : fx.alpha);
+      }
     }
 
     if (cap) {
@@ -1079,7 +1211,8 @@
     if (!document.body.classList.contains("sheet-open")) {
       const headTotal = document.querySelector("header").offsetHeight + (window.innerWidth <= 880 ? 16 : 8);
       const navTop = window.innerHeight - ((window.innerWidth > 880 ? 32 : 14) + 80);
-      shift = Math.max(0, (navTop - headTotal - Math.min(h, zoneH)) / 2);
+      const stripH = $("looksStrip") ? $("looksStrip").offsetHeight : 0;
+      shift = Math.max(0, (navTop - headTotal - Math.min(h, zoneH) - stripH) / 2);
     }
     canvas.closest(".preview").style.transform = `translateY(${shift}px)`;
   }
@@ -1187,12 +1320,30 @@
   // update(): qrChanged = the QR module image itself needs re-rendering
   function update(qrChanged) {
     if (qrChanged) queueQr();
+    live.lastInteract = performance.now();
     drawPreview();
     syncURL();
   }
 
   // ================= Wire controls =================
-  $("content").addEventListener("input", (e) => { state.data = e.target.value; update(true); });
+  $("content").addEventListener("input", (e) => {
+    state.data = e.target.value.trim() || "https://qrdurian.com";
+    update(true);
+  });
+  // rotating placeholder — shows the range without a tutorial
+  const PLACEHOLDERS = [
+    "https://your-link.com",
+    "wa.me/60123456789",
+    "WIFI:T:WPA;S:MyCafe;P:password;;",
+    "your@email.com",
+    "any text at all…",
+  ];
+  let phIdx = 0;
+  setInterval(() => {
+    if (document.activeElement === $("content")) return;
+    phIdx = (phIdx + 1) % PLACEHOLDERS.length;
+    $("content").placeholder = PLACEHOLDERS[phIdx];
+  }, 2600);
 
   function hookPresets(containerId, dataKey, stateKey, qrChanged) {
     const box = $(containerId);
@@ -1497,19 +1648,23 @@
     { name: "mint",      fg: "#064E3B", base: "#ECFDF5", bg: "#6EE7B7", out: "#064E3B", tex: "dots" },
     { name: "paper",     fg: "#1C1917", base: "#ffffff", bg: "#F5F0E6", out: "#1C1917", tex: "topo", ink: "stamp" },
   ];
+  function applyTheme(t) {
+    state.fg = t.fg; state.base = t.base; state.bg = t.bg; state.outline = t.out; state.capColor = t.fg;
+    state.inkMood = t.ink || "press";
+    document.querySelectorAll("#inkPresets .preset").forEach(b =>
+      b.classList.toggle("active", b.dataset.ink === state.inkMood));
+    document.querySelectorAll("#looksStrip .look").forEach(b =>
+      b.classList.toggle("active", b.dataset.theme === t.name));
+    syncChips();
+    setTexture(t.tex);
+    update(true);
+  }
   let lastTheme = -1;
   $("shuffleBtn").addEventListener("click", () => {
     let i;
     do { i = Math.floor(Math.random() * THEMES.length); } while (i === lastTheme);
     lastTheme = i;
-    const t = THEMES[i];
-    state.fg = t.fg; state.base = t.base; state.bg = t.bg; state.outline = t.out; state.capColor = t.fg;
-    state.inkMood = t.ink || "press";
-    document.querySelectorAll("#inkPresets .preset").forEach(b =>
-      b.classList.toggle("active", b.dataset.ink === state.inkMood));
-    syncChips();
-    setTexture(t.tex);
-    update(true);
+    applyTheme(THEMES[i]);
     canvas.classList.add("shaking");
     canvas.addEventListener("animationend", () => canvas.classList.remove("shaking"), { once: true });
     animateGenerate(700);
@@ -1517,6 +1672,52 @@
       [{ transform: "translateY(-50%) rotate(0deg)" }, { transform: "translateY(-50%) rotate(360deg)" }],
       { duration: 500, easing: "ease" }
     );
+  });
+
+  // ---- Looks strip: mini design thumbnails, tap to apply
+  const THUMB_PAT = [ // fixed 5×5 mini-code pattern (1 = module)
+    1,1,1,0,1,
+    1,0,1,0,0,
+    1,1,1,1,0,
+    0,0,1,0,1,
+    1,0,0,1,1,
+  ];
+  function lookThumb(t) {
+    const c = document.createElement("canvas");
+    c.width = c.height = 112;
+    const x = c.getContext("2d");
+    x.fillStyle = t.bg;
+    x.fillRect(0, 0, 112, 112);
+    // mini card
+    roundRectPath(x, 22, 22, 68, 68, 16);
+    x.fillStyle = t.base;
+    x.fill();
+    x.strokeStyle = t.out;
+    x.lineWidth = 4;
+    roundRectPath(x, 24, 24, 64, 64, 14);
+    x.stroke();
+    // mini modules + an eye
+    x.fillStyle = t.fg;
+    const m = 8, ox = 32, oy = 32;
+    THUMB_PAT.forEach((on, i) => {
+      if (!on) return;
+      const col = i % 5, row = (i / 5) | 0;
+      roundRectPath(x, ox + col * (m + 1.6), oy + row * (m + 1.6), m, m, 2.6);
+      x.fill();
+    });
+    return c;
+  }
+  THEMES.forEach((t) => {
+    const b = document.createElement("button");
+    b.className = "look" + (t.name === "durian" ? " active" : "");
+    b.dataset.theme = t.name;
+    b.setAttribute("aria-label", t.name + " theme");
+    b.appendChild(lookThumb(t));
+    b.addEventListener("click", () => {
+      applyTheme(t);
+      animateGenerate(600);
+    });
+    $("looksStrip").appendChild(b);
   });
 
   // ================= Export =================
@@ -1634,6 +1835,8 @@
   function openSheet(name) {
     const prev = openPanel;
     openPanel = name;
+    if (live.phase !== "qr") { live.phase = "qr"; fx.blur = 0; fx.alpha = 1; } // always edit the code, not the creature
+    live.lastInteract = performance.now();
     document.body.classList.add("sheet-open");
     document.querySelectorAll(".nav-item").forEach(n => n.classList.toggle("active", n.dataset.nav === name));
     const isExport = name === "export";
@@ -1674,7 +1877,14 @@
   $("sheetBackdrop").addEventListener("click", closeSheet);
   $("sheetClose").addEventListener("click", closeSheet);
   $("exportClose").addEventListener("click", closeSheet);
-  // tapping the QR itself starts the flow
+  // tapping the QR: poke the ink (ripple) — and start the flow if nothing's open
+  $("artboard").addEventListener("pointerdown", (e) => {
+    const r = canvas.getBoundingClientRect();
+    live.ripples.push({ y: (e.clientY - r.top) * (canvas.height / r.height), start: performance.now() });
+    if (live.ripples.length > 6) live.ripples.shift();
+    if (live.phase === "creature") { live.phase = "meltBack"; live.t0 = performance.now(); } // shy
+    live.lastInteract = performance.now();
+  });
   $("artboard").addEventListener("click", () => { if (!openPanel) openSheet("content"); });
 
   // step through the cards in order
@@ -1691,18 +1901,52 @@
   let fxRaf = null;
   function animateGenerate(duration = 950) {
     cancelAnimationFrame(fxRaf);
+    live.phase = "qr"; // a generate always shows the code being born
+    live.lastInteract = performance.now();
     const start = performance.now();
     function frame(now) {
       const t = Math.min(1, (now - start) / duration);
       const k = Math.sin(t * Math.PI); // 0 → 1 → 0: melt then reform
       fx.blur = k * 7;
       fx.alpha = 1 - k * 0.4;
-      drawScene(ctx, canvas.width, canvas.height, qrImg, false);
       if (t < 1) fxRaf = requestAnimationFrame(frame);
-      else { fx.blur = 0; fx.alpha = 1; drawPreview(); }
+      else { fx.blur = 0; fx.alpha = 1; }
     }
-    fxRaf = requestAnimationFrame(frame);
+    fxRaf = requestAnimationFrame(frame); // the live loop does the drawing
   }
+
+  // ================= The heartbeat =================
+  function liveFrame(now) {
+    requestAnimationFrame(liveFrame);
+    if (!qrImg) return;
+    if (REDUCED_MOTION.matches) {
+      drawScene(ctx, canvas.width, canvas.height, qrImg, false);
+      return;
+    }
+    // idle long enough with nothing open? the ink wakes up
+    if (live.phase === "qr" && !openPanel && creatureImg && !document.hidden &&
+        now - live.lastInteract > 18000) {
+      live.phase = "meltOut"; live.t0 = now;
+    }
+    let sprite = qrImg;
+    if (live.phase === "meltOut") {
+      const k = Math.min(1, (now - live.t0) / 650);
+      fx.blur = k * 8; fx.alpha = 1 - k * .35;
+      if (k === 1) { live.phase = "creature"; live.t0 = now; }
+    } else if (live.phase === "creature") {
+      sprite = creatureImg;
+      const k = Math.min(1, (now - live.t0) / 350);
+      fx.blur = 8 * (1 - k); fx.alpha = .65 + .35 * k;
+      if (now - live.t0 > 5600) { live.phase = "meltBack"; live.t0 = now; }
+    } else if (live.phase === "meltBack") {
+      const t = now - live.t0;
+      if (t < 650) { sprite = creatureImg; fx.blur = (t / 650) * 8; fx.alpha = 1 - (t / 650) * .35; }
+      else if (t < 1300) { fx.blur = 8 * (1 - (t - 650) / 650); fx.alpha = .65 + .35 * ((t - 650) / 650); }
+      else { live.phase = "qr"; fx.blur = 0; fx.alpha = 1; live.lastInteract = now; }
+    }
+    drawScene(ctx, canvas.width, canvas.height, sprite, false, null, now);
+  }
+  requestAnimationFrame(liveFrame);
 
   $("generateBtn").addEventListener("click", () => {
     const b = $("generateBtn");
