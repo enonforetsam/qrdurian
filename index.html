@@ -640,6 +640,7 @@
     <div class="export-actions">
       <button class="btn primary" id="downloadBtn"><i data-lucide="download"></i> Download</button>
       <button class="btn" id="shareBtn"><i data-lucide="share-2"></i> Share</button>
+      <button class="btn" id="copyLinkBtn"><i data-lucide="link"></i> Link</button>
     </div>
     <div class="sheet-foot">
       <button class="sheet-close" id="navBack2" aria-label="Back"><i data-lucide="chevron-left"></i></button>
@@ -1073,10 +1074,47 @@
     drawPreview();
   });
 
+  // ================= Design-as-URL =================
+  // the full design lives in the hash — the address bar is always shareable
+  const SHARE_FIELDS = {
+    data:   { k: "u", ok: (v) => typeof v === "string" && v.length <= 2000 },
+    caption:{ k: "n", ok: (v) => typeof v === "string" && v.length <= 80 },
+    fg:     { k: "f", ok: isHex }, base: { k: "b", ok: isHex }, bg: { k: "g", ok: isHex },
+    outline:{ k: "o", ok: isHex }, capColor: { k: "t", ok: isHex },
+    outlineW:{ k: "w", ok: (v) => typeof v === "number" && v >= 0 && v <= 10 },
+    margin: { k: "m", ok: (v) => typeof v === "number" && v >= 0 && v <= 10 },
+    cornerType: { k: "c", ok: (v) => ["extra-rounded", "dot", "square"].includes(v) },
+    sceneBg:{ k: "s", ok: (v) => v === "gradient" || v === "solid" },
+    format: { k: "z", ok: (v) => v in FORMATS },
+    texture:{ k: "x", ok: (v) => v in TEXTURE_NAMES },
+  };
+  function isHex(v) { return typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v); }
+  function encodeDesign() {
+    const o = {};
+    for (const [field, spec] of Object.entries(SHARE_FIELDS)) o[spec.k] = state[field];
+    return btoa(unescape(encodeURIComponent(JSON.stringify(o))))
+      .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+  function decodeDesign(h) {
+    try {
+      const o = JSON.parse(decodeURIComponent(escape(atob(h.replace(/-/g, "+").replace(/_/g, "/")))));
+      for (const [field, spec] of Object.entries(SHARE_FIELDS)) {
+        if (spec.k in o && spec.ok(o[spec.k])) state[field] = o[spec.k];
+      }
+      return true;
+    } catch (e) { return false; }
+  }
+  let urlTimer = null;
+  function syncURL() {
+    clearTimeout(urlTimer);
+    urlTimer = setTimeout(() => history.replaceState(null, "", "#d=" + encodeDesign()), 300);
+  }
+
   // update(): qrChanged = the QR module image itself needs re-rendering
   function update(qrChanged) {
     if (qrChanged) queueQr();
     drawPreview();
+    syncURL();
   }
 
   // ================= Wire controls =================
@@ -1211,6 +1249,7 @@
     syncFmtSelect();
     $("fmtList").hidden = true;
     $("fmtSelect").classList.remove("open");
+    syncURL();
   }
   $("fmtSelect").addEventListener("click", (e) => {
     e.stopPropagation();
@@ -1393,6 +1432,18 @@
     busy($("downloadBtn"), () => fileType === "png" ? exportScenePng() : exportSvg())
   );
   $("shareBtn").addEventListener("click", () => busy($("shareBtn"), shareScene));
+  $("copyLinkBtn").addEventListener("click", async () => {
+    history.replaceState(null, "", "#d=" + encodeDesign()); // make sure it's fresh
+    const b = $("copyLinkBtn");
+    try {
+      await navigator.clipboard.writeText(location.href);
+      const saved = b.innerHTML;
+      b.textContent = "✓ Copied";
+      setTimeout(() => { b.innerHTML = saved; }, 1400);
+    } catch (e) {
+      prompt("Copy this link:", location.href);
+    }
+  });
 
   // ================= Mobile nav + sheets =================
   let openPanel = null;
@@ -1524,6 +1575,22 @@
 
   // ================= Boot =================
   lucide.createIcons();
+  // arriving via a shared link? hydrate the design and every control from the hash
+  if (location.hash.startsWith("#d=") && decodeDesign(location.hash.slice(3))) {
+    $("content").value = state.data;
+    $("caption").value = state.caption;
+    $("margin").value = state.margin; $("marginVal").textContent = state.margin;
+    $("outlineW").value = state.outlineW; $("outlineWVal").textContent = state.outlineW;
+    document.querySelectorAll("#cornerPresets .preset").forEach(b =>
+      b.classList.toggle("active", b.dataset.corner === state.cornerType));
+    document.querySelectorAll("#bgStylePresets .preset").forEach(b =>
+      b.classList.toggle("active", b.dataset.scenebg === state.sceneBg));
+    $("texSelLabel").textContent = TEXTURE_NAMES[state.texture];
+    document.querySelectorAll("#texList .fmt-row").forEach(x =>
+      x.classList.toggle("active", x.dataset.tex === state.texture));
+    document.querySelectorAll("#fmtList .fmt-row").forEach(x =>
+      x.classList.toggle("active", x.dataset.fmt === state.format));
+  }
   syncChips();
   syncFmtSelect();
   openSheet("content"); // land with the Content card open on every device
