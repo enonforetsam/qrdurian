@@ -712,6 +712,7 @@
       <span class="clabel">File type</span>
       <div class="mini-presets" id="fileTypePresets">
         <button class="preset sm txt active" data-ft="png"><div class="ptxt">PNG</div></button>
+        <button class="preset sm txt" data-ft="jpg"><div class="ptxt">JPG</div></button>
         <button class="preset sm txt" data-ft="svg"><div class="ptxt">SVG</div></button>
       </div>
     </div>
@@ -1768,7 +1769,7 @@
     finally { btn.innerHTML = saved; btn.disabled = false; }
   }
 
-  function downloadCanvas(c, name) {
+  function downloadCanvas(c, name, mime = "image/png", quality) {
     return new Promise((res) => {
       c.toBlob((blob) => {
         const a = document.createElement("a");
@@ -1777,7 +1778,7 @@
         a.click();
         setTimeout(() => URL.revokeObjectURL(a.href), 4000);
         res();
-      }, "image/png");
+      }, mime, quality);
     });
   }
 
@@ -1792,8 +1793,9 @@
     drawScene(c.getContext("2d"), fmt.w, fmt.h, hiRes, true, texImg);
     return c;
   }
-  async function exportScenePng() {
-    await downloadCanvas(await renderSceneCanvas(), `qrdurian-${state.format}.png`);
+  async function exportSceneImage(ext) {
+    const mime = ext === "jpg" ? "image/jpeg" : "image/png";
+    await downloadCanvas(await renderSceneCanvas(), `qrdurian-${state.format}.${ext}`, mime, 0.92);
   }
   async function shareScene() {
     const c = await renderSceneCanvas();
@@ -1812,7 +1814,8 @@
   // file type → one final Download button
   let fileType = "png";
   const FT_HINTS = {
-    png: "Full design with ink texture and background.",
+    png: "Full design with ink texture and background. Best quality.",
+    jpg: "Full design, smaller file — handy for WhatsApp and email.",
     svg: "Clean vector code only — scales to any size, no ink texture.",
   };
   $("fileTypePresets").querySelectorAll(".preset").forEach((b) => {
@@ -1825,7 +1828,7 @@
     });
   });
   $("downloadBtn").addEventListener("click", () =>
-    busy($("downloadBtn"), () => fileType === "png" ? exportScenePng() : exportSvg())
+    busy($("downloadBtn"), () => fileType === "svg" ? exportSvg() : exportSceneImage(fileType))
   );
   $("shareBtn").addEventListener("click", () => busy($("shareBtn"), shareScene));
 
@@ -1836,10 +1839,10 @@
       navigator.canShare({ files: [new File([new Uint8Array(4)], "x.png", { type: "image/png" })] }));
   } catch (e) { /* not supported */ }
   function syncGalleryUI() {
-    // Photos button only where it works: file-share support + PNG selected
-    $("shareBtn").hidden = !(canShareFiles && fileType === "png");
+    // Photos button only where it works: file-share support + an image type selected
+    $("shareBtn").hidden = !(canShareFiles && fileType !== "svg");
     const sub = $("downloadBtn").querySelector(".sub");
-    if (sub) sub.textContent = fileType === "png" ? "to Files" : "SVG file";
+    if (sub) sub.textContent = fileType === "svg" ? "SVG file" : "to Files";
   }
   $("copyLinkBtn").addEventListener("click", async () => {
     history.replaceState(null, "", "#d=" + encodeDesign()); // make sure it's fresh
