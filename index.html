@@ -710,6 +710,7 @@
       <button class="btn" id="shareBtn"><i data-lucide="share-2"></i> Share</button>
       <button class="btn" id="copyLinkBtn"><i data-lucide="link"></i> Link</button>
     </div>
+    <div class="hint" id="galleryHint" hidden>📷 Save to your photo gallery: tap <b>Photos&nbsp;/&nbsp;Share</b>, then <b>Save&nbsp;Image</b>. Download puts the file in Files/Downloads.</div>
     <div class="sheet-foot">
       <button class="sheet-close" id="navBack2" aria-label="Back"><i data-lucide="chevron-left"></i></button>
     </div>
@@ -1810,12 +1811,31 @@
       b.classList.add("active");
       fileType = b.dataset.ft;
       $("ftHint").textContent = FT_HINTS[fileType];
+      syncGalleryUI();
     });
   });
   $("downloadBtn").addEventListener("click", () =>
     busy($("downloadBtn"), () => fileType === "png" ? exportScenePng() : exportSvg())
   );
   $("shareBtn").addEventListener("click", () => busy($("shareBtn"), shareScene));
+
+  // phones: the share sheet is the only web path into the photo gallery — say so
+  let canShareFiles = false;
+  try {
+    canShareFiles = !!(navigator.canShare &&
+      navigator.canShare({ files: [new File([new Uint8Array(4)], "x.png", { type: "image/png" })] }));
+  } catch (e) { /* not supported */ }
+  function syncGalleryUI() {
+    const pngMode = fileType === "png";
+    if (canShareFiles && pngMode) {
+      $("shareBtn").innerHTML = '<i data-lucide="image-down"></i> Photos / Share';
+      $("galleryHint").hidden = false;
+    } else {
+      $("shareBtn").innerHTML = '<i data-lucide="share-2"></i> Share';
+      $("galleryHint").hidden = true;
+    }
+    lucide.createIcons();
+  }
   $("copyLinkBtn").addEventListener("click", async () => {
     history.replaceState(null, "", "#d=" + encodeDesign()); // make sure it's fresh
     const b = $("copyLinkBtn");
@@ -2037,6 +2057,7 @@
   }
   syncChips();
   syncFmtSelect();
+  syncGalleryUI();
   openSheet("content"); // land with the Content card open on every device
   drawPreview();
   queueQr();
