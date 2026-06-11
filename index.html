@@ -321,6 +321,7 @@
     transition: transform .12s ease;
   }
   .emoji-btn:active { transform: scale(.85); }
+  .emoji-btn svg { width: 17px; height: 17px; color: var(--text); }
 
   .logo-mini { display: flex; align-items: center; gap: 8px; }
   .logo-mini .logo-prev { width: 36px; height: 36px; border-radius: 9px; }
@@ -609,7 +610,7 @@
         </div>
       </div>
       <div class="crow">
-        <span class="clabel">Emoji</span>
+        <span class="clabel">Quick logo</span>
         <div class="emoji-row" id="emojiRow"></div>
       </div>
       </div>
@@ -1189,6 +1190,59 @@
     b.setAttribute("aria-label", "Use " + e + " as logo");
     b.addEventListener("click", () => {
       state.logo = emojiLogo(e);
+      $("logoPrev").innerHTML = `<img src="${state.logo}" alt="logo" />`;
+      update(true);
+    });
+    $("emojiRow").appendChild(b);
+  });
+
+  // Lucide icons as center logos — drawn with native canvas commands
+  // (rasterizing SVG images would taint the canvas on iOS Safari)
+  const LOGO_ICONS = ["coffee", "utensils", "pizza", "scissors", "shopping-bag", "store",
+    "music", "camera", "heart", "flower-2", "paw-print", "dumbbell", "map-pin", "instagram"];
+  function iconLogo(svgEl) {
+    const c = document.createElement("canvas");
+    c.width = c.height = 256;
+    const x = c.getContext("2d");
+    const S = (256 / 24) * 0.74;            // icon viewBox is 24, leave breathing room
+    const off = (256 - 24 * S) / 2;
+    x.translate(off, off);
+    x.scale(S, S);
+    x.strokeStyle = state.fg;
+    x.lineWidth = 2;
+    x.lineCap = "round";
+    x.lineJoin = "round";
+    const n = (el, a) => +el.getAttribute(a);
+    for (const el of svgEl.children) {
+      const t = el.tagName.toLowerCase();
+      x.beginPath();
+      if (t === "path") { x.stroke(new Path2D(el.getAttribute("d"))); continue; }
+      if (t === "circle") x.arc(n(el, "cx"), n(el, "cy"), n(el, "r"), 0, Math.PI * 2);
+      else if (t === "ellipse") x.ellipse(n(el, "cx"), n(el, "cy"), n(el, "rx"), n(el, "ry"), 0, 0, Math.PI * 2);
+      else if (t === "line") { x.moveTo(n(el, "x1"), n(el, "y1")); x.lineTo(n(el, "x2"), n(el, "y2")); }
+      else if (t === "rect") {
+        const rx = +(el.getAttribute("rx") || 0);
+        if (x.roundRect) x.roundRect(n(el, "x"), n(el, "y"), n(el, "width"), n(el, "height"), rx);
+        else x.rect(n(el, "x"), n(el, "y"), n(el, "width"), n(el, "height"));
+      } else if (t === "polyline" || t === "polygon") {
+        const pts = el.getAttribute("points").trim().split(/[\s,]+/).map(Number);
+        x.moveTo(pts[0], pts[1]);
+        for (let i = 2; i < pts.length; i += 2) x.lineTo(pts[i], pts[i + 1]);
+        if (t === "polygon") x.closePath();
+      }
+      x.stroke();
+    }
+    return c.toDataURL("image/png");
+  }
+  LOGO_ICONS.forEach((name) => {
+    const b = document.createElement("button");
+    b.className = "emoji-btn";
+    b.setAttribute("aria-label", "Use " + name + " icon as logo");
+    b.innerHTML = `<i data-lucide="${name}"></i>`;
+    b.addEventListener("click", () => {
+      const svg = b.querySelector("svg");
+      if (!svg) return;
+      state.logo = iconLogo(svg);
       $("logoPrev").innerHTML = `<img src="${state.logo}" alt="logo" />`;
       update(true);
     });
