@@ -37,6 +37,9 @@ Signature touches:
   language; error correction bumps to H automatically.
 - **The page is the canvas** — the design's background *is* the page background; the chrome
   flips light/dark from its luminance. The exported file reproduces it 1:1.
+- **Studio layout** (≥1100px) — Canva-style: design card docked left, canvas on the right
+  with aspect-ratio chips (Square / Phone / A4 / Story) above it; the canvas reshapes live
+  to the chosen format and the looks gallery stays browsable while editing.
 
 ## Design system
 
@@ -63,9 +66,13 @@ Key invariants — **do not break these**:
 2. **CSS/JS height pairing.** The cards' CSS `max-height` (`min(46vh, 420px)`, and the
    `max-height: 500px` landscape override) must match `sheetH` in `fitPreview()` — that's
    what guarantees an open card never covers the QR or its caption.
-3. **The QR never moves while editing.** It centers on the page when no card is open, docks
-   to a fixed upper position when one opens, and ignores export-size changes entirely
-   (format applies to the file only).
+3. **The QR never moves while editing.** Mobile/tablet: it centers on the page when no card
+   is open, docks to a fixed upper position when one opens, and ignores export-size changes
+   (format applies to the file only). Studio (≥1100px, Canva-style): the design card docks
+   as a left panel, the canvas centers in the remaining zone regardless of panel state, and
+   the canvas DOES reshape to the chosen format (aspect chips above it; non-square formats
+   get a dashed file-bounds frame since the page bg bleeds past the artboard edge).
+   `isStudio()` in JS must match the studio CSS media query (`min-width: 1100px`).
 4. **Textures are defined twice on purpose.** `textureSVG()` (CSS tiles for the page) and
    `TEX_TILES` (canvas-native `Path2D` for exports) mirror each other — SVG images taint the
    canvas on iOS Safari and break `toBlob`. New textures must be added to both.

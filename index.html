@@ -545,6 +545,47 @@
       .nav-item { width: 42px; height: 42px; }
       .card.controls, .export-sheet { max-height: 62vh; bottom: 70px; }
     }
+
+    /* ===== Studio: Canva-style wide-desktop layout — panel left, canvas right ===== */
+    .fmt-chips {
+      display: none; gap: 4px; align-items: center;
+      background: var(--panel); border-radius: 999px; padding: 5px;
+      margin-bottom: 16px;
+    }
+    .fmt-chip {
+      border: none; background: transparent; color: var(--text);
+      font-family: "Urbanist", sans-serif; font-weight: 700; font-size: 12.5px;
+      padding: 8px 16px; border-radius: 999px; cursor: pointer;
+      transition: background .18s ease, color .18s ease;
+    }
+    .fmt-chip.active { background: var(--accent); color: var(--accent-ink); }
+    @media (min-width: 1100px) {
+      /* the design card docks left, always at hand — no bottom-sheet behavior */
+      .card.controls, .export-sheet {
+        left: 28px; right: auto; bottom: auto; margin: 0;
+        top: calc(96px + var(--sat));
+        width: 400px; max-width: 400px;
+        max-height: calc(100vh - 200px);
+      }
+      /* the canvas zone shifts right of the panel; QR centers in what remains */
+      main { padding-left: 456px; }
+      .bottom-nav { left: calc(50% + 218px); }
+      /* the gallery stays browsable while editing — the panel doesn't cover it */
+      body.sheet-open .looks { opacity: 1; pointer-events: auto; }
+      /* panel lives open Canva-style: clicking the canvas doesn't dismiss it */
+      body.sheet-open .sheet-backdrop { pointer-events: none; }
+      /* with room to spare, the artboard's aspect ratio is chosen right here */
+      .fmt-chips { display: flex; }
+      /* non-square artboards get a dashed bound — the page bleeds past the file edge */
+      .artboard-wrap.framed { overflow: visible; } /* strict-fit never crops in studio */
+      .artboard-wrap.framed #artboard {
+        outline: 1.5px dashed rgba(16, 17, 19, .25);
+        outline-offset: 7px; border-radius: 3px;
+      }
+      [data-theme="dark"] .artboard-wrap.framed #artboard {
+        outline-color: rgba(255, 255, 255, .35);
+      }
+    }
 </style>
 </head>
 <body>
@@ -706,6 +747,7 @@
 
     <!-- Artboard -->
     <section class="preview">
+      <div class="fmt-chips" id="fmtChips" aria-label="Canvas size"></div>
       <div class="artboard-wrap" id="artboardWrap">
         <canvas id="artboard"></canvas>
       </div>
@@ -1269,33 +1311,46 @@
   const canvas = $("artboard");
   const ctx = canvas.getContext("2d");
 
+  const isStudio = () => window.innerWidth >= 1100; // must match the studio CSS media query
   function fitPreview() {
-    // preview is format-independent: the QR stays put; aspect ratio applies only to the exported file
-    const fmt = { w: 1, h: 1 };
+    // mobile/tablet: preview is format-independent — the QR stays put, aspect applies
+    // only to the exported file. Studio: the canvas IS the artboard — it reshapes live
+    // to the chosen format (sceneLayout keeps preview/export parity either way).
+    const studio = isStudio();
+    const fmt = studio ? FORMATS[state.format] : { w: 1, h: 1 };
     const wrap = $("artboardWrap");
     const desktop = window.innerWidth > 880;
-    const wrapW = Math.min(wrap.clientWidth || wrap.parentElement.clientWidth, desktop ? 580 : 440);
+    const wrapW = Math.min(wrap.clientWidth || wrap.parentElement.clientWidth, studio ? 640 : desktop ? 580 : 440);
     // static: always leave room below for a sheet, so the QR never moves
     // must match the cards' CSS max-height — including desktop + short-landscape overrides
-    const sheetH = window.innerHeight <= 500
+    // (studio reserves nothing below: the panel is docked left, not bottom)
+    const sheetH = studio ? 0
+      : window.innerHeight <= 500
       ? window.innerHeight * 0.62
       : desktop ? Math.min(window.innerHeight * 0.46, 360)
       : Math.min(window.innerHeight * 0.46, 420);
     const sat = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--sat")) || 0;
-    const chrome = (window.innerWidth >= 1400 ? 280 : desktop ? 250 : 205) + sat; // header grows with logo + notch
+    const stripH = $("looksStrip").offsetHeight;
+    const chipsH = studio ? $("fmtChips").offsetHeight + 16 : 0;
+    const chrome = (studio
+      ? document.querySelector("header").offsetHeight + chipsH + stripH + 124 // real chrome + nav zone
+      : window.innerWidth >= 1400 ? 280 : desktop ? 250 : 205) + sat; // header grows with logo + notch
     const zoneH = Math.max(150, window.innerHeight - sheetH - chrome);
     const ar = fmt.w / fmt.h;
 
     // start with a strict fit, then enlarge so the QR itself stays readable —
     // but never beyond what the zone can show (card + caption must fit the crop window)
+    // (studio non-square formats stay strict: seeing the whole artboard is the point)
     const ef = 0.32 + ((state.qrScale - 0.35) / 0.45) * 0.49; // effective scale of the slider mapping
     let w = Math.min(wrapW, zoneH * ar);
     const capRatio = state.caption.trim() ? 0.075 / ef : 0;
     const fitCap = zoneH / (1.3 + capRatio);
     const targetQR = Math.min(desktop ? 430 : 300, fitCap, Math.max(120, zoneH * 0.62));
-    if (w * ef < targetQR) w = Math.min(wrapW, targetQR / ef);
+    if (w * ef < targetQR && !(studio && ar !== 1)) w = Math.min(wrapW, targetQR / ef);
     const h = w / ar;
 
+    // non-square studio artboard: dash the file bounds (page bg bleeds past them)
+    wrap.classList.toggle("framed", studio && ar !== 1);
     // if the full scene is taller than the zone, crop it — keep the QR card in view
     wrap.style.height = Math.min(h, zoneH) + "px";
     let offset = 0;
@@ -1313,12 +1368,12 @@
     canvas.height = Math.round(h * dpr);
 
     // no card open → float the QR to the center of the free space; card open → dock up top
+    // (studio always centers: the panel sits beside the canvas, never over it)
     let shift = 0;
-    if (!document.body.classList.contains("sheet-open")) {
+    if (studio || !document.body.classList.contains("sheet-open")) {
       const headTotal = document.querySelector("header").offsetHeight + (window.innerWidth <= 880 ? 16 : 8);
       const navTop = window.innerHeight - ((window.innerWidth > 880 ? 32 : 14) + 80);
-      const stripH = $("looksStrip") ? $("looksStrip").offsetHeight : 0;
-      shift = Math.max(0, (navTop - headTotal - Math.min(h, zoneH) - stripH) / 2);
+      shift = Math.max(0, (navTop - headTotal - Math.min(h, zoneH) - stripH - chipsH) / 2);
     }
     canvas.closest(".preview").style.transform = `translateY(${shift}px)`;
   }
@@ -1660,11 +1715,24 @@
   function setFormat(key) {
     state.format = key;
     document.querySelectorAll("#fmtList .fmt-row").forEach(x => x.classList.toggle("active", x.dataset.fmt === key));
+    document.querySelectorAll("#fmtChips .fmt-chip").forEach(x => x.classList.toggle("active", x.dataset.fmt === key));
     syncFmtSelect();
     $("fmtList").hidden = true;
     $("fmtSelect").classList.remove("open");
+    drawPreview(); // studio reshapes the canvas live; elsewhere a cheap same-size redraw
     syncURL();
   }
+  // studio aspect chips — choose the artboard right above the canvas
+  const CHIP_LABELS = { square: "Square", wallpaper: "Phone", poster: "A4", story: "Story" };
+  Object.keys(FORMATS).forEach((k) => {
+    const b = document.createElement("button");
+    b.className = "fmt-chip" + (k === state.format ? " active" : "");
+    b.dataset.fmt = k;
+    b.setAttribute("aria-label", FORMAT_NAMES[k] + " canvas");
+    b.textContent = CHIP_LABELS[k];
+    b.addEventListener("click", () => setFormat(k));
+    $("fmtChips").appendChild(b);
+  });
   $("fmtSelect").addEventListener("click", (e) => {
     e.stopPropagation();
     const list = $("fmtList"), sel = $("fmtSelect");
@@ -2288,6 +2356,8 @@
     document.querySelectorAll("#texList .fmt-row").forEach(x =>
       x.classList.toggle("active", x.dataset.tex === state.texture));
     document.querySelectorAll("#fmtList .fmt-row").forEach(x =>
+      x.classList.toggle("active", x.dataset.fmt === state.format));
+    document.querySelectorAll("#fmtChips .fmt-chip").forEach(x =>
       x.classList.toggle("active", x.dataset.fmt === state.format));
     if (state.logo) $("logoPrev").innerHTML = `<img src="${state.logo}" alt="logo" />`;
     if (bootLook) document.querySelectorAll("#looksStrip .look").forEach(b =>
