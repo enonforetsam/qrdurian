@@ -1998,10 +1998,13 @@
     }, 1000);
   });
 
-  // trace program promo — dismiss sticks
-  try {
-    if (!localStorage.getItem("tracePromoDismissed")) $("tracePromo").hidden = false;
-  } catch (e) { $("tracePromo").hidden = false; }
+  // trace program promo — temporarily disabled (flip to true to bring it back)
+  const SHOW_TRACE_PROMO = false;
+  if (SHOW_TRACE_PROMO) {
+    try {
+      if (!localStorage.getItem("tracePromoDismissed")) $("tracePromo").hidden = false;
+    } catch (e) { $("tracePromo").hidden = false; }
+  }
   $("promoClose").addEventListener("click", () => {
     $("tracePromo").hidden = true;
     try { localStorage.setItem("tracePromoDismissed", "1"); } catch (e) {}
