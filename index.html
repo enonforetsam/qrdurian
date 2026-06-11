@@ -973,35 +973,43 @@
   LQ.a.width = LQ.a.height = LQ.b.width = LQ.b.height = LQ.S;
 
   function drawSpriteLive(ctx, img, x, y, size, r, now) {
-    const S = LQ.S, strips = 32, seg = S / strips;
+    const S = LQ.S, strips = 48;
+    const PAD = S * 0.08;               // headroom so waves never hit the canvas wall
+    const C = S - PAD * 2;              // content size inside the padded canvas
+    const seg = C / strips;
     const ga = LQ.a.getContext("2d"), gb = LQ.b.getContext("2d");
     live.ripples = live.ripples.filter((rp) => now - rp.start < 800);
 
-    // pass 1 — horizontal flow: rows displaced by a slow swell + fast shimmer + pokes
+    // pass 1 — horizontal flow: rows displaced by a slow swell + fast shimmer + pokes.
+    // Strips never overlap at the destination (overlap = double-alpha gridlines);
+    // instead each samples its source with a half-pixel bleed to close hairlines.
     ga.clearRect(0, 0, S, S);
-    const ih = img.height / strips;
+    const ih = img.height / strips, ib = img.height / C * 0.75; // source bleed
     for (let i = 0; i < strips; i++) {
       const yc = (i + 0.5) / strips;
       let off =
-        S * 0.016 * Math.sin(now / 1900 + yc * 4.8) +
-        S * 0.006 * Math.sin(now / 540 - yc * 9.5 + 1.7);
+        C * 0.016 * Math.sin(now / 1900 + yc * 4.8) +
+        C * 0.006 * Math.sin(now / 540 - yc * 9.5 + 1.7);
       for (const rp of live.ripples) {
         const age = (now - rp.start) / 800;
-        const ry = (rp.y - y) / size; // ripple center in sprite space
+        const ry = (rp.y - y) / size;
         const dist = (yc - ry) / 0.24;
-        off += Math.exp(-dist * dist) * Math.sin(age * Math.PI * 3.2) * (1 - age) * S * 0.05;
+        off += Math.exp(-dist * dist) * Math.sin(age * Math.PI * 3.2) * (1 - age) * C * 0.05;
       }
-      ga.drawImage(img, 0, i * ih, img.width, ih, off, i * seg, S, seg + 0.6);
+      ga.drawImage(img, 0, Math.max(0, i * ih - ib), img.width, ih + ib * 2,
+        PAD + off, PAD + i * seg, C, seg);
     }
 
-    // pass 2 — vertical flow: columns of pass 1 displaced on the other axis
+    // pass 2 — vertical flow: full-height columns of pass 1, other axis
     gb.clearRect(0, 0, S, S);
+    const cw = S / strips, cb = 0.75;
     for (let i = 0; i < strips; i++) {
       const xc = (i + 0.5) / strips;
       const off =
-        S * 0.011 * Math.sin(now / 2300 + xc * 5.6 + 0.9) +
-        S * 0.004 * Math.sin(now / 700 - xc * 11);
-      gb.drawImage(LQ.a, i * seg, 0, seg, S, i * seg, off, seg + 0.6, S);
+        C * 0.011 * Math.sin(now / 2300 + xc * 5.6 + 0.9) +
+        C * 0.004 * Math.sin(now / 700 - xc * 11);
+      gb.drawImage(LQ.a, Math.max(0, i * cw - cb), 0, cw + cb * 2, S,
+        i * cw, off, cw, S);
     }
 
     // sheen — a soft highlight band drifting across the ink (liquid surface light)
@@ -1026,11 +1034,13 @@
     ctx.scale(br, 2 - br);
     ctx.translate(-cx, -cy);
     if (typeof ctx.filter === "string") {
-      const wet = size * 0.0042 + fx.blur;
+      const wet = size * 0.005 + fx.blur;
       if (wet > 0.1) ctx.filter = `blur(${wet}px)`;
     }
     ctx.globalAlpha = fx.alpha;
-    ctx.drawImage(LQ.b, x, y, size, size);
+    // map the padded canvas so the content area lands exactly on the QR box
+    const k = size / C;
+    ctx.drawImage(LQ.b, x - PAD * k, y - PAD * k, S * k, S * k);
     ctx.restore();
   }
 
