@@ -312,6 +312,16 @@
   }
   .gen-msg[hidden] { display: none; }
 
+  .emoji-row { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+  .emoji-row::-webkit-scrollbar { display: none; }
+  .emoji-btn {
+    width: 31px; height: 31px; flex: 0 0 auto;
+    border: none; background: var(--panel-2); border-radius: 9px;
+    font-size: 17px; line-height: 1; padding: 0; cursor: pointer;
+    transition: transform .12s ease;
+  }
+  .emoji-btn:active { transform: scale(.85); }
+
   .logo-mini { display: flex; align-items: center; gap: 8px; }
   .logo-mini .logo-prev { width: 36px; height: 36px; border-radius: 9px; }
 
@@ -525,6 +535,14 @@
 
       <div class="panel" data-panel="style">
       <div class="crow">
+        <span class="clabel">Ink</span>
+        <div class="mini-presets" id="inkPresets">
+          <button class="preset sm txt active" data-ink="press"><div class="ptxt">Press</div></button>
+          <button class="preset sm txt" data-ink="stamp"><div class="ptxt">Stamp</div></button>
+          <button class="preset sm txt" data-ink="brush"><div class="ptxt">Brush</div></button>
+        </div>
+      </div>
+      <div class="crow">
         <span class="clabel">Corners</span>
         <div class="mini-presets" id="cornerPresets">
           <button class="preset sm active" data-corner="extra-rounded" aria-label="Rounded">
@@ -589,6 +607,10 @@
           <button class="mini-btn ghost" id="logoClear">✕</button>
           <input type="file" id="logoInput" accept="image/*" hidden />
         </div>
+      </div>
+      <div class="crow">
+        <span class="clabel">Emoji</span>
+        <div class="emoji-row" id="emojiRow"></div>
       </div>
       </div>
 
@@ -675,6 +697,7 @@
     outlineW: 7,     /* 0 = no outline */
     capColor: "#18181b",
     margin: 2,
+    inkMood: "press",
     logo: undefined,
     format: "square",
     sceneBg: "gradient",
@@ -838,7 +861,14 @@
   // ================= Ink engine =================
   // Turns crisp QR modules into realistic ink: fiber wicking (jittered passes),
   // ragged organic edges (blur+contrast goo), coffee-ring rim pooling, paper grain.
+  // Three moods: clean press, heavy stamp, dry brush.
+  const INK_MOODS = {
+    press: { passes: 7,  J: .003, jy: 1,   alpha: .30, goo: .0035, contrast: 12, soften: .0012, cutoff: .45, pool: .55, holes: 0,   gBase: .90, gVar: .10 },
+    stamp: { passes: 10, J: .006, jy: 1,   alpha: .34, goo: .0050, contrast: 9,  soften: .0016, cutoff: .40, pool: .80, holes: .05, gBase: .82, gVar: .18 },
+    brush: { passes: 8,  J: .007, jy: .25, alpha: .26, goo: .0030, contrast: 11, soften: .0008, cutoff: .50, pool: .30, holes: .20, gBase: .60, gVar: .40 },
+  };
   function inkify(src, s) {
+    const M = INK_MOODS[state.inkMood] || INK_MOODS.press;
     const mk = () => { const c = document.createElement("canvas"); c.width = c.height = s; return c; };
     const hasFilter = typeof mk().getContext("2d").filter === "string";
 
@@ -855,24 +885,25 @@
     c1.drawImage(src, 0, 0, s, s);
 
     // 2. fiber wicking: stack jittered copies so edges grow fuzzy hairs
+    // (brush mood biases the jitter horizontally — stroke direction)
     const t2 = mk(), c2 = t2.getContext("2d");
     c2.drawImage(t1, 0, 0);
-    c2.globalAlpha = 0.3;
-    const J = s * 0.003;
-    for (let i = 0; i < 7; i++) {
-      c2.drawImage(t1, (Math.random() * 2 - 1) * J, (Math.random() * 2 - 1) * J);
+    c2.globalAlpha = M.alpha;
+    const J = s * M.J;
+    for (let i = 0; i < M.passes; i++) {
+      c2.drawImage(t1, (Math.random() * 2 - 1) * J, (Math.random() * 2 - 1) * J * M.jy);
     }
 
     // 3. goo threshold on white: blur + hard contrast = ragged organic blobs
     const t3 = mk(), c3 = t3.getContext("2d");
     c3.fillStyle = "#fff"; c3.fillRect(0, 0, s, s);
-    if (hasFilter) c3.filter = `blur(${s * 0.0035}px) contrast(12)`;
+    if (hasFilter) c3.filter = `blur(${s * M.goo}px) contrast(${M.contrast})`;
     c3.drawImage(t2, 0, 0);
 
     // 4. soften the result a touch (wet edge)
     const t4 = mk(), c4 = t4.getContext("2d");
     c4.fillStyle = "#fff"; c4.fillRect(0, 0, s, s);
-    if (hasFilter) c4.filter = `blur(${s * 0.0012}px)`;
+    if (hasFilter) c4.filter = `blur(${s * M.soften}px)`;
     c4.drawImage(t3, 0, 0);
 
     // 5. pixel pass: luminance → ink, rim pooling, deterministic paper grain
@@ -883,18 +914,19 @@
     const fr = n >> 16, fgc = (n >> 8) & 255, fb = n & 255;
     for (let i = 0, p = 0; i < d.length; i += 4, p++) {
       const ink = 1 - d[i] / 255;
-      if (ink < 0.45) continue;                      // hard cutoff — no blurry fringe
+      if (ink < M.cutoff) continue;                  // hard cutoff — no blurry fringe
       const x = p % s, y = (p / s) | 0;
       let h = (x * 374761393 + y * 668265263) | 0;
       h = (h ^ (h >> 13)) * 1274126177;
       const g = ((h ^ (h >> 16)) >>> 0) / 4294967295;
-      const edge = Math.min(1, (ink - 0.45) / 0.15); // ~half-pixel anti-alias band only
+      if (g < M.holes) continue;                     // dry-brush gaps and streak specks
+      const edge = Math.min(1, (ink - M.cutoff) / 0.15);
       const pool = 4 * ink * (1 - ink);              // peaks at boundaries → darker rim
-      const dark = Math.min(1, pool * 0.55 + g * 0.12) * 0.35;
+      const dark = Math.min(1, pool * M.pool + g * 0.12) * 0.35;
       o[i]     = fr * (1 - dark);
       o[i + 1] = fgc * (1 - dark);
       o[i + 2] = fb * (1 - dark);
-      o[i + 3] = Math.round(edge * (0.9 + 0.1 * g) * 255);
+      o[i + 3] = Math.round(edge * (M.gBase + M.gVar * g) * 255);
     }
     co.putImageData(od, 0, 0);
 
@@ -1087,6 +1119,7 @@
     sceneBg:{ k: "s", ok: (v) => v === "gradient" || v === "solid" },
     format: { k: "z", ok: (v) => v in FORMATS },
     texture:{ k: "x", ok: (v) => v in TEXTURE_NAMES },
+    inkMood:{ k: "i", ok: (v) => v in INK_MOODS },
   };
   function isHex(v) { return typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v); }
   function encodeDesign() {
@@ -1131,8 +1164,34 @@
       });
     });
   }
+  hookPresets("inkPresets", "ink", "inkMood", true);
   hookPresets("cornerPresets", "corner", "cornerType", true);
   hookPresets("bgStylePresets", "scenebg", "sceneBg", false);
+
+  // emoji center logos — one tap, instant personality
+  const EMOJIS = ["🍜", "☕", "🍰", "🛍️", "💈", "🌸", "🎵", "❤️", "🐱", "⚽"];
+  function emojiLogo(e) {
+    const c = document.createElement("canvas");
+    c.width = c.height = 256;
+    const x = c.getContext("2d");
+    x.font = "190px -apple-system, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+    x.textAlign = "center";
+    x.textBaseline = "middle";
+    x.fillText(e, 128, 142);
+    return c.toDataURL("image/png");
+  }
+  EMOJIS.forEach((e) => {
+    const b = document.createElement("button");
+    b.className = "emoji-btn";
+    b.textContent = e;
+    b.setAttribute("aria-label", "Use " + e + " as logo");
+    b.addEventListener("click", () => {
+      state.logo = emojiLogo(e);
+      $("logoPrev").innerHTML = `<img src="${state.logo}" alt="logo" />`;
+      update(true);
+    });
+    $("emojiRow").appendChild(b);
+  });
 
   // colors: compact chips → popup picker (swatches + native custom)
   let popTarget = "fg";
@@ -1337,12 +1396,12 @@
     { fg: "#0B2942", base: "#ffffff", bg: "#8ED6F0", out: "#0B2942", tex: "waves" },    // ocean
     { fg: "#4A0E2E", base: "#FFE3EE", bg: "#EC4899", out: "#4A0E2E", tex: "dots" },     // berry
     { fg: "#5A1C00", base: "#FFF3E0", bg: "#F97316", out: "#5A1C00", tex: "stripes" },  // tangerine
-    { fg: "#101113", base: "#ffffff", bg: "#E6E6E3", out: "#101113", tex: "grid" },     // studio mono
-    { fg: "#2E1065", base: "#F3E8FF", bg: "#A78BFA", out: "#2E1065", tex: "hex" },      // lavender
-    { fg: "#0C4A6E", base: "#ffffff", bg: "#BAE6FD", out: "#0C4A6E", tex: "crosses" },  // sky
-    { fg: "#4C1D95", base: "#FFF7E6", bg: "#FDBA74", out: "#4C1D95", tex: "spikes" },   // sunset
-    { fg: "#064E3B", base: "#ECFDF5", bg: "#6EE7B7", out: "#064E3B", tex: "dots" },     // mint
-    { fg: "#1C1917", base: "#ffffff", bg: "#F5F0E6", out: "#1C1917", tex: "topo" },     // paper
+    { fg: "#101113", base: "#ffffff", bg: "#E6E6E3", out: "#101113", tex: "grid", ink: "stamp" },  // studio mono
+    { fg: "#2E1065", base: "#F3E8FF", bg: "#A78BFA", out: "#2E1065", tex: "hex" },                 // lavender
+    { fg: "#0C4A6E", base: "#ffffff", bg: "#BAE6FD", out: "#0C4A6E", tex: "crosses" },             // sky
+    { fg: "#4C1D95", base: "#FFF7E6", bg: "#FDBA74", out: "#4C1D95", tex: "spikes", ink: "brush" },// sunset
+    { fg: "#064E3B", base: "#ECFDF5", bg: "#6EE7B7", out: "#064E3B", tex: "dots" },                // mint
+    { fg: "#1C1917", base: "#ffffff", bg: "#F5F0E6", out: "#1C1917", tex: "topo", ink: "stamp" },  // paper
   ];
   let lastTheme = -1;
   $("shuffleBtn").addEventListener("click", () => {
@@ -1351,6 +1410,9 @@
     lastTheme = i;
     const t = THEMES[i];
     state.fg = t.fg; state.base = t.base; state.bg = t.bg; state.outline = t.out; state.capColor = t.fg;
+    state.inkMood = t.ink || "press";
+    document.querySelectorAll("#inkPresets .preset").forEach(b =>
+      b.classList.toggle("active", b.dataset.ink === state.inkMood));
     syncChips();
     setTexture(t.tex);
     update(true);
@@ -1583,6 +1645,8 @@
     $("outlineW").value = state.outlineW; $("outlineWVal").textContent = state.outlineW;
     document.querySelectorAll("#cornerPresets .preset").forEach(b =>
       b.classList.toggle("active", b.dataset.corner === state.cornerType));
+    document.querySelectorAll("#inkPresets .preset").forEach(b =>
+      b.classList.toggle("active", b.dataset.ink === state.inkMood));
     document.querySelectorAll("#bgStylePresets .preset").forEach(b =>
       b.classList.toggle("active", b.dataset.scenebg === state.sceneBg));
     $("texSelLabel").textContent = TEXTURE_NAMES[state.texture];
