@@ -500,10 +500,10 @@
     .sheet-close svg { width: 15px; height: 15px; }
     .sheet-close:disabled { opacity: .3; cursor: default; }
 
-    /* larger screens: lift the nav off the edge, sheets follow */
+    /* larger screens: lift the nav off the edge, sheets follow; cards need less height */
     @media (min-width: 881px) {
       .bottom-nav { bottom: 32px; }
-      .card.controls, .export-sheet { bottom: 110px; }
+      .card.controls, .export-sheet { bottom: 110px; max-height: min(46vh, 360px); }
     }
     /* short landscape windows: compact chrome so QR + sheet still fit */
     @media (max-height: 500px) {
@@ -1194,14 +1194,16 @@
     // preview is format-independent: the QR stays put; aspect ratio applies only to the exported file
     const fmt = { w: 1, h: 1 };
     const wrap = $("artboardWrap");
-    const wrapW = Math.min(wrap.clientWidth || wrap.parentElement.clientWidth, 440);
+    const desktop = window.innerWidth > 880;
+    const wrapW = Math.min(wrap.clientWidth || wrap.parentElement.clientWidth, desktop ? 580 : 440);
     // static: always leave room below for a sheet, so the QR never moves
-    // must match the cards' CSS max-height — including the short-landscape override
+    // must match the cards' CSS max-height — including desktop + short-landscape overrides
     const sheetH = window.innerHeight <= 500
       ? window.innerHeight * 0.62
+      : desktop ? Math.min(window.innerHeight * 0.46, 360)
       : Math.min(window.innerHeight * 0.46, 420);
     const sat = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--sat")) || 0;
-    const chrome = (window.innerWidth >= 1400 ? 290 : window.innerWidth > 880 ? 270 : 205) + sat; // header grows with logo + notch
+    const chrome = (window.innerWidth >= 1400 ? 280 : desktop ? 250 : 205) + sat; // header grows with logo + notch
     const zoneH = Math.max(150, window.innerHeight - sheetH - chrome);
     const ar = fmt.w / fmt.h;
 
@@ -1211,7 +1213,7 @@
     let w = Math.min(wrapW, zoneH * ar);
     const capRatio = state.caption.trim() ? 0.075 / ef : 0;
     const fitCap = zoneH / (1.3 + capRatio);
-    const targetQR = Math.min(300, fitCap, Math.max(120, zoneH * 0.62));
+    const targetQR = Math.min(desktop ? 430 : 300, fitCap, Math.max(120, zoneH * 0.62));
     if (w * ef < targetQR) w = Math.min(wrapW, targetQR / ef);
     const h = w / ar;
 
