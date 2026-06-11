@@ -930,9 +930,11 @@
     }
     co.putImageData(od, 0, 0);
 
-    // 6. keep an uploaded center logo crisp — stamp the original back over the ink
+    // 6. keep a center logo crisp — stamp back ONLY the logo's own knockout zone
+    // (logo renders at 40% of the code; 42% stays inside the cleared margin, so
+    // the surrounding modules keep their ink mood)
     if (state.logo) {
-      const lw = s * 0.48, l0 = (s - lw) / 2;
+      const lw = s * 0.42, l0 = (s - lw) / 2;
       co.clearRect(l0, l0, lw, lw);
       co.drawImage(src, l0, l0, lw, lw, l0, l0, lw, lw);
     }
