@@ -1,0 +1,16 @@
+name = "qrdurian-trace"
+main = "worker.js"
+compatibility_date = "2026-06-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "qrdurian-trace"
+database_id = "PASTE_AFTER_CREATE"   # from: npx wrangler d1 create qrdurian-trace
+
+# optional — orchard photos
+# [[r2_buckets]]
+# binding = "PHOTOS"
+# bucket_name = "qrdurian-photos"
+
+# custom domain (attach after first deploy)
+# routes = [{ pattern = "trace.qrdurian.com", custom_domain = true }]

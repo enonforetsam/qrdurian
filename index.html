@@ -82,6 +82,24 @@
   }
   .shuffle-btn:hover { background: var(--panel-2); }
   .shuffle-btn svg { width: 19px; height: 19px; }
+
+  /* trace program promo pill */
+  .promo {
+    display: flex; align-items: center; gap: 4px;
+    margin: -6px auto 10px; width: fit-content; max-width: calc(100% - 28px);
+    background: var(--panel); border-radius: 999px;
+    padding: 8px 8px 8px 16px;
+    font-size: 13px;
+    animation: fadeup .5s ease .8s both;
+  }
+  .promo a { color: var(--text); text-decoration: none; }
+  .promo a b { font-family: "Urbanist", sans-serif; color: var(--accent); }
+  .promo button {
+    border: none; background: var(--panel-2); color: var(--muted);
+    width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-size: 11px;
+    flex: 0 0 auto;
+  }
+  .promo[hidden] { display: none; }
   /* display face: Urbanist for brand, titles, labels, buttons */
   .brand, .sheet-title, .lbl, .clabel, .btn, .chip-color, .mini-btn,
   .fmt-row .fname, .preset .ptxt, .divider {
@@ -529,6 +547,13 @@
     </div>
     <button class="shuffle-btn" id="shuffleBtn" aria-label="Random design"><i data-lucide="refresh-cw"></i></button>
   </header>
+
+  <div class="promo" id="tracePromo" hidden>
+    <a href="https://trace.qrdurian.com" target="_blank" rel="noopener">
+      🍈 <b>Penang durian grower?</b>&nbsp;Get origin-trace QR tags for your harvest →
+    </a>
+    <button id="promoClose" aria-label="Dismiss">✕</button>
+  </div>
 
   <main>
     <!-- LEFT: controls (desktop column / mobile bottom sheets) -->
@@ -1971,6 +1996,15 @@
         if (openPanel === "content") openSheet("style"); // don't re-open if the user closed or moved on
       }, 1400);
     }, 1000);
+  });
+
+  // trace program promo — dismiss sticks
+  try {
+    if (!localStorage.getItem("tracePromoDismissed")) $("tracePromo").hidden = false;
+  } catch (e) { $("tracePromo").hidden = false; }
+  $("promoClose").addEventListener("click", () => {
+    $("tracePromo").hidden = true;
+    try { localStorage.setItem("tracePromoDismissed", "1"); } catch (e) {}
   });
 
   // ================= Boot =================
