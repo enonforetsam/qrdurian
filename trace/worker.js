@@ -194,6 +194,19 @@ function scanPage(b, origin) {
   `);
 }
 
+/* counter abuse guard: 12 increments/IP/min, best-effort per isolate */
+const cntBuckets = new Map();
+function rateLimitedCount(ip) {
+  const now = Date.now();
+  const b = cntBuckets.get(ip);
+  if (!b || now - b.ts > 60_000) {
+    cntBuckets.set(ip, { ts: now, n: 1 });
+    if (cntBuckets.size > 5000) cntBuckets.clear();
+    return false;
+  }
+  return ++b.n > 12;
+}
+
 /* ---------------- router ---------------- */
 
 export default {
@@ -204,6 +217,23 @@ export default {
     const DB = env.DB;
 
     try {
+      // public counter for qrdurian.com ("N QRs inked")
+      const CNT_CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Cache-Control": "no-store" };
+      if (p === "/api/count") {
+        if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CNT_CORS });
+        if (req.method === "POST") {
+          const ip = req.headers.get("cf-connecting-ip") || "?";
+          if (rateLimitedCount(ip)) {
+            const row0 = await DB.prepare("SELECT v FROM stats WHERE k='qrs'").first();
+            return Response.json({ qrs: row0?.v ?? 0 }, { headers: CNT_CORS });
+          }
+          const row = await DB.prepare("UPDATE stats SET v=v+1 WHERE k='qrs' RETURNING v").first();
+          return Response.json({ qrs: row?.v ?? 0 }, { headers: CNT_CORS });
+        }
+        const row = await DB.prepare("SELECT v FROM stats WHERE k='qrs'").first();
+        return Response.json({ qrs: row?.v ?? 0 }, { headers: CNT_CORS });
+      }
+
       if (p === "/" || p === "") return landingPage();
       if (p === "/register") return registerPage();
 

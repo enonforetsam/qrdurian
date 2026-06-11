@@ -83,6 +83,14 @@
   .shuffle-btn:hover { background: var(--panel-2); }
   .shuffle-btn svg { width: 19px; height: 19px; }
 
+  /* all-time stats, top-left */
+  .stats {
+    position: absolute; left: 18px; top: 50%; transform: translateY(-50%);
+    font-size: 10.5px; color: var(--muted); line-height: 1.55;
+    font-family: "Urbanist", sans-serif; font-weight: 650;
+  }
+  .stats b { font-size: 14px; color: var(--accent); font-weight: 800; }
+
   /* trace program promo pill */
   .promo {
     display: flex; align-items: center; gap: 4px;
@@ -555,6 +563,9 @@
           <defs><clipPath id="dc"><circle cx="16" cy="17.5" r="10.2"/></clipPath></defs>
         </svg>
       </span>
+    </div>
+    <div class="stats" id="statsChip" hidden>
+      <b id="statQrs">0</b> QRs inked<br><span id="statDays"></span>
     </div>
     <button class="shuffle-btn" id="shuffleBtn" aria-label="Random design"><i data-lucide="refresh-cw"></i></button>
   </header>
@@ -1802,7 +1813,7 @@
     const blob = await new Promise((res) => c.toBlob(res, "image/png"));
     const file = new File([blob], `qrdurian-${state.format}.png`, { type: "image/png" });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try { await navigator.share({ files: [file], title: "QR Durian" }); }
+      try { await navigator.share({ files: [file], title: "QR Durian" }); bumpQrCount(); }
       catch (e) { /* user dismissed the share sheet — not an error */ }
     } else {
       alert("Sharing isn't supported in this browser — use Download instead.");
@@ -1828,7 +1839,10 @@
     });
   });
   $("downloadBtn").addEventListener("click", () =>
-    busy($("downloadBtn"), () => fileType === "svg" ? exportSvg() : exportSceneImage(fileType))
+    busy($("downloadBtn"), async () => {
+      await (fileType === "svg" ? exportSvg() : exportSceneImage(fileType));
+      bumpQrCount();
+    })
   );
   $("shareBtn").addEventListener("click", () => busy($("shareBtn"), shareScene));
 
@@ -2012,6 +2026,7 @@
     $("genMsg").hidden = true;
 
     update(true); // fresh QR swaps in mid-melt, while everything is ink
+    bumpQrCount();
     canvas.classList.add("shaking");
     canvas.addEventListener("animationend", () => canvas.classList.remove("shaking"), { once: true });
     animateGenerate();
@@ -2027,6 +2042,25 @@
       }, 1400);
     }, 1000);
   });
+
+  // ---- all-time stats chip (counter lives on the trace worker's D1)
+  const STATS_API = "https://trace.qrdurian.com/api/count";
+  const LAUNCH = Date.UTC(2026, 5, 10); // 2026-06-10, first deploy
+  let statQrs = 0;
+  function renderStats() {
+    $("statQrs").textContent = statQrs.toLocaleString();
+    $("statDays").textContent = "day " + (Math.floor((Date.now() - LAUNCH) / 864e5) + 1);
+    $("statsChip").hidden = false;
+  }
+  fetch(STATS_API).then((r) => r.json()).then((d) => { statQrs = d.qrs || 0; renderStats(); })
+    .catch(() => {}); // offline/blocked → chip stays hidden
+  function bumpQrCount() {
+    statQrs += 1;
+    renderStats(); // optimistic
+    fetch(STATS_API, { method: "POST", keepalive: true })
+      .then((r) => r.json()).then((d) => { if (d.qrs) { statQrs = d.qrs; renderStats(); } })
+      .catch(() => {});
+  }
 
   // trace program promo — temporarily disabled (flip to true to bring it back)
   const SHOW_TRACE_PROMO = false;
