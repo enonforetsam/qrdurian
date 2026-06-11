@@ -920,6 +920,7 @@
     t0: 0,
     lastInteract: performance.now(),
     ripples: [],
+    energy: 0,              // 0 = perfectly still, 1 = fully liquid (idle state)
   };
   let creatureImg = null;
   const CREATURE_EYES = [[0.385, 0.46], [0.615, 0.46]]; // centers, relative to sprite box
@@ -984,12 +985,13 @@
     // Strips never overlap at the destination (overlap = double-alpha gridlines);
     // instead each samples its source with a half-pixel bleed to close hairlines.
     ga.clearRect(0, 0, S, S);
+    const E = live.energy;
     const ih = img.height / strips, ib = img.height / C * 0.75; // source bleed
     for (let i = 0; i < strips; i++) {
       const yc = (i + 0.5) / strips;
-      let off =
+      let off = E * (
         C * 0.016 * Math.sin(now / 1900 + yc * 4.8) +
-        C * 0.006 * Math.sin(now / 540 - yc * 9.5 + 1.7);
+        C * 0.006 * Math.sin(now / 540 - yc * 9.5 + 1.7));
       for (const rp of live.ripples) {
         const age = (now - rp.start) / 800;
         const ry = (rp.y - y) / size;
@@ -1005,36 +1007,38 @@
     const cw = S / strips, cb = 0.75;
     for (let i = 0; i < strips; i++) {
       const xc = (i + 0.5) / strips;
-      const off =
+      const off = E * (
         C * 0.011 * Math.sin(now / 2300 + xc * 5.6 + 0.9) +
-        C * 0.004 * Math.sin(now / 700 - xc * 11);
+        C * 0.004 * Math.sin(now / 700 - xc * 11));
       gb.drawImage(LQ.a, Math.max(0, i * cw - cb), 0, cw + cb * 2, S,
         i * cw, off, cw, S);
     }
 
-    // sheen — a soft highlight band drifting across the ink (liquid surface light)
-    const sp = ((now / 5200) % 1) * 2.6 - 0.8; // sweep position
-    const grad = gb.createLinearGradient(sp * S - S * .3, sp * S - S * .3, sp * S + S * .35, sp * S + S * .35);
-    grad.addColorStop(0, "rgba(255,255,255,0)");
-    grad.addColorStop(0.5, "rgba(255,255,255,0.13)");
-    grad.addColorStop(1, "rgba(255,255,255,0)");
-    gb.save();
-    gb.globalCompositeOperation = "source-atop";
-    gb.fillStyle = grad;
-    gb.fillRect(0, 0, S, S);
-    gb.restore();
+    // sheen — a soft highlight band drifting across the ink (only while liquid)
+    if (E > 0.05) {
+      const sp = ((now / 5200) % 1) * 2.6 - 0.8;
+      const grad = gb.createLinearGradient(sp * S - S * .3, sp * S - S * .3, sp * S + S * .35, sp * S + S * .35);
+      grad.addColorStop(0, "rgba(255,255,255,0)");
+      grad.addColorStop(0.5, `rgba(255,255,255,${(0.13 * E).toFixed(3)})`);
+      grad.addColorStop(1, "rgba(255,255,255,0)");
+      gb.save();
+      gb.globalCompositeOperation = "source-atop";
+      gb.fillStyle = grad;
+      gb.fillRect(0, 0, S, S);
+      gb.restore();
+    }
 
     // composite: breathe, wet-edge blur, melt fx
     ctx.save();
     roundRectPath(ctx, x - size * .05, y - size * .05, size * 1.10, size * 1.10, r + size * .05);
     ctx.clip();
     const cx = x + size / 2, cy = y + size / 2;
-    const br = 1 + 0.0045 * Math.sin(now / 1150);
+    const br = 1 + 0.0045 * E * Math.sin(now / 1150);
     ctx.translate(cx, cy);
     ctx.scale(br, 2 - br);
     ctx.translate(-cx, -cy);
     if (typeof ctx.filter === "string") {
-      const wet = size * 0.005 + fx.blur;
+      const wet = size * 0.005 * E + fx.blur;
       if (wet > 0.1) ctx.filter = `blur(${wet}px)`;
     }
     ctx.globalAlpha = fx.alpha;
@@ -2024,14 +2028,24 @@
   }
 
   // ================= The heartbeat =================
+  let lastFrameT = 0;
   function liveFrame(now) {
     requestAnimationFrame(liveFrame);
     if (!qrImg) return;
+    const dt = Math.min(64, now - lastFrameT); lastFrameT = now;
     if (REDUCED_MOTION.matches) {
       drawScene(ctx, canvas.width, canvas.height, qrImg, false);
       return;
     }
-    // idle long enough with nothing open? the ink wakes up
+    // energy envelope: still during use, liquid only when idle (or rippling/morphing)
+    const ripplesActive = live.ripples.length > 0;
+    const idleLiquid = !openPanel && now - live.lastInteract > 8000;
+    const wantLiquid = ripplesActive || live.phase !== "qr" || idleLiquid;
+    const rate = wantLiquid ? (ripplesActive ? 130 : 1600) : 240; // wake slow, ripple fast, settle quick
+    live.energy += ((wantLiquid ? 1 : 0) - live.energy) * Math.min(1, dt / rate);
+    if (live.energy < 0.01) live.energy = 0;
+
+    // idle long enough with nothing open? the ink becomes the creature
     if (live.phase === "qr" && !openPanel && creatureImg && !document.hidden &&
         now - live.lastInteract > 18000) {
       live.phase = "meltOut"; live.t0 = now;
@@ -2052,7 +2066,12 @@
       else if (t < 1300) { fx.blur = 8 * (1 - (t - 650) / 650); fx.alpha = .65 + .35 * ((t - 650) / 650); }
       else { live.phase = "qr"; fx.blur = 0; fx.alpha = 1; live.lastInteract = now; }
     }
-    drawScene(ctx, canvas.width, canvas.height, sprite, false, null, now);
+    // fully settled and not melting → render the crisp static path
+    if (live.energy === 0 && live.phase === "qr") {
+      drawScene(ctx, canvas.width, canvas.height, sprite, false);
+    } else {
+      drawScene(ctx, canvas.width, canvas.height, sprite, false, null, now);
+    }
   }
   requestAnimationFrame(liveFrame);
 
