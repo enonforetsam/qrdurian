@@ -779,6 +779,47 @@
     const svg = state.texture !== "none" ? textureSVG(state.texture) : null;
     return svg ? `data:image/svg+xml,${encodeURIComponent(svg)}` : null;
   }
+  // canvas-native tiles for export — SVG images taint the canvas on iOS Safari
+  // (geometry mirrors textureSVG above; keep them in sync)
+  const TEX_TILES = {
+    durians: { s: 96, lw: 2.4, join: "round", paths: [{ d: STAR, t: [8, 8, .5] }, { d: STAR, t: [56, 56, .5] }] },
+    topo: { s: 88, lw: 1.4, paths: [
+      { d: "M44 16 C60 16 70 28 68 42 C66 56 54 64 42 62 C28 60 18 50 20 38 C22 26 30 16 44 16 Z" },
+      { d: "M44 26 C54 26 60 33 59 42 C58 51 50 56 42 54 C33 52 28 46 29 38 C30 30 36 26 44 26 Z" },
+      { d: "M44 35 C49 35 52 38 51.5 42 C51 46 47 48 43 47 C39 46 37 43 37.5 40 C38 37 40 35 44 35 Z" }] },
+    dots: { s: 22, fill: true, paths: [
+      { d: "M5.5 5.5 m-1.8 0 a1.8 1.8 0 1 0 3.6 0 a1.8 1.8 0 1 0 -3.6 0" },
+      { d: "M16.5 16.5 m-1.8 0 a1.8 1.8 0 1 0 3.6 0 a1.8 1.8 0 1 0 -3.6 0" }] },
+    grid: { s: 22, lw: 1, paths: [{ d: "M22 .5H.5V22" }] },
+    stripes: { s: 22, lw: 1.6, paths: [{ d: "M-5 5L5 -5M0 22L22 0M17 27L27 17" }] },
+    waves: { s: 26, lw: 1.6, paths: [{ d: "M0 10 Q6.5 3 13 10 T26 10" }, { d: "M0 23 Q6.5 16 13 23 T26 23" }] },
+    crosses: { s: 28, lw: 1.8, cap: "round", paths: [{ d: "M7 3.5v7M3.5 7h7" }, { d: "M21 17.5v7M17.5 21h7" }] },
+    spikes: { s: 26, lw: 1.5, join: "round", paths: [{ d: "M7 4l4.5 8H2.5Z" }, { d: "M19 14l4.5 8h-9Z" }] },
+    leaves: { s: 30, lw: 1.5, paths: [
+      { d: "M4 13 C4 7 10 4 16 4 C16 10 10 13 4 13Z" },
+      { d: "M16 26 C16 20 21 17 27 17 C27 23 22 26 16 26Z" }] },
+    hex: { s: 32, lw: 1.4, paths: [{ d: "M16 3L27 9.5V22.5L16 29L5 22.5V9.5Z" }] },
+  };
+  function textureTileCanvas(key) {
+    const t = TEX_TILES[key];
+    if (!t) return null;
+    const c = document.createElement("canvas");
+    c.width = c.height = t.s;
+    const x = c.getContext("2d");
+    const ink = bgLum() < 140 ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.08)";
+    x.strokeStyle = ink; x.fillStyle = ink;
+    x.lineWidth = t.lw || 1.5;
+    x.lineJoin = t.join || "miter";
+    x.lineCap = t.cap || "butt";
+    t.paths.forEach((p) => {
+      const pp = new Path2D(p.d);
+      x.save();
+      if (p.t) { x.translate(p.t[0], p.t[1]); x.scale(p.t[2], p.t[2]); }
+      t.fill ? x.fill(pp) : x.stroke(pp);
+      x.restore();
+    });
+    return c;
+  }
 
   // generate-animation state (preview only)
   const fx = { blur: 0, alpha: 1 };
@@ -1311,12 +1352,7 @@
     const realQs = sceneLayout(fmt.w, fmt.h).qs;
     const hiSize = Math.min(4096, Math.max(1024, Math.round(realQs)));
     const hiRes = inkify(await qrImageAt(hiSize, true), hiSize);
-    let texImg = null;
-    const tex = textureURI();
-    if (tex) {
-      texImg = new Image();
-      await new Promise((res) => { texImg.onload = res; texImg.onerror = res; texImg.src = tex; });
-    }
+    const texImg = state.texture !== "none" ? textureTileCanvas(state.texture) : null;
     const c = document.createElement("canvas");
     c.width = fmt.w; c.height = fmt.h;
     drawScene(c.getContext("2d"), fmt.w, fmt.h, hiRes, true, texImg);
