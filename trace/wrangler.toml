@@ -1,6 +1,7 @@
 name = "qrdurian-trace"
 main = "worker.js"
 compatibility_date = "2026-06-01"
+routes = [{ pattern = "trace.qrdurian.com", custom_domain = true }]
 
 [[d1_databases]]
 binding = "DB"
@@ -11,5 +12,3 @@ database_id = "92dfaa4b-7c50-4232-b715-9ea8a322d19a"
 # [[r2_buckets]]
 # binding = "PHOTOS"
 # bucket_name = "qrdurian-photos"
-
-routes = [{ pattern = "trace.qrdurian.com", custom_domain = true }]
