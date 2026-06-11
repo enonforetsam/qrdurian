@@ -24,8 +24,13 @@ Signature touches:
 - **Ink engine** — QR modules are rendered as realistic ink: fiber-wicking jitter, ragged
   "goo" edges, coffee-ring rim pooling, paper grain. Every Generate press produces a subtly
   unique impression. (SVG export stays clean vector by design.)
-- **Shuffle** (top-right ↻) — rolls one of 12 curated, always-scannable color themes with a
-  matching texture.
+- **Looks gallery** — the strip under the artboard holds 20 complete named designs
+  (12 palette looks + 8 "dressed" looks like Kopitiam ☕ MENU, Wi-Fi, Pay Here, Wedding 💍)
+  with labeled, style-true thumbnails. Tap to wear the whole look: palette, texture, ink,
+  corners, module shape — and caption + center logo, *unless* the user has set their own
+  (smart takeover: one custom caption/logo edit and looks become visuals-only).
+  On desktop (≥900×700) the strip opens into a wrapped two-row gallery, all looks visible.
+- **Shuffle** (top-right ↻) — rolls one of the 20 looks at random; every roll scannable.
 - **Textures** — 10 repeating patterns (durians, topography, dots, grid, stripes, waves,
   crosses, spikes, leaves, hexagons). Waves is the landing default.
 - **Logos** — uploaded center logos are auto-rounded (18% radius) to match the design
@@ -76,7 +81,7 @@ Render pipeline (PNG): `qr-code-styling` renders modules on transparency → `in
 
 A qrdurian design is fully described by its URL — which makes the URL the API:
 
-- **Query params** (human/AI-friendly): `qrdurian.com/?data=<content>&theme=matcha&ink=stamp&caption=SCAN%20ME`
+- **Query params** (human/AI-friendly): `qrdurian.com/?data=<content>&look=kopitiam&ink=stamp&caption=SCAN%20ME` (`theme=` kept as alias)
 - **Hash format** (compact, what Share → Link produces): `qrdurian.com/#d=<base64url JSON>`
 - **MCP server** ([`mcp/`](mcp/)): one `design_qr` tool so Claude & friends can create designs natively
 - **[`llms.txt`](llms.txt)**: teaches any AI assistant to construct design links unaided

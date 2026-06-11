@@ -9,13 +9,13 @@ This makes qrdurian instantly usable by scripts, AI assistants, and humans alike
 ## Query-param API (human-readable)
 
 ```
-https://qrdurian.com/?data=<content>&theme=<name>&ink=<mood>&texture=<name>&caption=<text>
+https://qrdurian.com/?data=<content>&look=<name>&ink=<mood>&texture=<name>&caption=<text>
 ```
 
 | Param | Values | Notes |
 |---|---|---|
 | `data` (or `url`) | any text ≤ 2000 chars | what the QR opens — URL, text, `WIFI:T:WPA;S:ssid;P:pass;;`, `mailto:`, `wa.me/<phone>` … |
-| `theme` | `durian` `matcha` `midnight` `ocean` `berry` `tangerine` `mono` `lavender` `sky` `sunset` `mint` `paper` | curated palette + texture + ink; individual params below override it |
+| `look` (or `theme`) | palette looks: `durian` `matcha` `midnight` `ocean` `berry` `tangerine` `mono` `lavender` `sky` `sunset` `mint` `paper` · dressed looks: `kopitiam` `makan` `pay` `wifi` `wedding` `music` `receipt` `neon` | a complete design — palette, texture, ink, corners, module shape; dressed looks also bring a caption + center logo. Individual params below override it |
 | `ink` | `press` `stamp` `brush` | ink rendering mood |
 | `texture` | `none` `durians` `topo` `dots` `grid` `stripes` `waves` `crosses` `spikes` `leaves` `hex` | background pattern |
 | `caption` | text ≤ 80 chars | shown under the code (empty hides it) |
@@ -26,6 +26,7 @@ https://qrdurian.com/?data=<content>&theme=<name>&ink=<mood>&texture=<name>&capt
 | `outlinew` | 0–10 | outline thickness (0 = none, default 7) |
 | `capcolor` | hex | caption color |
 | `corner` | `rounded` `circle` `square` | finder-eye style |
+| `dot` | `rounded` `dots` `square` | module (data dot) shape |
 | `scenebg` | `gradient` `solid` | background fill style |
 | `margin` | 0–10 | quiet-zone size |
 | `format` | `square` `wallpaper` `poster` `story` | export canvas (2048², 1290×2796, A4@300DPI, 1080×1920) |
@@ -33,9 +34,10 @@ https://qrdurian.com/?data=<content>&theme=<name>&ink=<mood>&texture=<name>&capt
 **Examples**
 
 ```
-https://qrdurian.com/?data=https://example.com&theme=matcha
-https://qrdurian.com/?data=wa.me/60123456789&theme=midnight&caption=ORDER%20HERE
-https://qrdurian.com/?data=WIFI:T:WPA;S:MyCafe;P:kopi123;;&ink=stamp&bg=163300&fg=9FE870&base=ffffff
+https://qrdurian.com/?data=https://example.com&look=matcha
+https://qrdurian.com/?data=wa.me/60123456789&look=kopitiam&caption=ORDER%20HERE
+https://qrdurian.com/?data=WIFI:T:WPA;S:MyCafe;P:kopi123;;&look=wifi
+https://qrdurian.com/?data=https://example.com&ink=stamp&bg=163300&fg=9FE870&base=ffffff
 ```
 
 ## Hash format (compact, used by Share → Link)
@@ -51,6 +53,7 @@ https://qrdurian.com/?data=WIFI:T:WPA;S:MyCafe;P:kopi123;;&ink=stamp&bg=163300&f
 | `g` | background | | `c` | corner type |
 | `s` | sceneBg | | `z` | format |
 | `x` | texture | | `i` | ink mood |
+| `y` | dot (module) shape | | | |
 
 Encoding: `JSON.stringify` → UTF-8 → base64 with `+/` → `-_` and padding stripped.
 All fields are optional and validated on load; invalid values fall back to defaults.

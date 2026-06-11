@@ -164,15 +164,36 @@
   .looks::-webkit-scrollbar { display: none; }
   body.sheet-open .looks { opacity: 0; pointer-events: none; }
   .look {
-    flex: 0 0 auto; width: 56px; height: 56px;
-    border-radius: 16px; border: 2.5px solid transparent;
-    padding: 0; cursor: pointer; overflow: hidden;
-    background: none;
-    transition: transform .15s ease, border-color .2s ease;
+    flex: 0 0 auto; width: 62px;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 0; border: none; background: none; cursor: pointer;
+    transition: transform .15s ease;
   }
   .look:active { transform: scale(.9); }
-  .look.active { border-color: var(--accent); }
+  .look-chip {
+    display: block; width: 56px; height: 56px;
+    border-radius: 16px; border: 2.5px solid transparent; overflow: hidden;
+    transition: border-color .2s ease;
+  }
+  .look.active .look-chip { border-color: var(--accent); }
   .look canvas { width: 100%; height: 100%; display: block; }
+  .look-name {
+    font-family: "Urbanist", sans-serif; font-weight: 800; font-size: 9px;
+    letter-spacing: .06em; text-transform: uppercase; color: var(--text);
+    opacity: .72; white-space: nowrap; max-width: 62px;
+    overflow: hidden; text-overflow: ellipsis;
+  }
+  /* desktop / big aspect ratios: the strip opens into a full gallery — every look
+     visible at once, no scrolling. (fitPreview reads the strip's real height.) */
+  @media (min-width: 900px) and (min-height: 700px) {
+    .looks {
+      flex-wrap: wrap; justify-content: center; row-gap: 12px;
+      max-width: 880px; margin: 0 auto; overflow-x: visible;
+    }
+    .look { width: 72px; }
+    .look-chip { width: 64px; height: 64px; border-radius: 18px; }
+    .look-name { font-size: 9.5px; max-width: 72px; }
+  }
   #artboard { transition: width .25s ease, height .25s ease, margin-top .25s ease; }
   body:not(.sheet-open) #artboard { cursor: pointer; }
   @keyframes qrshake {
@@ -1337,6 +1358,7 @@
     outlineW:{ k: "w", ok: (v) => typeof v === "number" && v >= 0 && v <= 10 },
     margin: { k: "m", ok: (v) => typeof v === "number" && v >= 0 && v <= 10 },
     cornerType: { k: "c", ok: (v) => ["extra-rounded", "dot", "square"].includes(v) },
+    dotType: { k: "y", ok: (v) => ["rounded", "dots", "square"].includes(v) },
     sceneBg:{ k: "s", ok: (v) => v === "gradient" || v === "solid" },
     format: { k: "z", ok: (v) => v in FORMATS },
     texture:{ k: "x", ok: (v) => v in TEXTURE_NAMES },
@@ -1355,6 +1377,7 @@
       for (const [field, spec] of Object.entries(SHARE_FIELDS)) {
         if (spec.k in o && spec.ok(o[spec.k])) state[field] = o[spec.k];
       }
+      custom.caption = true; // a shared design's caption is intentional — looks shouldn't stomp it
       return true;
     } catch (e) { return false; }
   }
@@ -1364,7 +1387,8 @@
     urlTimer = setTimeout(() => history.replaceState(null, "", location.pathname + "#d=" + encodeDesign()), 300);
   }
 
-  // readable query-param API — ?data=...&theme=matcha&ink=stamp (see API.md)
+  // readable query-param API — ?data=...&look=kopitiam&ink=stamp (see API.md)
+  let bootLook = null; // look applied via URL — boot syncs the strip to it
   function applyQueryParams() {
     const q = new URLSearchParams(location.search);
     if (![...q.keys()].length) return false;
@@ -1376,16 +1400,11 @@
     const set = (field, v) => {
       if (v !== null && v !== undefined && SHARE_FIELDS[field].ok(v)) { state[field] = v; any = true; }
     };
-    const themeName = (q.get("theme") || "").toLowerCase();
-    const th = THEMES.find((t) => t.name === themeName);
-    if (th) {
-      state.fg = th.fg; state.base = th.base; state.bg = th.bg;
-      state.outline = th.out; state.capColor = th.fg;
-      state.texture = th.tex; state.inkMood = th.ink || "press";
-      any = true;
-    }
+    const lookName = (q.get("look") || q.get("theme") || "").toLowerCase();
+    const lk = LOOKS.find((t) => t.name === lookName);
+    if (lk) { lookState(lk); bootLook = lk.name; any = true; }
     set("data", q.get("data") || q.get("url"));
-    if (q.get("caption") !== null) set("caption", q.get("caption"));
+    if (q.get("caption") !== null) { set("caption", q.get("caption")); custom.caption = true; }
     set("fg", hex(q.get("fg")));
     set("base", hex(q.get("base")));
     set("bg", hex(q.get("bg")));
@@ -1395,6 +1414,7 @@
     if (q.get("margin") !== null) set("margin", parseInt(q.get("margin"), 10));
     const corner = { rounded: "extra-rounded", "extra-rounded": "extra-rounded", circle: "dot", dot: "dot", square: "square" }[q.get("corner")];
     if (corner) set("cornerType", corner);
+    if (q.get("dot")) set("dotType", q.get("dot"));
     if (q.get("scenebg")) set("sceneBg", q.get("scenebg"));
     if (q.get("format")) set("format", q.get("format"));
     if (q.get("texture")) set("texture", q.get("texture"));
@@ -1465,6 +1485,7 @@
     b.setAttribute("aria-label", "Use " + e + " as logo");
     b.addEventListener("click", () => {
       state.logo = emojiLogo(e);
+      custom.logo = true;
       $("logoPrev").innerHTML = `<img src="${state.logo}" alt="logo" />`;
       update(true);
     });
@@ -1518,6 +1539,7 @@
       const svg = b.querySelector("svg");
       if (!svg) return;
       state.logo = iconLogo(svg);
+      custom.logo = true;
       $("logoPrev").innerHTML = `<img src="${state.logo}" alt="logo" />`;
       update(true);
     });
@@ -1585,7 +1607,7 @@
   $("margin").addEventListener("input", (e) => {
     state.margin = +e.target.value; $("marginVal").textContent = e.target.value; update(true);
   });
-  $("caption").addEventListener("input", (e) => { state.caption = e.target.value; update(false); });
+  $("caption").addEventListener("input", (e) => { state.caption = e.target.value; custom.caption = true; update(false); });
 
   // logo — corners rounded to match the QR design language
   function roundLogo(dataUrl) {
@@ -1618,6 +1640,7 @@
       } catch (err) {
         state.logo = ev.target.result; // unreadable as image? use as-is
       }
+      custom.logo = true;
       $("logoPrev").innerHTML = `<img src="${state.logo}" alt="logo" />`;
       update(true);
     };
@@ -1625,6 +1648,7 @@
   });
   $("logoClear").addEventListener("click", () => {
     state.logo = undefined; $("logoInput").value = "";
+    custom.logo = false; // back to untouched — the next look may dress it again
     $("logoPrev").textContent = "—"; update(true);
   });
 
@@ -1719,11 +1743,14 @@
     }
   });
 
-  // shuffle: curated themes only — every roll looks good
-  const THEMES = [
+  // Looks: complete named designs — palette, texture, ink, corners, module shape,
+  // caption, even a center logo. Every one is contrast-checked scannable.
+  // Addressable by name via ?look= (and legacy ?theme=).
+  const LOOKS = [
+    // the original twelve — palette looks, caption stays default
     { name: "durian",    fg: "#18181b", base: "#ffffff", bg: "#FFE14D", out: "#18181b", tex: "waves" },
     { name: "matcha",    fg: "#163300", base: "#E8F5D0", bg: "#9FE870", out: "#163300", tex: "leaves" },
-    { name: "midnight",  fg: "#163300", base: "#9FE870", bg: "#0B1F00", out: "#9FE870", tex: "topo" },
+    { name: "midnight",  fg: "#163300", base: "#9FE870", bg: "#0B1F00", out: "#9FE870", capc: "#9FE870", tex: "topo" },
     { name: "ocean",     fg: "#0B2942", base: "#ffffff", bg: "#8ED6F0", out: "#0B2942", tex: "waves" },
     { name: "berry",     fg: "#4A0E2E", base: "#FFE3EE", bg: "#EC4899", out: "#4A0E2E", tex: "dots" },
     { name: "tangerine", fg: "#5A1C00", base: "#FFF3E0", bg: "#F97316", out: "#5A1C00", tex: "stripes" },
@@ -1733,12 +1760,38 @@
     { name: "sunset",    fg: "#4C1D95", base: "#FFF7E6", bg: "#FDBA74", out: "#4C1D95", tex: "spikes", ink: "brush" },
     { name: "mint",      fg: "#064E3B", base: "#ECFDF5", bg: "#6EE7B7", out: "#064E3B", tex: "dots" },
     { name: "paper",     fg: "#1C1917", base: "#ffffff", bg: "#F5F0E6", out: "#1C1917", tex: "topo", ink: "stamp" },
+    // purposeful looks — these arrive fully dressed: caption + logo included
+    { name: "kopitiam", fg: "#3B2A1A", base: "#FFF6E5", bg: "#E0A958", out: "#3B2A1A", tex: "dots", ink: "stamp", cap: "MENU", logo: "☕" },
+    { name: "makan",    fg: "#5C1010", base: "#FFF3E0", bg: "#EF5350", out: "#5C1010", tex: "durians", cap: "MAKAN TIME", logo: "🍜" },
+    { name: "pay", label: "Pay Here", fg: "#3D0A28", base: "#FFE9F2", bg: "#F06292", out: "#3D0A28", tex: "crosses", corner: "square", dot: "square", cap: "PAY HERE", logo: "💳" },
+    { name: "wifi", label: "Wi-Fi", fg: "#0B3A53", base: "#E8F6FF", bg: "#38BDF8", out: "#0B3A53", tex: "topo", corner: "dot", dot: "dots", cap: "FREE WI-FI", logo: "📶" },
+    { name: "wedding",  fg: "#5C4033", base: "#FFFBF5", bg: "#EBD9CD", out: "#5C4033", tex: "leaves", corner: "dot", dot: "dots", cap: "SAVE THE DATE", logo: "💍" },
+    { name: "music", label: "Play Me", fg: "#2D1B69", base: "#EEF0FF", bg: "#1E1B4B", out: "#A5B4FC", capc: "#C7D2FE", tex: "hex", corner: "dot", dot: "dots", cap: "PLAY ME", logo: "🎵" },
+    { name: "receipt",  fg: "#1C1917", base: "#ffffff", bg: "#EDEAE2", out: "#1C1917", tex: "stripes", ink: "stamp", corner: "square", dot: "square", cap: "THANK YOU" },
+    { name: "neon",     fg: "#052E16", base: "#D9FFE0", bg: "#0A0F0A", out: "#4ADE80", capc: "#4ADE80", tex: "grid", ink: "brush", corner: "square", cap: "ENTER", logo: "⚡" },
   ];
-  function applyTheme(t) {
-    state.fg = t.fg; state.base = t.base; state.bg = t.bg; state.outline = t.out; state.capColor = t.fg;
+  // smart takeover: a look dresses the caption/logo only while the user hasn't
+  // set their own — one custom edit and looks become visuals-only
+  const custom = { caption: false, logo: false };
+  function lookState(t) { // pure state mutation — safe at boot, before UI sync
+    state.fg = t.fg; state.base = t.base; state.bg = t.bg; state.outline = t.out;
+    state.capColor = t.capc || t.fg;
     state.inkMood = t.ink || "press";
+    state.cornerType = t.corner || "extra-rounded";
+    state.dotType = t.dot || "rounded";
+    state.texture = t.tex;
+    if (!custom.caption) state.caption = t.cap !== undefined ? t.cap : "SCAN ME";
+    if (!custom.logo) state.logo = t.logo ? emojiLogo(t.logo) : undefined;
+  }
+  function applyLook(t) {
+    lookState(t);
+    $("caption").value = state.caption;
+    if (state.logo) $("logoPrev").innerHTML = `<img src="${state.logo}" alt="logo" />`;
+    else $("logoPrev").textContent = "—";
     document.querySelectorAll("#inkPresets .preset").forEach(b =>
       b.classList.toggle("active", b.dataset.ink === state.inkMood));
+    document.querySelectorAll("#cornerPresets .preset").forEach(b =>
+      b.classList.toggle("active", b.dataset.corner === state.cornerType));
     document.querySelectorAll("#looksStrip .look").forEach(b =>
       b.classList.toggle("active", b.dataset.theme === t.name));
     syncChips();
@@ -1748,9 +1801,9 @@
   let lastTheme = -1;
   $("shuffleBtn").addEventListener("click", () => {
     let i;
-    do { i = Math.floor(Math.random() * THEMES.length); } while (i === lastTheme);
+    do { i = Math.floor(Math.random() * LOOKS.length); } while (i === lastTheme);
     lastTheme = i;
-    applyTheme(THEMES[i]);
+    applyLook(LOOKS[i]);
     canvas.classList.add("shaking");
     canvas.addEventListener("animationend", () => canvas.classList.remove("shaking"), { once: true });
     animateGenerate(700);
@@ -1760,13 +1813,11 @@
     );
   });
 
-  // ---- Looks strip: mini design thumbnails, tap to apply
-  const THUMB_PAT = [ // fixed 5×5 mini-code pattern (1 = module)
-    1,1,1,0,1,
-    1,0,1,0,0,
-    1,1,1,1,0,
-    0,0,1,0,1,
-    1,0,0,1,1,
+  // ---- Looks strip: mini design thumbnails, tap to wear the whole look
+  // fixed module positions (x, y) inside the mini card — eye region kept clear
+  const THUMB_MODS = [
+    [60, 33], [72, 35], [66, 45], [33, 60], [44, 66],
+    [58, 57], [73, 60], [36, 74], [52, 75], [69, 73],
   ];
   function lookThumb(t) {
     const c = document.createElement("canvas");
@@ -1782,25 +1833,50 @@
     x.lineWidth = 4;
     roundRectPath(x, 24, 24, 64, 64, 14);
     x.stroke();
-    // mini modules + an eye
+    // finder eye drawn in the look's corner style
+    const corner = t.corner || "extra-rounded";
+    const eyeR = { "extra-rounded": 7, dot: 11, square: 1.5 }[corner];
+    x.strokeStyle = t.fg;
     x.fillStyle = t.fg;
-    const m = 8, ox = 32, oy = 32;
-    THUMB_PAT.forEach((on, i) => {
-      if (!on) return;
-      const col = i % 5, row = (i / 5) | 0;
-      roundRectPath(x, ox + col * (m + 1.6), oy + row * (m + 1.6), m, m, 2.6);
+    x.lineWidth = 4;
+    roundRectPath(x, 33, 33, 22, 22, eyeR);
+    x.stroke();
+    if (corner === "dot") { x.beginPath(); x.arc(44, 44, 4.5, 0, 7); x.fill(); }
+    else { roundRectPath(x, 40, 40, 8, 8, corner === "square" ? 1 : 4); x.fill(); }
+    // modules in the look's dot shape
+    const m = 8, dot = t.dot || "rounded";
+    THUMB_MODS.forEach(([px, py]) => {
+      if (dot === "dots") { x.beginPath(); x.arc(px + m / 2, py + m / 2, m / 2, 0, 7); }
+      else roundRectPath(x, px, py, m, m, dot === "square" ? 1 : 2.6);
       x.fill();
     });
+    // looks that come with a logo wear it in the thumb too
+    if (t.logo) {
+      roundRectPath(x, 60, 60, 24, 24, 8);
+      x.fillStyle = t.base;
+      x.fill();
+      x.font = "17px -apple-system, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+      x.textAlign = "center";
+      x.textBaseline = "middle";
+      x.fillText(t.logo, 72, 73);
+    }
     return c;
   }
-  THEMES.forEach((t) => {
+  LOOKS.forEach((t) => {
     const b = document.createElement("button");
     b.className = "look" + (t.name === "durian" ? " active" : "");
     b.dataset.theme = t.name;
-    b.setAttribute("aria-label", t.name + " theme");
-    b.appendChild(lookThumb(t));
+    const lbl = t.label || t.name;
+    b.setAttribute("aria-label", lbl + " look");
+    const chip = document.createElement("span");
+    chip.className = "look-chip";
+    chip.appendChild(lookThumb(t));
+    const nm = document.createElement("span");
+    nm.className = "look-name";
+    nm.textContent = lbl;
+    b.append(chip, nm);
     b.addEventListener("click", () => {
-      applyTheme(t);
+      applyLook(t);
       animateGenerate(600);
     });
     $("looksStrip").appendChild(b);
@@ -2213,6 +2289,9 @@
       x.classList.toggle("active", x.dataset.tex === state.texture));
     document.querySelectorAll("#fmtList .fmt-row").forEach(x =>
       x.classList.toggle("active", x.dataset.fmt === state.format));
+    if (state.logo) $("logoPrev").innerHTML = `<img src="${state.logo}" alt="logo" />`;
+    if (bootLook) document.querySelectorAll("#looksStrip .look").forEach(b =>
+      b.classList.toggle("active", b.dataset.theme === bootLook));
   }
   syncChips();
   syncFmtSelect();

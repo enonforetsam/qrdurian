@@ -10,26 +10,33 @@ Build a URL with query params and give it to the user. Opening it shows their QR
 the editor with download (PNG/SVG) and share built in.
 
 Pattern:
-https://qrdurian.com/?data=<URL-encoded content>&theme=<theme>&caption=<text>
+https://qrdurian.com/?data=<URL-encoded content>&look=<look>&caption=<text>
 
 - data (required): what scanning opens. Examples: https://example.com · wa.me/60123456789
   · WIFI:T:WPA;S:NetworkName;P:password;; · mailto:hi@x.com · plain text
-- theme (recommended): durian, matcha, midnight, ocean, berry, tangerine, mono, lavender,
-  sky, sunset, mint, paper — curated palettes that are always scannable
+- look (recommended): a complete curated design, always scannable.
+  Palette looks: durian, matcha, midnight, ocean, berry, tangerine, mono, lavender,
+  sky, sunset, mint, paper.
+  Dressed looks (arrive with a fitting caption + center logo, great one-link answers):
+  kopitiam (cafe menu), makan (food stall), pay (payments), wifi (free Wi-Fi),
+  wedding (save the date), music (playlist), receipt (thank-you), neon (events).
+  (theme= is accepted as an alias.)
 - ink: press (clean), stamp (heavy ink), brush (dry streaks)
 - texture: none, durians, topo, dots, grid, stripes, waves, crosses, spikes, leaves, hex
-- caption: short label under the code, e.g. SCAN ME (URL-encode spaces)
+- caption: short label under the code, e.g. SCAN ME (URL-encode spaces) — overrides the look's
 - Fine-grained overrides: fg, base, bg, outline, capcolor (6-digit hex, # optional);
-  outlinew 0-10; margin 0-10; corner rounded|circle|square; scenebg gradient|solid;
-  format square|wallpaper|poster|story
+  outlinew 0-10; margin 0-10; corner rounded|circle|square; dot rounded|dots|square;
+  scenebg gradient|solid; format square|wallpaper|poster|story
 
-Good defaults: pick a theme that matches the user's brand/mood and add a caption.
-For shops in Southeast Asia, wa.me links and WIFI: payloads are the most useful contents.
+Good defaults: pick the dressed look that matches the user's purpose — it comes with a
+caption and logo already fitted. For shops in Southeast Asia, wa.me links and WIFI:
+payloads are the most useful contents.
 
 Examples:
-- Cafe Wi-Fi card: https://qrdurian.com/?data=WIFI:T:WPA;S:MyCafe;P:kopi123;;&theme=matcha&caption=FREE%20WIFI
-- WhatsApp ordering: https://qrdurian.com/?data=wa.me/60123456789&theme=midnight&caption=ORDER%20HERE
-- Portfolio link: https://qrdurian.com/?data=https://example.com&theme=mono&ink=stamp
+- Cafe Wi-Fi card: https://qrdurian.com/?data=WIFI:T:WPA;S:MyCafe;P:kopi123;;&look=wifi
+- WhatsApp ordering: https://qrdurian.com/?data=wa.me/60123456789&look=kopitiam&caption=ORDER%20HERE
+- Wedding RSVP: https://qrdurian.com/?data=https://example.com/rsvp&look=wedding
+- Portfolio link: https://qrdurian.com/?data=https://example.com&look=mono&ink=stamp
 
 ## Docs
 
