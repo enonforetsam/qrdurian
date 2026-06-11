@@ -56,6 +56,30 @@ const TOOL = {
   },
 };
 
+// ---------------- guardrails ----------------
+const MAX_BODY_BYTES = 8192;     // a design_qr call is well under 4KB
+const MAX_BATCH = 5;             // JSON-RPC batch cap
+const RATE_LIMIT = 30;           // requests per IP per minute (per isolate, best-effort)
+const BLOCKED_SCHEMES = /^\s*(javascript|data|vbscript|file|blob):/i;
+
+const rlBuckets = new Map();
+function rateLimited(ip) {
+  const now = Date.now();
+  const b = rlBuckets.get(ip);
+  if (!b || now - b.ts > 60_000) {
+    rlBuckets.set(ip, { ts: now, n: 1 });
+    if (rlBuckets.size > 5000) rlBuckets.clear(); // memory cap
+    return false;
+  }
+  b.n++;
+  return b.n > RATE_LIMIT;
+}
+
+function clean(v, max) {
+  // strip control characters, hard length cap
+  return String(v).replace(/[\u0000-\u001F\u007F]/g, "").slice(0, max);
+}
+
 function hex(v) {
   if (typeof v !== "string") return null;
   const h = v.replace(/^#/, "");
@@ -65,7 +89,7 @@ function hex(v) {
 function designURL(a) {
   const t = THEMES[a.theme] || THEMES.durian;
   const d = {
-    u: String(a.content).slice(0, 2000),
+    u: clean(a.content, 2000),
     f: hex(a.fg) || t.f,
     b: hex(a.base) || t.b,
     g: hex(a.bg) || t.g,
@@ -77,7 +101,7 @@ function designURL(a) {
     s: "gradient",
     z: FORMATS.includes(a.format) ? a.format : "square",
     c: CORNERS[a.corner] || "extra-rounded",
-    n: typeof a.caption === "string" ? a.caption.slice(0, 80) : "SCAN ME",
+    n: typeof a.caption === "string" ? clean(a.caption, 80) : "SCAN ME",
   };
   d.t = d.f; // caption color follows ink
   const b64 = btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(d))))
@@ -114,6 +138,9 @@ async function handleRpc(msg) {
       if (!a.content || typeof a.content !== "string") {
         return rpcResult(id, { content: [{ type: "text", text: "Error: `content` (what the QR opens) is required." }], isError: true });
       }
+      if (BLOCKED_SCHEMES.test(a.content)) {
+        return rpcResult(id, { content: [{ type: "text", text: "Error: that content scheme is not allowed in QR codes (javascript:/data:/file: are blocked for safety)." }], isError: true });
+      }
       const url = designURL(a);
       const theme = THEMES[a.theme] ? a.theme : "durian";
       return rpcResult(id, {
@@ -137,6 +164,8 @@ const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Mcp-Session-Id, MCP-Protocol-Version",
+  "X-Content-Type-Options": "nosniff",
+  "Cache-Control": "no-store",
 };
 
 export default {
@@ -145,11 +174,24 @@ export default {
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
 
     if (req.method === "POST" && (url.pathname === "/mcp" || url.pathname === "/")) {
+      // guardrail: per-IP rate limit (best-effort, per isolate)
+      const ip = req.headers.get("cf-connecting-ip") || "unknown";
+      if (rateLimited(ip)) {
+        return Response.json(rpcError(null, -32000, "Rate limit exceeded — try again in a minute."), { status: 429, headers: CORS });
+      }
+      // guardrail: body size cap before parsing
+      const raw = await req.text();
+      if (raw.length > MAX_BODY_BYTES) {
+        return Response.json(rpcError(null, -32600, "Request too large"), { status: 413, headers: CORS });
+      }
       let body;
-      try { body = await req.json(); } catch {
+      try { body = JSON.parse(raw); } catch {
         return Response.json(rpcError(null, -32700, "Parse error"), { status: 400, headers: CORS });
       }
       const messages = Array.isArray(body) ? body : [body];
+      if (messages.length > MAX_BATCH) {
+        return Response.json(rpcError(null, -32600, "Batch too large"), { status: 400, headers: CORS });
+      }
       const replies = (await Promise.all(messages.map(handleRpc))).filter(Boolean);
       if (!replies.length) return new Response(null, { status: 202, headers: CORS });
       return Response.json(Array.isArray(body) ? replies : replies[0], {
