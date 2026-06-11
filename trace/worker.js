@@ -10,6 +10,8 @@
  * Bindings: DB (D1), PHOTOS (R2, optional), ADMIN_KEY (secret)
  */
 
+import { MAP_W, MAP_H, MAP_PROJ, MAP_STATES } from "./map-data.js";
+
 const BRAND = "qrdurian trace";
 const MAIN = "https://qrdurian.com";
 const EXPIRY_DAYS = 7;
@@ -94,7 +96,8 @@ function landingPage() {
   <div class="card">
     <h2>Growers directory</h2>
     <p class="muted">Browse registered orchards across Malaysia.</p>
-    <a class="btn ghost" href="/growers">Browse growers</a>
+    <a class="btn ghost" href="/map">🗺 Durian map</a>
+    <a class="btn ghost" href="/growers">Browse list</a>
   </div>`);
 }
 
@@ -289,6 +292,61 @@ export default {
         });
       }
 
+      if (p === "/map") {
+        const growers = (await DB.prepare(
+          `SELECT f.name, f.orchard, f.district, f.state, f.verified, f.demo, f.lat, f.lng, COUNT(b.id) nb
+           FROM farmers f LEFT JOIN batches b ON b.farmer_id=f.id
+           WHERE f.in_directory=1 AND f.lat IS NOT NULL GROUP BY f.id`).all()).results;
+        const PX = (lon) => ((lon - MAP_PROJ.minLon) * MAP_PROJ.k).toFixed(1);
+        const PY = (lat) => ((-lat - MAP_PROJ.minYv) * MAP_PROJ.k).toFixed(1);
+        const TINTS = ["#E8F5D0", "#FFF3E0", "#F3E8FF", "#BAE6FD", "#FFE3EE", "#ECFDF5", "#FFF7E6", "#FDE68A"];
+        const statePaths = Object.entries(MAP_STATES).map(([name, d], i) =>
+          `<path d="${d}" fill="${TINTS[i % TINTS.length]}" stroke="#163300" stroke-width=".7" stroke-linejoin="round"/>`).join("");
+        const pins = growers.map((g, i) => `
+          <g class="pin" transform="translate(${PX(g.lng)},${PY(g.lat)})" data-i="${i}">
+            <circle r="9" fill="#2E7D32" stroke="#163300" stroke-width="1.6"/>
+            <circle r="3.2" fill="#FFE14D"/>
+          </g>`).join("");
+        const viewAll = `0 0 ${MAP_W} ${MAP_H}`;
+        const viewPen = `${PX(99.4)} 0 ${(PX(105.4) - PX(99.4)).toFixed(0)} ${MAP_H}`;
+        const viewBor = `${PX(109.3)} 60 ${(PX(119.5) - PX(109.3)).toFixed(0)} ${MAP_H - 60}`;
+        return page("Durian map", `
+  <h1>Durian map of Malaysia 🍈</h1>
+  <p class="muted">Every pin is an orchard in the qrdurian trace directory. Tap a pin.</p>
+  <div style="margin:8px 0">
+    <button class="btn ghost vbtn" data-v="${viewPen}" style="padding:7px 13px;font-size:13px">Semenanjung</button>
+    <button class="btn ghost vbtn" data-v="${viewBor}" style="padding:7px 13px;font-size:13px">Borneo</button>
+    <button class="btn vbtn" data-v="${viewAll}" style="padding:7px 13px;font-size:13px">All</button>
+  </div>
+  <div class="card" style="padding:10px">
+    <svg id="map" viewBox="${viewAll}" style="width:100%;display:block">
+      ${statePaths}${pins}
+    </svg>
+  </div>
+  <div class="card" id="info" hidden></div>
+  <a class="btn" href="/register">Put my orchard on this map</a>
+  <p class="muted"><a href="/growers">List view →</a></p>
+  <script>
+    const G=${JSON.stringify(growers.map((g) => ({ o: g.orchard, n: g.name, d: g.district, s: g.state, v: g.verified, nb: g.nb, demo: g.demo })))};
+    const info=document.getElementById("info");
+    document.querySelectorAll(".pin").forEach(pin=>{
+      pin.style.cursor="pointer";
+      pin.addEventListener("click",()=>{
+        const g=G[+pin.dataset.i];
+        info.hidden=false;
+        info.innerHTML='<b style="font-family:Urbanist;font-size:17px">'+g.o+'</b> '+(g.v?'<span class="badge">✓ verified</span>':'')+(g.demo?' <span class="badge soft">demo</span>':'')+
+          '<br><span class="muted">'+g.n+' · '+g.d+', '+g.s+' · '+g.nb+' batch'+(g.nb==1?'':'es')+'</span>';
+        info.scrollIntoView({behavior:"smooth",block:"nearest"});
+      });
+    });
+    document.querySelectorAll(".vbtn").forEach(b=>b.addEventListener("click",()=>{
+      document.getElementById("map").setAttribute("viewBox",b.dataset.v);
+      document.querySelectorAll(".vbtn").forEach(x=>x.classList.add("ghost"));
+      b.classList.remove("ghost");
+    }));
+  </script>`);
+      }
+
       if (p === "/growers") {
         const sel = url.searchParams.get("state") || "";
         const q = sel && STATES.includes(sel)
@@ -309,7 +367,8 @@ export default {
           <p class="muted">Orchards registered with qrdurian trace. ✓ means we've confirmed the grower's identity.</p>
           <div>${chips}</div>
           <div class="card">${rows || `<p class="muted">No growers listed${sel ? " in " + esc(sel) : ""} yet — <a href="/register">be the first</a>.</p>`}</div>
-          <a class="btn" href="/register">Register my orchard</a>`);
+          <a class="btn" href="/register">Register my orchard</a>
+          <a class="btn ghost" href="/map">🗺 Map view</a>`);
       }
 
       if (p === "/admin") {
