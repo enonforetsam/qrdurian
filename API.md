@@ -27,6 +27,7 @@ https://qrdurian.com/?data=<content>&look=<name>&ink=<mood>&texture=<name>&capti
 | `capcolor` | hex | caption color |
 | `corner` | `rounded` `circle` `square` | finder-eye style |
 | `dot` | `rounded` `dots` `square` | module (data dot) shape |
+| `font` | `urbanist` `playfair display` `caveat` `bebas neue` `space mono` | caption typeface (lazy-loaded) |
 | `scenebg` | `gradient` `solid` | background fill style |
 | `margin` | 0–10 | quiet-zone size |
 | `format` | `square` `wallpaper` `poster` `story` | export canvas (2048², 1290×2796, A4@300DPI, 1080×1920) |
@@ -53,7 +54,7 @@ https://qrdurian.com/?data=https://example.com&ink=stamp&bg=163300&fg=9FE870&bas
 | `g` | background | | `c` | corner type |
 | `s` | sceneBg | | `z` | format |
 | `x` | texture | | `i` | ink mood |
-| `y` | dot (module) shape | | | |
+| `y` | dot (module) shape | | `q` | caption font |
 
 Encoding: `JSON.stringify` → UTF-8 → base64 with `+/` → `-_` and padding stripped.
 All fields are optional and validated on load; invalid values fall back to defaults.

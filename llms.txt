@@ -26,6 +26,7 @@ https://qrdurian.com/?data=<URL-encoded content>&look=<look>&caption=<text>
 - caption: short label under the code, e.g. SCAN ME (URL-encode spaces) — overrides the look's
 - Fine-grained overrides: fg, base, bg, outline, capcolor (6-digit hex, # optional);
   outlinew 0-10; margin 0-10; corner rounded|circle|square; dot rounded|dots|square;
+  font urbanist|playfair display|caveat|bebas neue|space mono (caption typeface);
   scenebg gradient|solid; format square|wallpaper|poster|story
 
 Good defaults: pick the dressed look that matches the user's purpose — it comes with a

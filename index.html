@@ -405,14 +405,14 @@
   .select svg { width: 16px; height: 16px; transition: transform .2s ease; }
   .select.open svg { transform: rotate(180deg); }
   /* floating dropdowns — overlay the page, never change the card's height */
-  #fmtList, #texList {
+  #fmtList, #texList, #fontList {
     position: fixed; z-index: 80;
     background: var(--panel); border: 1px solid var(--border);
     border-radius: 14px; padding: 8px;
     max-height: 250px; overflow-y: auto;
   }
-  #fmtList .fmt-row, #texList .fmt-row { margin-bottom: 6px; }
-  #fmtList .fmt-row:last-child, #texList .fmt-row:last-child { margin-bottom: 0; }
+  #fmtList .fmt-row, #texList .fmt-row, #fontList .fmt-row { margin-bottom: 6px; }
+  #fmtList .fmt-row:last-child, #texList .fmt-row:last-child, #fontList .fmt-row:last-child { margin-bottom: 0; }
   .fmt-row .fcol { display: flex; flex-direction: column; gap: 2px; }
   .fmt-row .fname { font-size: 14px; font-weight: 650; }
   .fmt-row .fdims { font-size: 11.5px; color: var(--muted); }
@@ -546,36 +546,61 @@
       .card.controls, .export-sheet { max-height: 62vh; bottom: 70px; }
     }
 
-    /* ===== Studio: Canva-style wide-desktop layout — panel left, canvas right ===== */
-    .fmt-chips {
-      display: none; gap: 4px; align-items: center;
-      background: var(--panel); border-radius: 999px; padding: 5px;
-      margin-bottom: 16px;
-    }
+    /* ===== Studio: Canva-style wide-desktop editor — icon rail + full-height panel
+       on the left, the whole right side is the editing zone (bar + canvas) ===== */
+    .side-rail { display: none; }
+    .top-bar { display: none; }
+    .fmt-chips { display: none; gap: 2px; align-items: center; }
     .fmt-chip {
       border: none; background: transparent; color: var(--text);
       font-family: "Urbanist", sans-serif; font-weight: 700; font-size: 12.5px;
-      padding: 8px 16px; border-radius: 999px; cursor: pointer;
+      padding: 8px 14px; border-radius: 999px; cursor: pointer;
       transition: background .18s ease, color .18s ease;
     }
     .fmt-chip.active { background: var(--accent); color: var(--accent-ink); }
+    .looks-dock { width: 100%; display: flex; justify-content: center; }
     @media (min-width: 1100px) {
-      /* the design card docks left, always at hand — no bottom-sheet behavior */
-      .card.controls, .export-sheet {
-        left: 28px; right: auto; bottom: auto; margin: 0;
-        top: calc(96px + var(--sat));
-        width: 400px; max-width: 400px;
-        max-height: calc(100vh - 200px);
+      /* vertical icon rail, Canva-style — replaces the bottom pill */
+      .side-rail {
+        display: flex; flex-direction: column; align-items: center; gap: 10px;
+        position: fixed; left: 0; top: 0; bottom: 0; width: 64px; z-index: 60;
+        background: var(--panel); padding: 18px 0;
       }
-      /* the canvas zone shifts right of the panel; QR centers in what remains */
-      main { padding-left: 456px; }
-      .bottom-nav { left: calc(50% + 218px); }
-      /* the gallery stays browsable while editing — the panel doesn't cover it */
-      body.sheet-open .looks { opacity: 1; pointer-events: auto; }
+      .side-rail .nav-item { width: 44px; height: 44px; border-radius: 14px; }
+      .bottom-nav { display: none; }
+      /* the design card fills the whole left side, flush against the rail */
+      .card.controls, .export-sheet {
+        left: 64px; right: auto; top: 0; bottom: 0; margin: 0;
+        width: 384px; max-width: 384px; max-height: none;
+        border-radius: 0;
+        padding: 30px 28px;
+      }
+      /* the whole right side is the editor */
+      main { padding-left: 484px; padding-right: 36px; }
+      header { padding-left: 448px; } /* brand centers over the editor, not the page */
+      /* horizontal editor bar: add text, pick its font + color, choose the artboard */
+      .top-bar {
+        display: flex; align-items: center; gap: 10px;
+        width: 100%; max-width: 880px; margin: 0 auto 18px;
+        background: var(--panel); border-radius: 18px; padding: 9px 16px;
+      }
+      .top-bar > svg { width: 17px; height: 17px; color: var(--muted); flex: 0 0 auto; }
+      .top-bar input[type="text"] {
+        flex: 1 1 140px; min-width: 90px; max-width: 250px;
+        border: none; background: transparent; font: inherit; color: var(--text);
+        outline: none;
+      }
+      .top-bar .select { flex: 0 0 auto; width: auto; min-width: 150px; gap: 10px; }
+      .tb-sep { width: 1px; align-self: stretch; background: var(--border); margin: 2px 4px; flex: 0 0 auto; }
+      .fmt-chips { display: flex; margin-left: auto; }
+      /* the looks gallery lives in the panel — a browsable grid, not a strip */
+      .card.controls .looks {
+        flex-wrap: wrap; justify-content: flex-start; row-gap: 14px;
+        max-width: none; margin: 0; padding: 8px 2px; overflow: visible;
+        opacity: 1 !important; pointer-events: auto !important;
+      }
       /* panel lives open Canva-style: clicking the canvas doesn't dismiss it */
       body.sheet-open .sheet-backdrop { pointer-events: none; }
-      /* with room to spare, the artboard's aspect ratio is chosen right here */
-      .fmt-chips { display: flex; }
       /* non-square artboards get a dashed bound — the page bleeds past the file edge */
       .artboard-wrap.framed { overflow: visible; } /* strict-fit never crops in studio */
       .artboard-wrap.framed #artboard {
@@ -733,6 +758,11 @@
       </div>
       </div>
 
+      <div class="panel" data-panel="looks">
+        <label class="lbl">Looks</label>
+        <div id="looksHost"></div>
+      </div>
+
       <div class="color-pop" id="colorPop" hidden>
         <div class="swatches" id="popSwatches"></div>
         <button class="mini-btn" id="popCustom">Custom…</button>
@@ -747,11 +777,24 @@
 
     <!-- Artboard -->
     <section class="preview">
-      <div class="fmt-chips" id="fmtChips" aria-label="Canvas size"></div>
+      <div class="top-bar" id="topBar">
+        <i data-lucide="type"></i>
+        <input type="text" id="tbCaption" placeholder="Add a caption…" maxlength="80" />
+        <button class="select" id="fontSelect" style="min-width:150px;">
+          <span id="fontSelLabel">Urbanist</span>
+          <i data-lucide="chevron-down"></i>
+        </button>
+        <button class="chip-color compact" id="tbCapChip" aria-label="Caption color"><span class="cdot" id="tbCapDot"></span></button>
+        <input type="color" id="tbCapInput" class="vhid" />
+        <span class="tb-sep"></span>
+        <div class="fmt-chips" id="fmtChips" aria-label="Canvas size"></div>
+      </div>
       <div class="artboard-wrap" id="artboardWrap">
         <canvas id="artboard"></canvas>
       </div>
-      <div class="looks" id="looksStrip" aria-label="Theme gallery"></div>
+      <div class="looks-dock" id="looksDock">
+        <div class="looks" id="looksStrip" aria-label="Theme gallery"></div>
+      </div>
     </section>
   </main>
 
@@ -791,6 +834,14 @@
     </div>
   </div>
 
+  <nav class="side-rail" id="sideRail" aria-label="Editor sections">
+    <button class="nav-item" data-nav="content" aria-label="Content"><i data-lucide="link-2"></i></button>
+    <button class="nav-item" data-nav="looks" aria-label="Looks"><i data-lucide="layout-grid"></i></button>
+    <button class="nav-item" data-nav="style" aria-label="QR style"><i data-lucide="palette"></i></button>
+    <button class="nav-item" data-nav="scene" aria-label="Artboard"><i data-lucide="image"></i></button>
+    <button class="nav-item export" data-nav="export" aria-label="Export"><i data-lucide="download"></i></button>
+  </nav>
+
   <nav class="bottom-nav" id="bottomNav">
     <button class="nav-item" data-nav="content" aria-label="Content"><i data-lucide="link-2"></i></button>
     <button class="nav-item" data-nav="style" aria-label="QR style"><i data-lucide="palette"></i></button>
@@ -818,6 +869,7 @@
     outline: "#18181b",
     outlineW: 7,     /* 0 = no outline */
     capColor: "#18181b",
+    capFont: "Urbanist",
     margin: 2,
     inkMood: "press",
     logo: undefined,
@@ -830,6 +882,28 @@
   };
 
   const swatchSet = ["#FFE14D","#163300","#18181b","#ffffff","#9FE870","#ef4444","#6366f1","#ec4899","#0ea5e9","#f97316"];
+
+  // caption fonts — curated display faces, lazy-loaded from Google Fonts on first use
+  const FONT_DEFS = {
+    "Urbanist":         { gf: null }, // already on the page
+    "Playfair Display": { gf: "Playfair+Display:wght@400;700" },
+    "Caveat":           { gf: "Caveat:wght@400;700" },
+    "Bebas Neue":       { gf: "Bebas+Neue", probe: '24px "Bebas Neue"' }, // single 400 weight
+    "Space Mono":       { gf: "Space+Mono:wght@400;700" },
+  };
+  const loadedFonts = new Set(["Urbanist"]);
+  function ensureFont(family) {
+    if (loadedFonts.has(family) || !FONT_DEFS[family]) return Promise.resolve();
+    loadedFonts.add(family);
+    return new Promise((res) => {
+      const l = document.createElement("link");
+      l.rel = "stylesheet";
+      l.href = "https://fonts.googleapis.com/css2?family=" + FONT_DEFS[family].gf + "&display=swap";
+      l.onload = () => document.fonts.load(FONT_DEFS[family].probe || `700 24px "${family}"`).then(res, res);
+      l.onerror = () => res(); // offline? canvas falls back to Urbanist
+      document.head.appendChild(l);
+    });
+  }
 
   // ================= QR rendering (cached image) =================
   function currentOpts(size, transparentBg = false) {
@@ -1297,7 +1371,7 @@
       ctx.fillStyle = state.capColor;
       ctx.textAlign = "center";
       let fs = Math.round(u * 0.042);
-      const fontFor = (px) => `700 ${px}px Urbanist, 'Open Sans', -apple-system, Arial, sans-serif`;
+      const fontFor = (px) => `700 ${px}px "${state.capFont}", Urbanist, 'Open Sans', -apple-system, Arial, sans-serif`;
       ctx.font = fontFor(fs);
       try { ctx.letterSpacing = `${u * 0.008}px`; } catch (e) {}
       const tw = ctx.measureText(cap).width;
@@ -1320,7 +1394,7 @@
     const fmt = studio ? FORMATS[state.format] : { w: 1, h: 1 };
     const wrap = $("artboardWrap");
     const desktop = window.innerWidth > 880;
-    const wrapW = Math.min(wrap.clientWidth || wrap.parentElement.clientWidth, studio ? 640 : desktop ? 580 : 440);
+    const wrapW = Math.min(wrap.clientWidth || wrap.parentElement.clientWidth, studio ? 720 : desktop ? 580 : 440);
     // static: always leave room below for a sheet, so the QR never moves
     // must match the cards' CSS max-height — including desktop + short-landscape overrides
     // (studio reserves nothing below: the panel is docked left, not bottom)
@@ -1330,10 +1404,10 @@
       : desktop ? Math.min(window.innerHeight * 0.46, 360)
       : Math.min(window.innerHeight * 0.46, 420);
     const sat = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--sat")) || 0;
-    const stripH = $("looksStrip").offsetHeight;
-    const chipsH = studio ? $("fmtChips").offsetHeight + 16 : 0;
+    const stripH = studio ? 0 : $("looksStrip").offsetHeight; // studio hosts the gallery in the panel
+    const barH = studio ? $("topBar").offsetHeight + 18 : 0;  // the editor bar sits above the canvas
     const chrome = (studio
-      ? document.querySelector("header").offsetHeight + chipsH + stripH + 124 // real chrome + nav zone
+      ? document.querySelector("header").offsetHeight + barH + 48 // no bottom nav — the rail is vertical
       : window.innerWidth >= 1400 ? 280 : desktop ? 250 : 205) + sat; // header grows with logo + notch
     const zoneH = Math.max(150, window.innerHeight - sheetH - chrome);
     const ar = fmt.w / fmt.h;
@@ -1370,10 +1444,13 @@
     // no card open → float the QR to the center of the free space; card open → dock up top
     // (studio always centers: the panel sits beside the canvas, never over it)
     let shift = 0;
-    if (studio || !document.body.classList.contains("sheet-open")) {
+    if (studio) {
+      const headTotal = document.querySelector("header").offsetHeight + 8;
+      shift = Math.max(0, (window.innerHeight - 28 - headTotal - barH - Math.min(h, zoneH)) / 2);
+    } else if (!document.body.classList.contains("sheet-open")) {
       const headTotal = document.querySelector("header").offsetHeight + (window.innerWidth <= 880 ? 16 : 8);
       const navTop = window.innerHeight - ((window.innerWidth > 880 ? 32 : 14) + 80);
-      shift = Math.max(0, (navTop - headTotal - Math.min(h, zoneH) - stripH - chipsH) / 2);
+      shift = Math.max(0, (navTop - headTotal - Math.min(h, zoneH) - stripH) / 2);
     }
     canvas.closest(".preview").style.transform = `translateY(${shift}px)`;
   }
@@ -1400,6 +1477,7 @@
     const mobile = window.innerWidth <= 880;
     if (wasMobile && !mobile && !openPanel) openSheet("content");
     wasMobile = mobile;
+    placeLooks(); // gallery hops between panel tab (studio) and under-canvas dock
     drawPreview();
   });
 
@@ -1414,6 +1492,7 @@
     margin: { k: "m", ok: (v) => typeof v === "number" && v >= 0 && v <= 10 },
     cornerType: { k: "c", ok: (v) => ["extra-rounded", "dot", "square"].includes(v) },
     dotType: { k: "y", ok: (v) => ["rounded", "dots", "square"].includes(v) },
+    capFont: { k: "q", ok: (v) => v in FONT_DEFS },
     sceneBg:{ k: "s", ok: (v) => v === "gradient" || v === "solid" },
     format: { k: "z", ok: (v) => v in FORMATS },
     texture:{ k: "x", ok: (v) => v in TEXTURE_NAMES },
@@ -1470,6 +1549,9 @@
     const corner = { rounded: "extra-rounded", "extra-rounded": "extra-rounded", circle: "dot", dot: "dot", square: "square" }[q.get("corner")];
     if (corner) set("cornerType", corner);
     if (q.get("dot")) set("dotType", q.get("dot"));
+    const fontQ = (q.get("font") || "").toLowerCase();
+    const fam = Object.keys(FONT_DEFS).find((f) => f.toLowerCase() === fontQ);
+    if (fam) { state.capFont = fam; any = true; }
     if (q.get("scenebg")) set("sceneBg", q.get("scenebg"));
     if (q.get("format")) set("format", q.get("format"));
     if (q.get("texture")) set("texture", q.get("texture"));
@@ -1609,6 +1691,7 @@
     $("bgDot").style.background = state.bg;
     $("outDot").style.background = state.outline;
     $("capDot").style.background = state.capColor;
+    $("tbCapDot").style.background = state.capColor;
   }
   swatchSet.forEach((c) => {
     const d = document.createElement("div");
@@ -1662,7 +1745,11 @@
   $("margin").addEventListener("input", (e) => {
     state.margin = +e.target.value; $("marginVal").textContent = e.target.value; update(true);
   });
-  $("caption").addEventListener("input", (e) => { state.caption = e.target.value; custom.caption = true; update(false); });
+  $("caption").addEventListener("input", (e) => {
+    state.caption = e.target.value; custom.caption = true;
+    $("tbCaption").value = state.caption; // editor bar mirrors the card
+    update(false);
+  });
 
   // logo — corners rounded to match the QR design language
   function roundLogo(dataUrl) {
@@ -1722,7 +1809,7 @@
     drawPreview(); // studio reshapes the canvas live; elsewhere a cheap same-size redraw
     syncURL();
   }
-  // studio aspect chips — choose the artboard right above the canvas
+  // studio aspect chips — choose the artboard right in the editor bar
   const CHIP_LABELS = { square: "Square", wallpaper: "Phone", poster: "A4", story: "Story" };
   Object.keys(FORMATS).forEach((k) => {
     const b = document.createElement("button");
@@ -1733,6 +1820,66 @@
     b.addEventListener("click", () => setFormat(k));
     $("fmtChips").appendChild(b);
   });
+
+  // ---- studio editor bar: caption text, font, color — mirrors the Artboard card
+  $("tbCaption").addEventListener("input", (e) => {
+    state.caption = e.target.value; custom.caption = true;
+    $("caption").value = state.caption;
+    update(false);
+  });
+  $("tbCapChip").addEventListener("click", () => {
+    const i = $("tbCapInput");
+    i.value = state.capColor;
+    i.click();
+  });
+  $("tbCapInput").addEventListener("input", (e) => {
+    state.capColor = e.target.value;
+    syncChips(); update(false);
+  });
+  // caption font — floating dropdown, same body-hosted pattern as format/texture
+  function setCapFont(f) {
+    state.capFont = f;
+    custom.capFont = true;
+    $("fontSelLabel").textContent = f;
+    fontList.querySelectorAll(".fmt-row").forEach(x => x.classList.toggle("active", x.dataset.font === f));
+    fontList.hidden = true; $("fontSelect").classList.remove("open");
+    ensureFont(f).then(() => update(false));
+    syncURL();
+  }
+  const fontList = document.createElement("div");
+  fontList.className = "fmt-list"; fontList.id = "fontList"; fontList.hidden = true;
+  Object.keys(FONT_DEFS).forEach((f) => {
+    const b = document.createElement("button");
+    b.className = "fmt-row" + (f === state.capFont ? " active" : "");
+    b.dataset.font = f;
+    b.innerHTML = `<span class="fcol"><span class="fname" style="font-family:'${f}', 'Urbanist', sans-serif">${f}</span></span><span class="tick">●</span>`;
+    b.addEventListener("click", () => setCapFont(f));
+    fontList.appendChild(b);
+  });
+  document.body.appendChild(fontList); // floats over everything, like fmtList/texList
+  $("fontSelect").addEventListener("click", (e) => {
+    e.stopPropagation();
+    const sel = $("fontSelect");
+    if (!fontList.hidden) { fontList.hidden = true; sel.classList.remove("open"); return; }
+    Object.keys(FONT_DEFS).forEach(ensureFont); // rows preview themselves in their own face
+    fontList.hidden = false; sel.classList.add("open");
+    const r = sel.getBoundingClientRect();
+    fontList.style.left = r.left + "px";
+    fontList.style.width = Math.max(r.width, 190) + "px";
+    fontList.style.top = (r.bottom + 6) + "px";
+  });
+  document.addEventListener("click", (e) => {
+    if (!fontList.hidden && !fontList.contains(e.target)) {
+      fontList.hidden = true; $("fontSelect").classList.remove("open");
+    }
+  });
+
+  // ---- the looks gallery lives under the canvas on mobile, inside the
+  // panel's Looks tab in studio — one DOM node, reparented on breakpoint change
+  function placeLooks() {
+    const host = isStudio() ? $("looksHost") : $("looksDock");
+    if (host && $("looksStrip").parentElement !== host) host.appendChild($("looksStrip"));
+  }
   $("fmtSelect").addEventListener("click", (e) => {
     e.stopPropagation();
     const list = $("fmtList"), sel = $("fmtSelect");
@@ -1830,17 +1977,17 @@
     { name: "paper",     fg: "#1C1917", base: "#ffffff", bg: "#F5F0E6", out: "#1C1917", tex: "topo", ink: "stamp" },
     // purposeful looks — these arrive fully dressed: caption + logo included
     { name: "kopitiam", fg: "#3B2A1A", base: "#FFF6E5", bg: "#E0A958", out: "#3B2A1A", tex: "dots", ink: "stamp", cap: "MENU", logo: "☕" },
-    { name: "makan",    fg: "#5C1010", base: "#FFF3E0", bg: "#EF5350", out: "#5C1010", tex: "durians", cap: "MAKAN TIME", logo: "🍜" },
+    { name: "makan",    fg: "#5C1010", base: "#FFF3E0", bg: "#EF5350", out: "#5C1010", tex: "durians", cap: "MAKAN TIME", logo: "🍜", font: "Caveat" },
     { name: "pay", label: "Pay Here", fg: "#3D0A28", base: "#FFE9F2", bg: "#F06292", out: "#3D0A28", tex: "crosses", corner: "square", dot: "square", cap: "PAY HERE", logo: "💳" },
     { name: "wifi", label: "Wi-Fi", fg: "#0B3A53", base: "#E8F6FF", bg: "#38BDF8", out: "#0B3A53", tex: "topo", corner: "dot", dot: "dots", cap: "FREE WI-FI", logo: "📶" },
-    { name: "wedding",  fg: "#5C4033", base: "#FFFBF5", bg: "#EBD9CD", out: "#5C4033", tex: "leaves", corner: "dot", dot: "dots", cap: "SAVE THE DATE", logo: "💍" },
+    { name: "wedding",  fg: "#5C4033", base: "#FFFBF5", bg: "#EBD9CD", out: "#5C4033", tex: "leaves", corner: "dot", dot: "dots", cap: "SAVE THE DATE", logo: "💍", font: "Playfair Display" },
     { name: "music", label: "Play Me", fg: "#2D1B69", base: "#EEF0FF", bg: "#1E1B4B", out: "#A5B4FC", capc: "#C7D2FE", tex: "hex", corner: "dot", dot: "dots", cap: "PLAY ME", logo: "🎵" },
-    { name: "receipt",  fg: "#1C1917", base: "#ffffff", bg: "#EDEAE2", out: "#1C1917", tex: "stripes", ink: "stamp", corner: "square", dot: "square", cap: "THANK YOU" },
-    { name: "neon",     fg: "#052E16", base: "#D9FFE0", bg: "#0A0F0A", out: "#4ADE80", capc: "#4ADE80", tex: "grid", ink: "brush", corner: "square", cap: "ENTER", logo: "⚡" },
+    { name: "receipt",  fg: "#1C1917", base: "#ffffff", bg: "#EDEAE2", out: "#1C1917", tex: "stripes", ink: "stamp", corner: "square", dot: "square", cap: "THANK YOU", font: "Space Mono" },
+    { name: "neon",     fg: "#052E16", base: "#D9FFE0", bg: "#0A0F0A", out: "#4ADE80", capc: "#4ADE80", tex: "grid", ink: "brush", corner: "square", cap: "ENTER", logo: "⚡", font: "Bebas Neue" },
   ];
-  // smart takeover: a look dresses the caption/logo only while the user hasn't
-  // set their own — one custom edit and looks become visuals-only
-  const custom = { caption: false, logo: false };
+  // smart takeover: a look dresses the caption/font/logo only while the user
+  // hasn't set their own — one custom edit and looks become visuals-only
+  const custom = { caption: false, capFont: false, logo: false };
   function lookState(t) { // pure state mutation — safe at boot, before UI sync
     state.fg = t.fg; state.base = t.base; state.bg = t.bg; state.outline = t.out;
     state.capColor = t.capc || t.fg;
@@ -1849,11 +1996,15 @@
     state.dotType = t.dot || "rounded";
     state.texture = t.tex;
     if (!custom.caption) state.caption = t.cap !== undefined ? t.cap : "SCAN ME";
+    if (!custom.capFont) state.capFont = t.font || "Urbanist";
     if (!custom.logo) state.logo = t.logo ? emojiLogo(t.logo) : undefined;
   }
   function applyLook(t) {
     lookState(t);
     $("caption").value = state.caption;
+    $("tbCaption").value = state.caption;
+    $("fontSelLabel").textContent = state.capFont;
+    ensureFont(state.capFont).then(() => drawPreview()); // caption re-renders when the face arrives
     if (state.logo) $("logoPrev").innerHTML = `<img src="${state.logo}" alt="logo" />`;
     else $("logoPrev").textContent = "—";
     document.querySelectorAll("#inkPresets .preset").forEach(b =>
@@ -2366,6 +2517,12 @@
   syncChips();
   syncFmtSelect();
   syncGalleryUI();
+  placeLooks(); // gallery into the panel tab (studio) or under the canvas (mobile)
+  $("tbCaption").value = state.caption;
+  $("fontSelLabel").textContent = state.capFont;
+  fontList.querySelectorAll(".fmt-row").forEach(x =>
+    x.classList.toggle("active", x.dataset.font === state.capFont));
+  if (state.capFont !== "Urbanist") ensureFont(state.capFont).then(() => drawPreview());
   openSheet("content"); // land with the Content card open on every device
   drawPreview();
   queueQr();

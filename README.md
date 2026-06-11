@@ -37,9 +37,16 @@ Signature touches:
   language; error correction bumps to H automatically.
 - **The page is the canvas** — the design's background *is* the page background; the chrome
   flips light/dark from its luminance. The exported file reproduces it 1:1.
-- **Studio layout** (≥1100px) — Canva-style: design card docked left, canvas on the right
-  with aspect-ratio chips (Square / Phone / A4 / Story) above it; the canvas reshapes live
-  to the chosen format and the looks gallery stays browsable while editing.
+- **Studio layout** (≥1100px) — full Canva anatomy: a vertical icon rail (Content / Looks /
+  Style / Artboard / Export) plus a full-height design panel fill the left side; the whole
+  right side is the editor — a horizontal bar (caption text, font, color, artboard size
+  chips) over the live canvas. The canvas reshapes to the chosen format; non-square gets a
+  dashed file-bounds frame. The looks gallery lives in the panel's Looks tab (one DOM node,
+  reparented across the 1100px breakpoint).
+- **Caption fonts** — five curated faces (Urbanist, Playfair Display, Caveat, Bebas Neue,
+  Space Mono), lazy-loaded from Google Fonts on first use; dressed looks pick their own
+  (Wedding→Playfair, Receipt→Space Mono, Neon→Bebas, Makan→Caveat). `font=` query param,
+  hash key `q`.
 
 ## Design system
 
