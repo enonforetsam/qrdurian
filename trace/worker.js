@@ -90,6 +90,11 @@ function landingPage() {
     <h2>Scanned a tag?</h2>
     <p class="muted">You'll see the orchard and harvest details instantly. A green page means
     a fresh, verified fruit. A red page means the tag is expired — be careful.</p>
+  </div>
+  <div class="card">
+    <h2>Growers directory</h2>
+    <p class="muted">Browse registered orchards across Malaysia.</p>
+    <a class="btn ghost" href="/growers">Browse growers</a>
   </div>`);
 }
 
@@ -103,6 +108,10 @@ function registerPage(err = "") {
     <label>Orchard name *</label><input name="orchard" required maxlength="100">
     <label>District</label><input name="district" maxlength="80" placeholder="e.g. Balik Pulau">
     <label>State</label><select name="state">${STATES.map((s) => `<option>${s}</option>`).join("")}</select>
+    <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:14px;margin-top:16px">
+      <input type="checkbox" name="directory" value="1" checked style="width:auto">
+      List my orchard in the public <a href="/growers" target="_blank">growers directory</a>
+    </label>
     <button class="btn" type="submit">Create my grower page</button>
     <p class="muted">You'll get a private link — bookmark it, it's your login.</p>
   </form>`);
@@ -203,10 +212,11 @@ export default {
         if (!name || !phone || !orchard) return registerPage("Please fill in all required fields.");
         const token = crypto.randomUUID().replace(/-/g, "") + shortId(8);
         await DB.prepare(
-          "INSERT INTO farmers (token,name,phone,orchard,district,state,created_at) VALUES (?,?,?,?,?,?,?)")
+          "INSERT INTO farmers (token,name,phone,orchard,district,state,created_at,in_directory) VALUES (?,?,?,?,?,?,?,?)")
           .bind(token, name, phone, orchard,
             String(f.get("district") || "").slice(0, 80).trim(),
-            String(f.get("state") || "Penang").slice(0, 40), Date.now()).run();
+            String(f.get("state") || "Penang").slice(0, 40), Date.now(),
+            f.get("directory") === "1" ? 1 : 0).run();
         return Response.redirect(`${origin}/farm/${token}?new=1`, 303);
       }
 
@@ -277,6 +287,29 @@ export default {
         return new Response(obj.body, {
           headers: { "Content-Type": obj.httpMetadata?.contentType || "image/jpeg", "Cache-Control": "public, max-age=86400" },
         });
+      }
+
+      if (p === "/growers") {
+        const sel = url.searchParams.get("state") || "";
+        const q = sel && STATES.includes(sel)
+          ? DB.prepare(`SELECT f.name, f.orchard, f.district, f.state, f.verified, COUNT(b.id) nb
+              FROM farmers f LEFT JOIN batches b ON b.farmer_id=f.id
+              WHERE f.in_directory=1 AND f.state=? GROUP BY f.id ORDER BY f.verified DESC, nb DESC`).bind(sel)
+          : DB.prepare(`SELECT f.name, f.orchard, f.district, f.state, f.verified, COUNT(b.id) nb
+              FROM farmers f LEFT JOIN batches b ON b.farmer_id=f.id
+              WHERE f.in_directory=1 GROUP BY f.id ORDER BY f.verified DESC, nb DESC`);
+        const growers = (await q.all()).results;
+        const chips = ["", ...STATES].map((s) =>
+          `<a class="btn ${s === sel ? "" : "ghost"}" style="padding:7px 13px;font-size:13px;margin:4px 4px 0 0" href="/growers${s ? "?state=" + encodeURIComponent(s) : ""}">${s || "All"}</a>`).join("");
+        const rows = growers.map((g) => `
+          <div class="kv"><span><b>${esc(g.orchard)}</b><br><span class="muted">${esc(g.name)} · ${esc([g.district, g.state].filter(Boolean).join(", "))}</span></span>
+          <span style="text-align:right">${g.verified ? '<span class="badge">✓ verified</span><br>' : ""}<span class="muted">${g.nb} batch${g.nb === 1 ? "" : "es"}</span></span></div>`).join("");
+        return page("Growers directory", `
+          <h1>Growers directory</h1>
+          <p class="muted">Orchards registered with qrdurian trace. ✓ means we've confirmed the grower's identity.</p>
+          <div>${chips}</div>
+          <div class="card">${rows || `<p class="muted">No growers listed${sel ? " in " + esc(sel) : ""} yet — <a href="/register">be the first</a>.</p>`}</div>
+          <a class="btn" href="/register">Register my orchard</a>`);
       }
 
       if (p === "/admin") {
