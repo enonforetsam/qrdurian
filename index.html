@@ -1143,7 +1143,45 @@
   let urlTimer = null;
   function syncURL() {
     clearTimeout(urlTimer);
-    urlTimer = setTimeout(() => history.replaceState(null, "", "#d=" + encodeDesign()), 300);
+    urlTimer = setTimeout(() => history.replaceState(null, "", location.pathname + "#d=" + encodeDesign()), 300);
+  }
+
+  // readable query-param API — ?data=...&theme=matcha&ink=stamp (see API.md)
+  function applyQueryParams() {
+    const q = new URLSearchParams(location.search);
+    if (![...q.keys()].length) return false;
+    let any = false;
+    const hex = (v) => {
+      v = (v || "").replace(/^#/, "");
+      return /^[0-9a-fA-F]{6}$/.test(v) ? "#" + v.toLowerCase() : null;
+    };
+    const set = (field, v) => {
+      if (v !== null && v !== undefined && SHARE_FIELDS[field].ok(v)) { state[field] = v; any = true; }
+    };
+    const themeName = (q.get("theme") || "").toLowerCase();
+    const th = THEMES.find((t) => t.name === themeName);
+    if (th) {
+      state.fg = th.fg; state.base = th.base; state.bg = th.bg;
+      state.outline = th.out; state.capColor = th.fg;
+      state.texture = th.tex; state.inkMood = th.ink || "press";
+      any = true;
+    }
+    set("data", q.get("data") || q.get("url"));
+    if (q.get("caption") !== null) set("caption", q.get("caption"));
+    set("fg", hex(q.get("fg")));
+    set("base", hex(q.get("base")));
+    set("bg", hex(q.get("bg")));
+    set("outline", hex(q.get("outline")));
+    set("capColor", hex(q.get("capcolor")));
+    if (q.get("outlinew") !== null) set("outlineW", parseInt(q.get("outlinew"), 10));
+    if (q.get("margin") !== null) set("margin", parseInt(q.get("margin"), 10));
+    const corner = { rounded: "extra-rounded", "extra-rounded": "extra-rounded", circle: "dot", dot: "dot", square: "square" }[q.get("corner")];
+    if (corner) set("cornerType", corner);
+    if (q.get("scenebg")) set("sceneBg", q.get("scenebg"));
+    if (q.get("format")) set("format", q.get("format"));
+    if (q.get("texture")) set("texture", q.get("texture"));
+    if (q.get("ink")) set("inkMood", q.get("ink"));
+    return any;
   }
 
   // update(): qrChanged = the QR module image itself needs re-rendering
@@ -1446,18 +1484,18 @@
 
   // shuffle: curated themes only — every roll looks good
   const THEMES = [
-    { fg: "#18181b", base: "#ffffff", bg: "#FFE14D", out: "#18181b", tex: "waves" },    // durian classic
-    { fg: "#163300", base: "#E8F5D0", bg: "#9FE870", out: "#163300", tex: "leaves" },   // matcha
-    { fg: "#163300", base: "#9FE870", bg: "#0B1F00", out: "#9FE870", tex: "topo" },     // midnight grove
-    { fg: "#0B2942", base: "#ffffff", bg: "#8ED6F0", out: "#0B2942", tex: "waves" },    // ocean
-    { fg: "#4A0E2E", base: "#FFE3EE", bg: "#EC4899", out: "#4A0E2E", tex: "dots" },     // berry
-    { fg: "#5A1C00", base: "#FFF3E0", bg: "#F97316", out: "#5A1C00", tex: "stripes" },  // tangerine
-    { fg: "#101113", base: "#ffffff", bg: "#E6E6E3", out: "#101113", tex: "grid", ink: "stamp" },  // studio mono
-    { fg: "#2E1065", base: "#F3E8FF", bg: "#A78BFA", out: "#2E1065", tex: "hex" },                 // lavender
-    { fg: "#0C4A6E", base: "#ffffff", bg: "#BAE6FD", out: "#0C4A6E", tex: "crosses" },             // sky
-    { fg: "#4C1D95", base: "#FFF7E6", bg: "#FDBA74", out: "#4C1D95", tex: "spikes", ink: "brush" },// sunset
-    { fg: "#064E3B", base: "#ECFDF5", bg: "#6EE7B7", out: "#064E3B", tex: "dots" },                // mint
-    { fg: "#1C1917", base: "#ffffff", bg: "#F5F0E6", out: "#1C1917", tex: "topo", ink: "stamp" },  // paper
+    { name: "durian",    fg: "#18181b", base: "#ffffff", bg: "#FFE14D", out: "#18181b", tex: "waves" },
+    { name: "matcha",    fg: "#163300", base: "#E8F5D0", bg: "#9FE870", out: "#163300", tex: "leaves" },
+    { name: "midnight",  fg: "#163300", base: "#9FE870", bg: "#0B1F00", out: "#9FE870", tex: "topo" },
+    { name: "ocean",     fg: "#0B2942", base: "#ffffff", bg: "#8ED6F0", out: "#0B2942", tex: "waves" },
+    { name: "berry",     fg: "#4A0E2E", base: "#FFE3EE", bg: "#EC4899", out: "#4A0E2E", tex: "dots" },
+    { name: "tangerine", fg: "#5A1C00", base: "#FFF3E0", bg: "#F97316", out: "#5A1C00", tex: "stripes" },
+    { name: "mono",      fg: "#101113", base: "#ffffff", bg: "#E6E6E3", out: "#101113", tex: "grid", ink: "stamp" },
+    { name: "lavender",  fg: "#2E1065", base: "#F3E8FF", bg: "#A78BFA", out: "#2E1065", tex: "hex" },
+    { name: "sky",       fg: "#0C4A6E", base: "#ffffff", bg: "#BAE6FD", out: "#0C4A6E", tex: "crosses" },
+    { name: "sunset",    fg: "#4C1D95", base: "#FFF7E6", bg: "#FDBA74", out: "#4C1D95", tex: "spikes", ink: "brush" },
+    { name: "mint",      fg: "#064E3B", base: "#ECFDF5", bg: "#6EE7B7", out: "#064E3B", tex: "dots" },
+    { name: "paper",     fg: "#1C1917", base: "#ffffff", bg: "#F5F0E6", out: "#1C1917", tex: "topo", ink: "stamp" },
   ];
   let lastTheme = -1;
   $("shuffleBtn").addEventListener("click", () => {
@@ -1693,8 +1731,11 @@
 
   // ================= Boot =================
   lucide.createIcons();
-  // arriving via a shared link? hydrate the design and every control from the hash
-  if (location.hash.startsWith("#d=") && decodeDesign(location.hash.slice(3))) {
+  // arriving via a shared link (#d=) or the query-param API? hydrate everything
+  const booted =
+    (location.hash.startsWith("#d=") && decodeDesign(location.hash.slice(3))) ||
+    applyQueryParams();
+  if (booted) {
     $("content").value = state.data;
     $("caption").value = state.caption;
     $("margin").value = state.margin; $("marginVal").textContent = state.margin;

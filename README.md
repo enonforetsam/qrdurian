@@ -72,6 +72,17 @@ Render pipeline (PNG): `qr-code-styling` renders modules on transparency → `in
 → `drawScene()` composes background, texture pattern, white card, outline, ink QR, caption
 → `toBlob` download. Share uses the same pipeline via the Web Share API.
 
+## API & AI access
+
+A qrdurian design is fully described by its URL — which makes the URL the API:
+
+- **Query params** (human/AI-friendly): `qrdurian.com/?data=<content>&theme=matcha&ink=stamp&caption=SCAN%20ME`
+- **Hash format** (compact, what Share → Link produces): `qrdurian.com/#d=<base64url JSON>`
+- **MCP server** ([`mcp/`](mcp/)): one `design_qr` tool so Claude & friends can create designs natively
+- **[`llms.txt`](llms.txt)**: teaches any AI assistant to construct design links unaided
+
+Full reference: **[API.md](API.md)**
+
 ## Repo files
 
 | File | Purpose |

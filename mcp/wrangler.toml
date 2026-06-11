@@ -1,0 +1,6 @@
+name = "qrdurian-mcp"
+main = "worker.js"
+compatibility_date = "2026-06-01"
+
+# Optional custom domain (after first deploy):
+# routes = [{ pattern = "mcp.qrdurian.com", custom_domain = true }]
