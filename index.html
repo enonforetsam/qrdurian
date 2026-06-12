@@ -569,7 +569,7 @@
     }
 
     /* all studio-only elements hidden by default */
-    .looks-sidebar { display: none; }
+    .looks-rail { display: none; }
     .edit-bar { display: none; }
 
     @media (min-width: 1100px) {
@@ -597,56 +597,30 @@
       .fmt-chips { display: flex; gap: 2px; flex: 0 0 auto; }
       .bottom-nav { display: none; }
 
-      /* ---- LEFT SIDEBAR: looks gallery, full height ---- */
-      .looks-sidebar {
+      /* ---- LOOKS RAIL: the palettes run across the very bottom of the screen ---- */
+      .looks-rail {
         display: block;
-        position: fixed; top: 0; left: 0; bottom: 0; width: 200px; z-index: 60;
-        background: var(--panel); border-right: 1px solid var(--border);
-        overflow-y: auto; padding: 10px 12px 14px;
-        scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+        background: var(--panel); border-top: 1px solid var(--border);
+        padding: 10px 18px 8px;
+        overflow-x: auto; scrollbar-width: none;
       }
-      /* horizontal nav at the top of the sidebar — picks which shelf shows */
-      .sb-tabs {
-        display: flex; gap: 3px;
-        position: sticky; top: 0; z-index: 2;
-        background: var(--panel); padding: 4px 0 10px;
-      }
-      .sb-tab {
-        flex: 1; border: none; cursor: pointer;
-        background: var(--panel-2); color: var(--muted);
-        font-family: "Urbanist", sans-serif; font-weight: 700; font-size: 11.5px;
-        padding: 8px 0; border-radius: 9px;
-        transition: background .15s, color .15s;
-      }
-      .sb-tab:first-child { border-radius: 9px 3px 3px 9px; }
-      .sb-tab:last-child { border-radius: 3px 9px 9px 3px; }
-      .sb-tab.active { background: #276A2A; color: #ffffff; }
-      /* the tab filters the grid */
-      .looks-sidebar[data-tab="classic"] .look[data-group="dressed"] { display: none; }
-      .looks-sidebar[data-tab="dressed"] .look[data-group="classic"] { display: none; }
-      /* the looksStrip inside the sidebar switches from flex-row to 2-col grid */
-      .looks-sidebar .looks {
-        display: grid !important; grid-template-columns: 1fr 1fr; gap: 10px;
-        overflow: visible; padding: 0; max-width: none;
+      .looks-rail::-webkit-scrollbar { display: none; }
+      .looks-rail .looks {
+        display: flex; flex-wrap: nowrap; gap: 10px; align-items: flex-start;
+        width: max-content; max-width: none; padding: 0; overflow: visible;
         opacity: 1 !important; pointer-events: auto !important;
       }
-      .looks-sidebar .look { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 4px; }
-      .looks-sidebar .look-chip {
-        display: block; width: 100%; aspect-ratio: 1;
-        border-radius: 14px; overflow: hidden;
-      }
-      .looks-sidebar .look-chip canvas { display: block; width: 100% !important; height: 100% !important; }
-      .looks-sidebar .look-name { font-size: 9px; }
 
-      /* ---- CANVAS ZONE: right of sidebar, above the bar ---- */
-      main { padding-left: 200px; padding-right: 0; padding-top: 16px; padding-bottom: 88px; }
+      /* ---- CANVAS ZONE: full width, above the bar + rail ---- */
+      main { padding: 16px 24px 180px; }
       header { display: none; } /* the bar carries the brand now */
 
-      /* ---- THE BAR: one floating strip along the bottom, holds everything ---- */
+      /* ---- THE BAR: one floating strip, riding just above the rail ---- */
       .edit-bar {
         display: flex; align-items: center; gap: 8px;
-        position: fixed; bottom: 16px;
-        left: calc(200px + 24px); right: 24px;
+        position: fixed; bottom: 104px; /* JS refines from the rail's real height */
+        left: 24px; right: 24px;
         background: var(--panel); border: 1px solid var(--border);
         border-radius: 16px; padding: 8px 14px;
         box-shadow: 0 4px 20px rgba(0,0,0,.10), 0 1px 4px rgba(0,0,0,.06);
@@ -854,15 +828,6 @@
       </div>
     </section>
 
-    <!-- Studio left sidebar: looks gallery (≥1100px only) -->
-    <aside class="looks-sidebar" id="looksSidebar" data-tab="classic">
-      <div class="sb-tabs" id="sbTabs">
-        <button class="sb-tab active" data-tab="classic">Classic</button>
-        <button class="sb-tab" data-tab="dressed">Dressed</button>
-      </div>
-      <div class="looks-sidebar-inner" id="looksSidebarInner"></div>
-    </aside>
-
     <!-- Artboard -->
     <section class="preview">
       <div class="artboard-wrap" id="artboardWrap">
@@ -893,6 +858,9 @@
       <div class="fmt-chips" id="fmtChips" aria-label="Canvas size"></div>
       <button class="stb-export" data-nav="export" aria-label="Export"><i data-lucide="download"></i> Export</button>
     </div>
+
+    <!-- Studio looks rail: the palettes glide across the bottom, under the bar -->
+    <div class="looks-rail" id="looksRail"></div>
   </main>
 
   <div class="sheet-backdrop" id="sheetBackdrop"></div>
@@ -1385,8 +1353,10 @@
     const fmt = studio ? FORMATS[state.format] : { w: 1, h: 1 };
     const wrap = $("artboardWrap");
     const desktop = window.innerWidth > 880;
-    // the floating bottom bar reserves the bottom strip of the studio canvas zone
-    const editBarReserve = studio ? (($("editBar") && $("editBar").offsetHeight) || 48) + 28 : 0;
+    // bar + looks rail stack along the bottom of the studio canvas zone
+    const railH = studio ? $("looksRail").offsetHeight : 0;
+    if (studio) $("editBar").style.bottom = (railH + 12) + "px"; // the bar rides the rail
+    const editBarReserve = studio ? ($("editBar").offsetHeight || 48) + railH + 40 : 0;
     const wrapW = Math.min(wrap.clientWidth || wrap.parentElement.clientWidth, studio ? 680 : desktop ? 580 : 440);
     // static: always leave room below for a sheet, so the QR never moves
     // must match the cards' CSS max-height — including desktop + short-landscape overrides
@@ -1534,8 +1504,8 @@
     if (wasMobile && !mobile && !openPanel && !isStudio()) openSheet("content"); // mid-desktop keeps a card open
     if (!wasStudio && isStudio() && openPanel) closeSheet(); // crossing into studio: start clean
     if (wasStudio && !isStudio()) {
-      // leaving studio: the popover anchoring set inline left/top/bottom — CSS owns them again
-      [$("controlsCard"), $("exportSheet")].forEach((c) => {
+      // leaving studio: inline anchors (popovers, bar) hand back to CSS
+      [$("controlsCard"), $("exportSheet"), $("editBar")].forEach((c) => {
         c.style.left = ""; c.style.top = ""; c.style.bottom = "";
       });
     }
@@ -2059,21 +2029,9 @@
   // ---- the looks gallery lives under the canvas on mobile, inside the
   // panel's Looks tab in studio — one DOM node, reparented on breakpoint change
   function placeLooks() {
-    if (isStudio()) {
-      const host = $("looksSidebarInner");
-      if (host && $("looksStrip").parentElement !== host) host.appendChild($("looksStrip"));
-    } else {
-      const host = $("looksDock");
-      if (host && $("looksStrip").parentElement !== host) host.appendChild($("looksStrip"));
-    }
+    const host = isStudio() ? $("looksRail") : $("looksDock");
+    if (host && $("looksStrip").parentElement !== host) host.appendChild($("looksStrip"));
   }
-  // sidebar shelves: Classic palettes / Dressed designs
-  document.querySelectorAll("#sbTabs .sb-tab").forEach((b) => {
-    b.addEventListener("click", () => {
-      $("looksSidebar").dataset.tab = b.dataset.tab;
-      document.querySelectorAll("#sbTabs .sb-tab").forEach((x) => x.classList.toggle("active", x === b));
-    });
-  });
   $("fmtSelect").addEventListener("click", (e) => {
     e.stopPropagation();
     const list = $("fmtList"), sel = $("fmtSelect");
@@ -2280,7 +2238,6 @@
     const b = document.createElement("button");
     b.className = "look" + (t.name === "durian" ? " active" : "");
     b.dataset.theme = t.name;
-    b.dataset.group = t.cap !== undefined ? "dressed" : "classic"; // sidebar shelf
     const lbl = t.label || t.name;
     b.setAttribute("aria-label", lbl + " look");
     const chip = document.createElement("span");
