@@ -602,9 +602,28 @@
         display: block;
         position: fixed; top: 0; left: 0; bottom: 0; width: 200px; z-index: 60;
         background: var(--panel); border-right: 1px solid var(--border);
-        overflow-y: auto; padding: 14px 12px;
+        overflow-y: auto; padding: 10px 12px 14px;
         scrollbar-width: thin; scrollbar-color: var(--border) transparent;
       }
+      /* horizontal nav at the top of the sidebar — picks which shelf shows */
+      .sb-tabs {
+        display: flex; gap: 3px;
+        position: sticky; top: 0; z-index: 2;
+        background: var(--panel); padding: 4px 0 10px;
+      }
+      .sb-tab {
+        flex: 1; border: none; cursor: pointer;
+        background: var(--panel-2); color: var(--muted);
+        font-family: "Urbanist", sans-serif; font-weight: 700; font-size: 11.5px;
+        padding: 8px 0; border-radius: 9px;
+        transition: background .15s, color .15s;
+      }
+      .sb-tab:first-child { border-radius: 9px 3px 3px 9px; }
+      .sb-tab:last-child { border-radius: 3px 9px 9px 3px; }
+      .sb-tab.active { background: #276A2A; color: #ffffff; }
+      /* the tab filters the grid */
+      .looks-sidebar[data-tab="classic"] .look[data-group="dressed"] { display: none; }
+      .looks-sidebar[data-tab="dressed"] .look[data-group="classic"] { display: none; }
       /* the looksStrip inside the sidebar switches from flex-row to 2-col grid */
       .looks-sidebar .looks {
         display: grid !important; grid-template-columns: 1fr 1fr; gap: 10px;
@@ -836,7 +855,11 @@
     </section>
 
     <!-- Studio left sidebar: looks gallery (≥1100px only) -->
-    <aside class="looks-sidebar" id="looksSidebar">
+    <aside class="looks-sidebar" id="looksSidebar" data-tab="classic">
+      <div class="sb-tabs" id="sbTabs">
+        <button class="sb-tab active" data-tab="classic">Classic</button>
+        <button class="sb-tab" data-tab="dressed">Dressed</button>
+      </div>
       <div class="looks-sidebar-inner" id="looksSidebarInner"></div>
     </aside>
 
@@ -2044,6 +2067,13 @@
       if (host && $("looksStrip").parentElement !== host) host.appendChild($("looksStrip"));
     }
   }
+  // sidebar shelves: Classic palettes / Dressed designs
+  document.querySelectorAll("#sbTabs .sb-tab").forEach((b) => {
+    b.addEventListener("click", () => {
+      $("looksSidebar").dataset.tab = b.dataset.tab;
+      document.querySelectorAll("#sbTabs .sb-tab").forEach((x) => x.classList.toggle("active", x === b));
+    });
+  });
   $("fmtSelect").addEventListener("click", (e) => {
     e.stopPropagation();
     const list = $("fmtList"), sel = $("fmtSelect");
@@ -2250,6 +2280,7 @@
     const b = document.createElement("button");
     b.className = "look" + (t.name === "durian" ? " active" : "");
     b.dataset.theme = t.name;
+    b.dataset.group = t.cap !== undefined ? "dressed" : "classic"; // sidebar shelf
     const lbl = t.label || t.name;
     b.setAttribute("aria-label", lbl + " look");
     const chip = document.createElement("span");
