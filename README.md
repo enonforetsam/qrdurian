@@ -53,6 +53,13 @@ Signature touches:
   becomes selection-aware (edits the picked item's text/font/color). Exports render items
   via the same `drawScene` — the overlay never ships. Caption removal marks it
   user-customized so looks don't re-add it.
+- **Multi-code artboards** — "Add another QR" (Content card) puts up to 3 codes on one
+  design, sharing the style; `sceneLayout` rows them on wide artboards, stacks on tall
+  (hash key `e`). Click a card to point the Content field at that code, ✕/Delete removes
+  it (the last code stays). Liquid ink + the pet nap while more than one code is on stage.
+- **Studio panel density** — Content / QR style / Artboard stack in the full-height panel
+  with section titles; rail icons smooth-scroll to their section. Looks swaps the whole
+  panel view (`body.looks-tab`).
 
 ## Design system
 

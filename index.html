@@ -550,6 +550,7 @@
        on the left, the whole right side is the editing zone (bar + canvas) ===== */
     .side-rail { display: none; }
     .top-bar { display: none; }
+    .panel-title { display: none; }
     .fmt-chips { display: none; gap: 2px; align-items: center; }
     .fmt-chip {
       border: none; background: transparent; color: var(--text);
@@ -600,6 +601,18 @@
       .top-bar .select { flex: 0 0 auto; width: auto; min-width: 150px; gap: 10px; }
       .tb-sep { width: 1px; align-self: stretch; background: var(--border); margin: 2px 4px; flex: 0 0 auto; }
       .fmt-chips { display: flex; margin-left: auto; }
+      /* all design sections stack in the full-height card — no dead whitespace;
+         the rail scrolls to a section. The looks tab swaps the whole view. */
+      .panel-title {
+        display: block; font-family: "Urbanist", sans-serif; font-weight: 800;
+        font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+        color: var(--muted); margin: 0 0 12px;
+      }
+      body:not(.looks-tab) .card.controls .panel { display: block; }
+      body:not(.looks-tab) .card.controls .panel[data-panel="looks"] { display: none; }
+      body.looks-tab .card.controls .panel { display: none; }
+      body.looks-tab .card.controls .panel[data-panel="looks"] { display: block; }
+      .card.controls .panel + .panel { border-top: 1px solid var(--border-2); margin-top: 22px; padding-top: 20px; }
       /* the looks gallery lives in the panel — a browsable grid, not a strip */
       .card.controls .looks {
         flex-wrap: wrap; justify-content: flex-start; row-gap: 14px;
@@ -673,11 +686,13 @@
       </div>
 
       <div class="panel active" data-panel="content">
+      <div class="panel-title">Content</div>
       <div class="field">
         <label class="lbl" for="content">What should the code open?</label>
         <textarea id="content" placeholder="https://your-link.com" style="min-height:44px;"></textarea>
         <div class="hint">A link, plain text, email, or Wi-Fi details — the code updates live.</div>
-        <div style="display:flex; justify-content:flex-end; margin-top:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:10px;">
+          <button class="mini-btn" id="addQrBtn"><i data-lucide="plus"></i> Add another QR</button>
           <button class="btn primary" id="generateBtn" style="flex:0 0 auto;"><i data-lucide="qr-code"></i> Generate QR</button>
         </div>
         <div class="gen-msg" id="genMsg" hidden>✓ QR Generated Successfully!</div>
@@ -685,6 +700,7 @@
       </div>
 
       <div class="panel" data-panel="style">
+      <div class="panel-title">QR style</div>
       <div class="crow">
         <span class="clabel">Ink</span>
         <div class="mini-presets" id="inkPresets">
@@ -726,6 +742,7 @@
       </div>
 
       <div class="panel" data-panel="scene">
+      <div class="panel-title">Artboard</div>
       <div class="crow">
         <span class="clabel">Background</span>
         <div class="mini-presets" id="bgStylePresets">
@@ -889,7 +906,9 @@
     pos: "center",
     caption: "SCAN ME",
     texts: [], /* free text items: { t, x, y, s, f, c } — x/y relative, s size vs u */
+    extra: [], /* up to 2 more QR contents — a multi-code artboard shares one style */
   };
+  const codes = () => [state.data, ...state.extra];
 
   const swatchSet = ["#FFE14D","#163300","#18181b","#ffffff","#9FE870","#ef4444","#6366f1","#ec4899","#0ea5e9","#f97316"];
 
@@ -916,10 +935,10 @@
   }
 
   // ================= QR rendering (cached image) =================
-  function currentOpts(size, transparentBg = false) {
+  function currentOpts(size, transparentBg = false, data = state.data) {
     return {
       width: size, height: size, type: "canvas",
-      data: state.data || " ",
+      data: data || " ",
       margin: Math.round(state.margin * size / 320),
       qrOptions: { errorCorrectionLevel: state.logo ? "H" : "Q" },
       dotsOptions: { type: state.dotType, color: state.fg },
@@ -931,8 +950,8 @@
     };
   }
 
-  async function qrImageAt(size, transparentBg = false) {
-    const blob = await new QRCodeStyling(currentOpts(size, transparentBg)).getRawData("png");
+  async function qrImageAt(size, transparentBg = false, data = state.data) {
+    const blob = await new QRCodeStyling(currentOpts(size, transparentBg, data)).getRawData("png");
     const img = new Image();
     const url = URL.createObjectURL(blob);
     await new Promise((res, rej) => {
@@ -944,15 +963,15 @@
     return img;
   }
 
-  let qrImg = null, qrToken = 0, qrTimer = null, firstInk = true;
+  let qrImgs = [null], qrToken = 0, qrTimer = null, firstInk = true;
   function queueQr() {
     clearTimeout(qrTimer);
     qrTimer = setTimeout(async () => {
       const t = ++qrToken;
       try {
-        const img = await qrImageAt(1024, true);
+        const imgs = await Promise.all(codes().map((d) => qrImageAt(1024, true, d)));
         if (t === qrToken) {
-          qrImg = inkify(img, 1024);
+          qrImgs = imgs.map((img) => inkify(img, 1024));
           creatureImg = inkify(creatureMask(1024), 1024); // same ink, same mood — same creature
           drawPreview();
           if (firstInk) { firstInk = false; animateGenerate(900); } // the QR is born, not loaded
@@ -1300,26 +1319,41 @@
   }
 
   // single source of truth for where everything sits on the artboard —
-  // clamps the QR so card + caption can never overflow the canvas
+  // clamps the QR group so cards + caption can never overflow the canvas.
+  // Multi-code artboards lay the cards in a row (wide) or a column (tall);
+  // x/y keep pointing at the first card for single-minded callers (pet, poke).
   function sceneLayout(W, H) {
+    const n = 1 + state.extra.length;
     const u = Math.min(W, H);
     const cap = state.caption.trim();
     const capGap = cap ? u * 0.075 : 0;
+    const row = W >= H; // orientation follows the artboard
     // slider maps 0→1 across the range that actually fits this artboard,
     // so every position changes the size and 80% is always "largest possible"
     const t = (state.qrScale - 0.35) / 0.45;
-    const qsMax = Math.min(((H - capGap) / 1.2), W / 1.2) * 0.98;
+    let qsMax = Math.min(((H - capGap) / 1.2), W / 1.2) * 0.98;
+    if (n > 1) { // n cards + 6%-of-card gaps must fit the long axis
+      const span = row ? W : (H - capGap);
+      qsMax = Math.min(qsMax, (span * 0.96) / (1.2 * n + 0.072 * (n - 1)));
+    }
     const qsLo = Math.min(u * 0.32, qsMax);
     const qs = qsLo + t * (qsMax - qsLo);
     const pad = qs * 0.10;
     const cardSize = qs + pad * 2;
-    const x = (W - cardSize) / 2;
-    let y;
-    if (state.pos === "top") y = H * 0.12;
-    else if (state.pos === "bottom") y = H - cardSize - capGap - H * 0.12;
-    else y = (H - cardSize - capGap) / 2;
-    y = Math.max(H * 0.01, Math.min(y, H - cardSize - capGap - H * 0.01));
-    return { u, qs, pad, cardSize, capGap, x, y, cap };
+    const gap = cardSize * 0.06;
+    const groupW = row ? n * cardSize + (n - 1) * gap : cardSize;
+    const groupH = row ? cardSize : n * cardSize + (n - 1) * gap;
+    const gx = (W - groupW) / 2;
+    let gy;
+    if (state.pos === "top") gy = H * 0.12;
+    else if (state.pos === "bottom") gy = H - groupH - capGap - H * 0.12;
+    else gy = (H - groupH - capGap) / 2;
+    gy = Math.max(H * 0.01, Math.min(gy, H - groupH - capGap - H * 0.01));
+    const cards = Array.from({ length: n }, (_, i) => ({
+      x: row ? gx + i * (cardSize + gap) : gx,
+      y: row ? gy : gy + i * (cardSize + gap),
+    }));
+    return { u, qs, pad, cardSize, capGap, x: cards[0].x, y: cards[0].y, cap, cards, gy, groupH };
   }
 
   // paintBg=false for the live preview — the page itself provides the background
@@ -1351,33 +1385,39 @@
       ctx.clearRect(0, 0, W, H);
     }
 
-    const { u, qs, pad, cardSize, capGap, x, y, cap } = sceneLayout(W, H);
-
-    // the one layer: a clean rounded square
-    ctx.save();
-    ctx.fillStyle = cardColor();
-    roundRectPath(ctx, x, y, cardSize, cardSize, cardSize * 0.16);
-    ctx.fill();
-    if (state.outlineW > 0) {
-      const lw = cardSize * 0.0045 * state.outlineW;
-      ctx.strokeStyle = state.outline;
-      ctx.lineWidth = lw;
-      roundRectPath(ctx, x + lw / 2, y + lw / 2, cardSize - lw, cardSize - lw, Math.max(2, cardSize * 0.16 - lw / 2));
-      ctx.stroke();
-    }
-    ctx.restore();
-
-    if (qrImage) {
-      if (liveNow !== null) {
-        drawSpriteLive(ctx, qrImage, x + pad, y + pad, qs, qs * 0.05, liveNow);
-      } else {
-        drawQrRounded(ctx, qrImage, x + pad, y + pad, qs, qs * 0.05,
-          paintBg ? 0 : fx.blur, paintBg ? 1 : fx.alpha);
-      }
-    }
+    const { u, qs, pad, cardSize, capGap, cap, cards, gy, groupH } = sceneLayout(W, H);
+    const imgs = Array.isArray(qrImage) ? qrImage : [qrImage];
 
     const capture = ctx.canvas === canvas; // preview pass → refresh the selection hit rects
-    if (capture) hitRects = { caption: null, texts: [] };
+    if (capture) hitRects = { caption: null, texts: [], qrs: [] };
+
+    cards.forEach((c, i) => {
+      // the one layer per code: a clean rounded square
+      ctx.save();
+      ctx.fillStyle = cardColor();
+      roundRectPath(ctx, c.x, c.y, cardSize, cardSize, cardSize * 0.16);
+      ctx.fill();
+      if (state.outlineW > 0) {
+        const lw = cardSize * 0.0045 * state.outlineW;
+        ctx.strokeStyle = state.outline;
+        ctx.lineWidth = lw;
+        roundRectPath(ctx, c.x + lw / 2, c.y + lw / 2, cardSize - lw, cardSize - lw, Math.max(2, cardSize * 0.16 - lw / 2));
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      const img = imgs[i] || imgs[0];
+      if (img) {
+        if (liveNow !== null && cards.length === 1) {
+          drawSpriteLive(ctx, img, c.x + pad, c.y + pad, qs, qs * 0.05, liveNow);
+        } else {
+          drawQrRounded(ctx, img, c.x + pad, c.y + pad, qs, qs * 0.05,
+            paintBg ? 0 : fx.blur, paintBg ? 1 : fx.alpha);
+        }
+      }
+      if (capture) hitRects.qrs[i] = { x: c.x, y: c.y, w: cardSize, h: cardSize };
+    });
+
     if (cap) {
       ctx.save();
       ctx.fillStyle = state.capColor;
@@ -1388,7 +1428,7 @@
       try { ctx.letterSpacing = `${u * 0.008}px`; } catch (e) {}
       let tw = ctx.measureText(cap).width;
       if (tw > W * 0.92) { fs = Math.max(9, Math.floor(fs * (W * 0.92) / tw)); ctx.font = fontFor(fs); tw = ctx.measureText(cap).width; }
-      const capY = y + cardSize + capGap;
+      const capY = gy + groupH + capGap; // under the whole group, not just card one
       ctx.fillText(cap, W / 2, capY);
       if (capture) hitRects.caption = { x: W / 2 - tw / 2, y: capY - fs, w: tw, h: fs * 1.25 };
       ctx.restore();
@@ -1497,24 +1537,36 @@
   function drawPreview() {
     fitPreview();
     applyPageBg();
-    drawScene(ctx, canvas.width, canvas.height, qrImg, false);
+    drawScene(ctx, canvas.width, canvas.height, qrImgs, false);
     drawSelection();
   }
 
-  // ---- click-to-select: caption + text items get a dashed box and an ✕ handle.
-  // Overlay lives only in drawPreview — exports never see it.
-  let hitRects = { caption: null, texts: [] };
-  let sel = null;    // { kind: "caption" } | { kind: "text", i }
+  // ---- click-to-select: caption, text items and (multi-code) QR cards get a
+  // dashed box and an ✕ handle. Overlay draws after drawScene — never in exports.
+  let hitRects = { caption: null, texts: [], qrs: [] };
+  let sel = null;    // { kind: "caption" } | { kind: "text", i } | { kind: "qr", i }
   let delBtn = null; // ✕ handle hit circle, canvas px
   function selRect() {
     if (!sel) return null;
-    return sel.kind === "caption" ? hitRects.caption : hitRects.texts[sel.i] || null;
+    if (sel.kind === "caption") return hitRects.caption;
+    if (sel.kind === "qr") return hitRects.qrs[sel.i] || null;
+    return hitRects.texts[sel.i] || null;
   }
   function deleteSelection() {
     if (!sel) return;
     if (sel.kind === "caption") {
       state.caption = ""; custom.caption = true; // removed on purpose — looks won't re-add it
       $("caption").value = ""; $("tbCaption").value = "";
+    } else if (sel.kind === "qr") {
+      if (state.extra.length === 0) return; // the last code stays
+      if (sel.i === 0) state.data = state.extra.shift();
+      else state.extra.splice(sel.i - 1, 1);
+      $("content").value = state.data;
+      syncQrBtn();
+      sel = null;
+      syncBarToSelection();
+      update(true); // codes changed — re-ink
+      return;
     } else {
       state.texts.splice(sel.i, 1);
     }
@@ -1573,6 +1625,8 @@
     cornerType: { k: "c", ok: (v) => ["extra-rounded", "dot", "square"].includes(v) },
     dotType: { k: "y", ok: (v) => ["rounded", "dots", "square"].includes(v) },
     capFont: { k: "q", ok: (v) => v in FONT_DEFS },
+    extra:  { k: "e", ok: (v) => Array.isArray(v) && v.length <= 2 &&
+      v.every((s) => typeof s === "string" && s.length <= 2000) },
     texts:  { k: "v", ok: (v) => Array.isArray(v) && v.length <= 8 && v.every((it) =>
       it && typeof it.t === "string" && it.t.length <= 80 &&
       typeof it.x === "number" && it.x >= 0 && it.x <= 1 &&
@@ -1656,7 +1710,22 @@
 
   // ================= Wire controls =================
   $("content").addEventListener("input", (e) => {
-    state.data = e.target.value.trim() || "https://qrdurian.com";
+    const v = e.target.value.trim() || "https://qrdurian.com";
+    if (sel && sel.kind === "qr" && sel.i > 0) state.extra[sel.i - 1] = v;
+    else state.data = v;
+    update(true);
+  });
+  // up to three codes on one artboard — same design, different destinations
+  function syncQrBtn() {
+    $("addQrBtn").hidden = codes().length >= 3;
+  }
+  $("addQrBtn").addEventListener("click", () => {
+    if (codes().length >= 3) return;
+    state.extra.push("https://qrdurian.com");
+    sel = { kind: "qr", i: codes().length - 1 };
+    $("content").value = codes()[sel.i];
+    $("content").select();
+    syncQrBtn();
     update(true);
   });
   // rotating placeholder — shows the range without a tutorial
@@ -2238,7 +2307,8 @@
     const fmt = FORMATS[state.format];
     const realQs = sceneLayout(fmt.w, fmt.h).qs;
     const hiSize = Math.min(4096, Math.max(1024, Math.round(realQs)));
-    const hiRes = inkify(await qrImageAt(hiSize, true), hiSize);
+    const hiRes = await Promise.all(codes().map(async (d) =>
+      inkify(await qrImageAt(hiSize, true, d), hiSize)));
     const texImg = state.texture !== "none" ? textureTileCanvas(state.texture) : null;
     const c = document.createElement("canvas");
     c.width = fmt.w; c.height = fmt.h;
@@ -2352,9 +2422,16 @@
     const isExport = name === "export";
     $("exportSheet").classList.toggle("visible", isExport);
     $("controlsCard").classList.toggle("visible", !isExport);
+    document.body.classList.toggle("looks-tab", name === "looks");
     if (!isExport) {
       document.querySelectorAll("#controlsCard .panel").forEach(p =>
         p.classList.toggle("active", p.dataset.panel === name));
+      // studio stacks all sections — the rail scrolls to the chosen one
+      if (isStudio() && name !== "looks") {
+        const target = $("controlsCard").querySelector(`[data-panel="${name}"]`);
+        if (target) requestAnimationFrame(() =>
+          target.scrollIntoView({ behavior: "smooth", block: "start" }));
+      }
     }
     $("navBack").disabled = name === "content";
     if (!isExport) { $("fmtList").hidden = true; $("fmtSelect").classList.remove("open"); }
@@ -2412,10 +2489,20 @@
     if (!hit && c && px >= c.x - pad && px <= c.x + c.w + pad && py >= c.y - pad && py <= c.y + c.h + pad) {
       hit = { kind: "caption" };
     }
+    // multi-code artboard: tapping a card selects that QR for editing/removal
+    if (!hit && state.extra.length > 0) {
+      for (let i = 0; i < hitRects.qrs.length; i++) {
+        const q = hitRects.qrs[i];
+        if (q && px >= q.x && px <= q.x + q.w && py >= q.y && py <= q.y + q.h) {
+          hit = { kind: "qr", i }; break;
+        }
+      }
+    }
     if (hit) {
       sel = hit; suppressOpen = true;
       live.lastInteract = performance.now(); // keep the liquid asleep while selecting
       syncBarToSelection();
+      if (hit.kind === "qr") $("content").value = codes()[hit.i]; // the Content field edits this code now
       if (hit.kind === "text") {
         const it = state.texts[hit.i];
         dragSel = { i: hit.i, dx: px - it.x * canvas.width, dy: py - it.y * canvas.height };
@@ -2501,26 +2588,30 @@
   let lastFrameT = 0;
   function liveFrame(now) {
     requestAnimationFrame(liveFrame);
-    if (!qrImg) return;
+    if (!qrImgs[0]) return;
     const dt = Math.min(64, now - lastFrameT); lastFrameT = now;
     if (REDUCED_MOTION.matches) {
-      drawScene(ctx, canvas.width, canvas.height, qrImg, false);
+      drawScene(ctx, canvas.width, canvas.height, qrImgs, false);
+      drawSelection();
       return;
     }
-    // energy envelope: still during use, liquid only when idle (or rippling)
+    // energy envelope: still during use, liquid only when idle (or rippling) —
+    // and only single-code artboards breathe (multi stays calm and crisp)
+    const single = state.extra.length === 0;
     const ripplesActive = live.ripples.length > 0;
     const idleLiquid = !openPanel && now - live.lastInteract > 8000;
-    const wantLiquid = ripplesActive || idleLiquid;
+    const wantLiquid = (ripplesActive || idleLiquid) && single;
     const rate = wantLiquid ? (ripplesActive ? 130 : 1600) : 240; // wake slow, ripple fast, settle quick
     live.energy += ((wantLiquid ? 1 : 0) - live.energy) * Math.min(1, dt / rate);
     if (live.energy < 0.01) live.energy = 0;
 
     // fully settled and not melting → render the crisp static path
     if (live.energy === 0 && fx.blur === 0) {
-      drawScene(ctx, canvas.width, canvas.height, qrImg, false);
+      drawScene(ctx, canvas.width, canvas.height, qrImgs, false);
     } else {
-      drawScene(ctx, canvas.width, canvas.height, qrImg, false, null, now);
+      drawScene(ctx, canvas.width, canvas.height, qrImgs, false, null, now);
     }
+    drawSelection(); // the dashed box survives every repaint
     petFrame(now, dt); // the little durian lives on top of the card
   }
   requestAnimationFrame(liveFrame);
@@ -2536,7 +2627,7 @@
   function petFrame(now, dt) {
     if (!creatureImg || REDUCED_MOTION.matches) return;
     if (pet.state === "off") {
-      if (!openPanel && now - live.lastInteract > 12000 && !document.hidden) {
+      if (!openPanel && state.extra.length === 0 && now - live.lastInteract > 12000 && !document.hidden) {
         const L0 = sceneLayout(canvas.width, canvas.height);
         pet.state = "enter"; pet.t0 = now;
         pet.x = L0.x + L0.cardSize * (0.25 + 0.5 * Math.random());
@@ -2690,6 +2781,7 @@
   syncChips();
   syncFmtSelect();
   syncGalleryUI();
+  syncQrBtn(); // a shared multi-code design may already be at the 3-code cap
   placeLooks(); // gallery into the panel tab (studio) or under the canvas (mobile)
   $("tbCaption").value = state.caption;
   $("fontSelLabel").textContent = state.capFont;
