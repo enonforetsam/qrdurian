@@ -319,6 +319,8 @@
   }
   .mini-btn:hover { border-color: var(--muted); }
   .mini-btn.ghost { color: var(--muted); }
+  .mini-btn:disabled { opacity: .45; cursor: default; }
+  .mini-btn:disabled:hover { border-color: var(--border); }
 
   .hint { font-size: 12px; color: var(--muted); margin-top: 9px; line-height: 1.5; }
 
@@ -1737,7 +1739,11 @@
   }
   function syncShorten() {
     const v = $("content").value.trim();
-    $("shortenBtn").hidden = !(/^https?:\/\//i.test(v) && v.length > 35 && !/^https?:\/\/tinyurl\.com\//i.test(v));
+    const b = $("shortenBtn");
+    // visible for any link, so the feature is discoverable; enabled when shortening helps
+    b.hidden = !/^https?:\/\//i.test(v) || /^https?:\/\/tinyurl\.com\//i.test(v);
+    b.disabled = v.length <= 35;
+    b.title = b.disabled ? "Already short — shortening won't help the scan" : "Shorter link = chunkier, easier-to-scan modules";
   }
   $("content").addEventListener("input", (e) => {
     let v = e.target.value.trim() || "https://qrdurian.com";
@@ -3027,6 +3033,7 @@
   syncFmtSelect();
   syncGalleryUI();
   syncQrBtn(); // a shared multi-code design may already be at the 3-code cap
+  syncShorten(); // show the Shorten button state for the boot content
   placeLooks(); // gallery into the panel tab (studio) or under the canvas (mobile)
   $("fontSelLabel").textContent = state.capFont;
   fontList.querySelectorAll(".fmt-row").forEach(x =>
