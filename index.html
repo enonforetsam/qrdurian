@@ -2712,7 +2712,7 @@
     const blob = await new Promise((res) => c.toBlob(res, "image/png"));
     const file = new File([blob], `qrdurian-${state.format}.png`, { type: "image/png" });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try { await navigator.share({ files: [file], title: "QR Durian" }); bumpQrCount(); }
+      try { await navigator.share({ files: [file], title: "QR Durian" }); bumpQrCount("shares"); }
       catch (e) { /* user dismissed the share sheet — not an error */ }
     } else {
       alert("Sharing isn't supported in this browser — use Download instead.");
@@ -2740,7 +2740,7 @@
   $("downloadBtn").addEventListener("click", () =>
     busy($("downloadBtn"), async () => {
       await (fileType === "svg" ? exportSvg() : exportSceneImage(fileType));
-      bumpQrCount();
+      bumpQrCount("downloads");
     })
   );
   $("shareBtn").addEventListener("click", () => busy($("shareBtn"), shareScene));
@@ -3041,8 +3041,8 @@
 
   // ---- all-time QR counter: still RECORDED on the trace worker's D1 (for ourselves),
   // just not displayed anywhere on the page
-  function bumpQrCount() {
-    fetch("https://trace.qrdurian.com/api/count", { method: "POST", keepalive: true }).catch(() => {});
+  function bumpQrCount(kind = "qrs") { // qrs = generates · downloads · shares
+    fetch("https://trace.qrdurian.com/api/count?k=" + kind, { method: "POST", keepalive: true }).catch(() => {});
   }
 
   // trace program promo — temporarily disabled (flip to true to bring it back)

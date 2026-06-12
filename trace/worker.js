@@ -217,21 +217,29 @@ export default {
     const DB = env.DB;
 
     try {
-      // public counter for qrdurian.com ("N QRs inked")
+      // public counters for qrdurian.com — generates ("qrs"), downloads, shares.
+      // POST /api/count?k=<key> bumps one; GET returns them all.
       const CNT_CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Cache-Control": "no-store" };
+      const STAT_KEYS = ["qrs", "downloads", "shares"];
       if (p === "/api/count") {
         if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CNT_CORS });
+        const allStats = async () => {
+          const rows = (await DB.prepare("SELECT k, v FROM stats").all()).results || [];
+          const out = {};
+          for (const key of STAT_KEYS) out[key] = rows.find((r) => r.k === key)?.v ?? 0;
+          return out;
+        };
         if (req.method === "POST") {
+          const k = url.searchParams.get("k");
+          const key = STAT_KEYS.includes(k) ? k : "qrs"; // old clients bump qrs
           const ip = req.headers.get("cf-connecting-ip") || "?";
-          if (rateLimitedCount(ip)) {
-            const row0 = await DB.prepare("SELECT v FROM stats WHERE k='qrs'").first();
-            return Response.json({ qrs: row0?.v ?? 0 }, { headers: CNT_CORS });
+          if (!rateLimitedCount(ip)) {
+            const row = await DB.prepare("UPDATE stats SET v=v+1 WHERE k=? RETURNING v").bind(key).first();
+            if (!row) await DB.prepare("INSERT INTO stats (k, v) VALUES (?, 1)").bind(key).run();
           }
-          const row = await DB.prepare("UPDATE stats SET v=v+1 WHERE k='qrs' RETURNING v").first();
-          return Response.json({ qrs: row?.v ?? 0 }, { headers: CNT_CORS });
+          return Response.json(await allStats(), { headers: CNT_CORS });
         }
-        const row = await DB.prepare("SELECT v FROM stats WHERE k='qrs'").first();
-        return Response.json({ qrs: row?.v ?? 0 }, { headers: CNT_CORS });
+        return Response.json(await allStats(), { headers: CNT_CORS });
       }
 
       // link shortener proxy for qrdurian.com — public shorteners don't send

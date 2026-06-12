@@ -33,3 +33,10 @@ CREATE TABLE IF NOT EXISTS scans (
 
 CREATE INDEX IF NOT EXISTS idx_batches_farmer ON batches(farmer_id);
 CREATE INDEX IF NOT EXISTS idx_scans_batch ON scans(batch_id);
+
+-- qrdurian.com counters (created ad-hoc in prod; documented here)
+-- keys: qrs (generates), downloads, shares
+CREATE TABLE IF NOT EXISTS stats (
+  k TEXT PRIMARY KEY,
+  v INTEGER NOT NULL DEFAULT 0
+);
