@@ -60,7 +60,7 @@ const CSS = `
 
 const DURIAN_SVG = `<svg class="logo" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><path d="M16 4.9L19.39 8.2L24.1 7.85L24.57 12.55L28.41 15.31L25.75 19.22L26.91 23.8L22.36 25.08L20.31 29.34L16 27.4L11.69 29.34L9.64 25.08L5.09 23.8L6.25 19.22L3.59 15.31L7.43 12.55L7.9 7.85L12.61 8.2Z" fill="#9FE870" stroke="#9FE870" stroke-width="2" stroke-linejoin="round"/><path d="M16 6.2 C16 4.4 15.5 3.1 14.4 2.2" fill="none" stroke="#163300" stroke-width="2.4" stroke-linecap="round"/></svg>`;
 
-function page(title, body) {
+function page(title, body, status = 200) {
   return new Response(
     `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -71,7 +71,7 @@ function page(title, body) {
 ${body}
 <p class="muted" style="margin-top:34px">Tags by <a href="${MAIN}">qrdurian.com</a> · origin verification for Malaysian durians</p>
 </div></body></html>`,
-    { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } },
+    { status, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } },
   );
 }
 
@@ -333,7 +333,7 @@ export default {
       const farmMatch = p.match(/^\/farm\/([a-z0-9]{30,50})$/);
       if (farmMatch) {
         const f = await DB.prepare("SELECT * FROM farmers WHERE token=?").bind(farmMatch[1]).first();
-        if (!f) return page("Not found", "<h1>Link not recognised</h1><p>Check your bookmarked grower link, or <a href='/register'>register</a>.</p>");
+        if (!f) return page("Not found", "<h1>Link not recognised</h1><p>Check your bookmarked grower link, or <a href='/register'>register</a>.</p>", 404);
         const batches = (await DB.prepare("SELECT * FROM batches WHERE farmer_id=? ORDER BY created_at DESC").bind(f.id).all()).results;
         return farmPage(f, batches, origin, url.searchParams.get("new") === "1");
       }
@@ -341,11 +341,11 @@ export default {
       if (p === "/api/batch" && req.method === "POST") {
         const f = await req.formData();
         const farmer = await DB.prepare("SELECT * FROM farmers WHERE token=?").bind(String(f.get("token") || "")).first();
-        if (!farmer) return page("Error", "<h1>Invalid grower link</h1>");
+        if (!farmer) return page("Error", "<h1>Invalid grower link</h1>", 404);
         const variety = String(f.get("variety") || "").slice(0, 40);
         const harvest = String(f.get("harvest_date") || "").slice(0, 10);
         if (!VARIETIES.includes(variety) || !/^\d{4}-\d{2}-\d{2}$/.test(harvest)) {
-          return page("Error", "<h1>Missing variety or harvest date</h1>");
+          return page("Error", "<h1>Missing variety or harvest date</h1>", 400);
         }
         const id = shortId(8);
         let hasPhoto = 0;
@@ -365,9 +365,9 @@ export default {
       const batchMatch = p.match(/^\/farm\/([a-z0-9]{30,50})\/batch\/([a-z0-9]{6,12})$/);
       if (batchMatch) {
         const f = await DB.prepare("SELECT * FROM farmers WHERE token=?").bind(batchMatch[1]).first();
-        if (!f) return page("Not found", "<h1>Link not recognised</h1>");
+        if (!f) return page("Not found", "<h1>Link not recognised</h1>", 404);
         const b = await DB.prepare("SELECT * FROM batches WHERE id=? AND farmer_id=?").bind(batchMatch[2], f.id).first();
-        if (!b) return page("Not found", "<h1>Batch not found</h1>");
+        if (!b) return page("Not found", "<h1>Batch not found</h1>", 404);
         return batchPage(f, b, origin);
       }
 
@@ -376,7 +376,7 @@ export default {
         const b = await DB.prepare(
           `SELECT b.*, f.name fname, f.orchard, f.district, f.state, f.verified
            FROM batches b JOIN farmers f ON f.id=b.farmer_id WHERE b.id=?`).bind(traceMatch[1]).first();
-        if (!b) return page("Unknown tag", `<div class="hero bad"><div class="big">❓</div><h1>Unknown tag</h1><p>This QR isn't registered with qrdurian trace.</p></div>`);
+        if (!b) return page("Unknown tag", `<div class="hero bad"><div class="big">❓</div><h1>Unknown tag</h1><p>This QR isn't registered with qrdurian trace.</p></div>`, 404);
         const now = Date.now();
         if (!b.first_scan_at) {
           await DB.prepare("UPDATE batches SET first_scan_at=?, scan_count=scan_count+1 WHERE id=?").bind(now, b.id).run();
@@ -500,9 +500,9 @@ export default {
         return page("Admin", `<h1>Growers</h1><div class="card"><table>${rows || "<tr><td>None yet</td></tr>"}</table></div>`);
       }
 
-      return page("Not found", "<h1>404</h1><p><a href='/'>Home</a></p>");
+      return page("Not found", "<h1>404</h1><p><a href='/'>Home</a></p>", 404);
     } catch (e) {
-      return page("Error", `<h1>Something went wrong</h1><p class="muted">${esc(e.message)}</p>`);
+      return page("Error", `<h1>Something went wrong</h1><p class="muted">${esc(e.message)}</p>`, 500);
     }
   },
 };
