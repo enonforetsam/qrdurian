@@ -2554,7 +2554,9 @@
   // smart takeover: a look dresses the caption/font/logo only while the user
   // hasn't set their own — one custom edit and looks become visuals-only
   const custom = { caption: false, capFont: false, logo: false };
+  let currentLook = "durian"; // last applied look — coarse analytics context only
   function lookState(t) { // pure state mutation — safe at boot, before UI sync
+    currentLook = t.name;
     state.fg = t.fg; state.base = t.base; state.bg = t.bg; state.outline = t.out;
     state.capColor = t.capc || t.fg;
     state.inkMood = t.ink || "press";
@@ -3042,7 +3044,19 @@
   // ---- all-time QR counter: still RECORDED on the trace worker's D1 (for ourselves),
   // just not displayed anywhere on the page
   function bumpQrCount(kind = "qrs") { // qrs = generates · downloads · shares
-    fetch("https://trace.qrdurian.com/api/count?k=" + kind, { method: "POST", keepalive: true }).catch(() => {});
+    // coarse, anonymous context only — design choices, never the QR's content
+    const meta = {
+      fmt: state.format,
+      ftype: kind === "downloads" ? fileType : kind === "shares" ? "png" : "",
+      look: currentLook,
+      ctype: /^https?:\/\//i.test(state.data) ? "url"
+        : /^WIFI:/i.test(state.data) ? "wifi"
+        : /^mailto:/i.test(state.data) ? "mail" : "text",
+      n: codes().length,
+    };
+    fetch("https://trace.qrdurian.com/api/count?k=" + kind, {
+      method: "POST", keepalive: true, body: JSON.stringify(meta), // text/plain → no preflight
+    }).catch(() => {});
   }
 
   // trace program promo — temporarily disabled (flip to true to bring it back)

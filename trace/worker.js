@@ -236,10 +236,59 @@ export default {
           if (!rateLimitedCount(ip)) {
             const row = await DB.prepare("UPDATE stats SET v=v+1 WHERE k=? RETURNING v").bind(key).first();
             if (!row) await DB.prepare("INSERT INTO stats (k, v) VALUES (?, 1)").bind(key).run();
+            // coarse anonymous event row — country + device class + design context.
+            // No IP, no content, no identifiers; failure never blocks the count.
+            try {
+              let meta = {};
+              try { meta = JSON.parse((await req.text()) || "{}"); } catch (e2) {}
+              const ua = req.headers.get("user-agent") || "";
+              const device = /iPad|Tablet/i.test(ua) ? "tablet"
+                : /Mobi|Android|iPhone/i.test(ua) ? "mobile" : "desktop";
+              const country = (req.cf && req.cf.country) || "";
+              const clean = (v, n) => String(v ?? "").slice(0, n);
+              const insertEvent = () => DB.prepare(
+                "INSERT INTO events (at,kind,country,device,fmt,ftype,look,ctype,n) VALUES (?,?,?,?,?,?,?,?,?)")
+                .bind(Date.now(), key, country, device, clean(meta.fmt, 16), clean(meta.ftype, 8),
+                  clean(meta.look, 24), clean(meta.ctype, 8), Math.min(3, Math.max(1, +meta.n || 1))).run();
+              try { await insertEvent(); }
+              catch (e3) { // first event ever: the table creates itself
+                await DB.prepare("CREATE TABLE IF NOT EXISTS events (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, kind TEXT NOT NULL, country TEXT DEFAULT '', device TEXT DEFAULT '', fmt TEXT DEFAULT '', ftype TEXT DEFAULT '', look TEXT DEFAULT '', ctype TEXT DEFAULT '', n INTEGER DEFAULT 1)").run();
+                await insertEvent();
+              }
+            } catch (e4) { /* the counter still counted */ }
           }
           return Response.json(await allStats(), { headers: CNT_CORS });
         }
         return Response.json(await allStats(), { headers: CNT_CORS });
+      }
+
+      // human-readable stats page — open trace.qrdurian.com/stats in a browser
+      if (p === "/stats") {
+        const totals = {};
+        for (const r of (await DB.prepare("SELECT k, v FROM stats").all()).results || []) totals[r.k] = r.v;
+        const since = Date.now() - 30 * 86400e3;
+        const dims = [["country", "Country"], ["device", "Device"], ["fmt", "Canvas"], ["ftype", "File type"], ["look", "Look"], ["ctype", "Content type"]];
+        let tables = "";
+        try {
+          for (const [col, label] of dims) {
+            const rows = (await DB.prepare(
+              `SELECT ${col} AS d, COUNT(*) AS c FROM events WHERE at > ? AND kind = 'downloads' GROUP BY ${col} ORDER BY c DESC LIMIT 10`)
+              .bind(since).all()).results || [];
+            if (!rows.length) continue;
+            tables += `<h2>${label}</h2><div class="card">` +
+              rows.map((r) => `<div class="kv"><span>${(r.d || "—")}</span><b>${r.c}</b></div>`).join("") + "</div>";
+          }
+        } catch (e5) { /* no events table yet */ }
+        return page("qrdurian stats", `
+          <h1>qrdurian stats</h1>
+          <div class="card">
+            <div class="kv"><span>QRs generated</span><b>${totals.qrs ?? 0}</b></div>
+            <div class="kv"><span>Downloads</span><b>${totals.downloads ?? 0}</b></div>
+            <div class="kv"><span>Shares</span><b>${totals.shares ?? 0}</b></div>
+          </div>
+          <p class="muted">Downloads, last 30 days — anonymous & coarse: no IPs, no QR contents, no identifiers.</p>
+          ${tables || '<p class="muted">No detail events yet — they start collecting from the next download.</p>'}
+        `);
       }
 
       // link shortener proxy for qrdurian.com — public shorteners don't send

@@ -40,3 +40,18 @@ CREATE TABLE IF NOT EXISTS stats (
   k TEXT PRIMARY KEY,
   v INTEGER NOT NULL DEFAULT 0
 );
+
+-- anonymous download/share/generate events (coarse: country + device class +
+-- design context; no IPs, no QR contents, no identifiers)
+CREATE TABLE IF NOT EXISTS events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  at INTEGER NOT NULL,
+  kind TEXT NOT NULL,        -- qrs | downloads | shares
+  country TEXT DEFAULT '',   -- from Cloudflare's req.cf
+  device TEXT DEFAULT '',    -- mobile | tablet | desktop (UA class)
+  fmt TEXT DEFAULT '',       -- canvas: square | wallpaper | poster | story
+  ftype TEXT DEFAULT '',     -- png | jpg | svg
+  look TEXT DEFAULT '',      -- last applied look name
+  ctype TEXT DEFAULT '',     -- url | wifi | mail | text
+  n INTEGER DEFAULT 1        -- codes on the artboard
+);
