@@ -322,6 +322,33 @@
   .mini-btn:disabled { opacity: .45; cursor: default; }
   .mini-btn:disabled:hover { border-color: var(--border); }
 
+  /* Content panel: two journeys, two tabs — New link / Existing QR */
+  .ct-tabs { display: flex; gap: 3px; margin-bottom: 14px; }
+  .ct-tab {
+    flex: 1; border: none; cursor: pointer;
+    background: var(--panel-2); color: var(--muted);
+    font-family: "Urbanist", sans-serif; font-weight: 700; font-size: 11.5px;
+    padding: 8px 0; border-radius: 9px;
+    transition: background .15s, color .15s;
+  }
+  .ct-tab:first-child { border-radius: 9px 3px 3px 9px; }
+  .ct-tab:last-child { border-radius: 3px 9px 9px 3px; }
+  .ct-tab.active { background: #276A2A; color: #ffffff; }
+  [data-ctab="link"] .ct-view[data-view="existing"] { display: none; }
+  [data-ctab="existing"] .ct-view[data-view="link"] { display: none; }
+  .ct-upload {
+    width: 100%; display: flex; flex-direction: column; align-items: center; gap: 8px;
+    border: 1.5px dashed var(--border); border-radius: 14px;
+    background: var(--panel-2); color: var(--text); cursor: pointer;
+    padding: 26px 18px; text-align: center; font-family: inherit;
+    transition: border-color .15s, background .15s;
+  }
+  .ct-upload:hover { border-color: var(--accent); background: var(--panel); }
+  .ct-upload svg { width: 26px; height: 26px; color: var(--accent); }
+  .ct-upload-title { font-family: "Urbanist", sans-serif; font-weight: 700; font-size: 14px; }
+  .ct-upload .hint { margin-top: 0; }
+  #shortenRow .mini-btn { padding: 4px 9px; font-size: 12px; margin: 0 2px; }
+
   .hint { font-size: 12px; color: var(--muted); margin-top: 9px; line-height: 1.5; }
 
   /* compact control rows (label left, controls right) */
@@ -760,16 +787,20 @@
         <span class="step" data-step="export"></span>
       </div>
 
-      <div class="panel active" data-panel="content">
+      <div class="panel active" data-panel="content" id="contentPanel" data-ctab="link">
       <div class="panel-title">Content</div>
+      <div class="ct-tabs">
+        <button class="ct-tab active" data-ctab="link">New link</button>
+        <button class="ct-tab" data-ctab="existing">Existing QR</button>
+      </div>
+
+      <div class="ct-view" data-view="link">
       <div class="field">
         <label class="lbl" for="content">What should the code open?</label>
         <textarea id="content" placeholder="https://your-link.com" style="min-height:44px;"></textarea>
         <div class="hint">A link, plain text, email, or Wi-Fi details — the code updates live.</div>
-        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:10px;">
-          <button class="mini-btn" id="beautifyBtn"><i data-lucide="scan-line"></i> Beautify an existing QR</button>
-          <button class="mini-btn" id="shortenBtn" hidden><i data-lucide="link"></i> Shorten link</button>
-          <input type="file" id="qrUpload" accept="image/*" hidden />
+        <div class="hint" id="shortenRow" hidden>
+          ⚡ Long link? <button class="mini-btn" id="shortenBtn"><i data-lucide="link"></i> Shorten it</button> — easier to scan.
         </div>
         <div class="hint" id="contentHint" hidden style="color:var(--accent); font-weight:600;"></div>
         <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:10px;">
@@ -777,6 +808,17 @@
           <button class="btn primary" id="generateBtn" style="flex:0 0 auto;"><i data-lucide="qr-code"></i> Generate QR</button>
         </div>
         <div class="gen-msg" id="genMsg" hidden>✓ QR Generated Successfully!</div>
+      </div>
+      </div>
+
+      <div class="ct-view" data-view="existing">
+        <button class="ct-upload" id="beautifyBtn">
+          <i data-lucide="scan-line"></i>
+          <span class="ct-upload-title">Upload a photo or screenshot of your QR</span>
+          <span class="hint">We read it — you restyle it. Ugly bank codes welcome.</span>
+        </button>
+        <input type="file" id="qrUpload" accept="image/*" hidden />
+        <div class="hint" id="beautifyStatus" hidden style="color:var(--accent); font-weight:600;"></div>
       </div>
       </div>
 
@@ -1739,12 +1781,17 @@
   }
   function syncShorten() {
     const v = $("content").value.trim();
-    const b = $("shortenBtn");
-    // visible for any link, so the feature is discoverable; enabled when shortening helps
-    b.hidden = !/^https?:\/\//i.test(v) || /^https?:\/\/tinyurl\.com\//i.test(v);
-    b.disabled = v.length <= 35;
-    b.title = b.disabled ? "Already short — shortening won't help the scan" : "Shorter link = chunkier, easier-to-scan modules";
+    // the suggestion row appears only when shortening actually helps the scan
+    $("shortenRow").hidden = !(/^https?:\/\//i.test(v) && v.length > 35 && !/^https?:\/\/tinyurl\.com\//i.test(v));
   }
+  // Content tabs: New link / Existing QR — two journeys, clearly separated
+  function setContentTab(name) {
+    $("contentPanel").dataset.ctab = name;
+    document.querySelectorAll(".ct-tab").forEach((b) => b.classList.toggle("active", b.dataset.ctab === name));
+  }
+  document.querySelectorAll(".ct-tab").forEach((b) => {
+    b.addEventListener("click", () => setContentTab(b.dataset.ctab));
+  });
   $("content").addEventListener("input", (e) => {
     let v = e.target.value.trim() || "https://qrdurian.com";
     const single = enforceSingleLink(v);
@@ -1791,12 +1838,20 @@
     });
     return jsQRLoad;
   }
+  let beautifyTimer = null;
+  function beautifyStatus(msg) {
+    const h = $("beautifyStatus");
+    h.textContent = msg;
+    h.hidden = false;
+    clearTimeout(beautifyTimer);
+    beautifyTimer = setTimeout(() => { h.hidden = true; }, 4000);
+  }
   $("beautifyBtn").addEventListener("click", () => $("qrUpload").click());
   $("qrUpload").addEventListener("change", async (e) => {
     const file = e.target.files[0];
     e.target.value = "";
     if (!file) return;
-    flashHint("Reading your QR…");
+    beautifyStatus("Reading your QR…");
     try {
       await loadJsQR();
       const img = new Image();
@@ -1819,12 +1874,13 @@
         $("content").value = found.data;
         $("content").dispatchEvent(new Event("input", { bubbles: true }));
         animateGenerate(900);
+        setContentTab("link"); // show what we read, right in the link field
         flashHint("Got it — your code, beautified ✨");
       } else {
-        flashHint("Couldn't find a QR in that image — try a clearer shot.");
+        beautifyStatus("Couldn't find a QR in that image — try a clearer shot.");
       }
     } catch (err) {
-      flashHint("Couldn't read that image.");
+      beautifyStatus("Couldn't read that image.");
     }
   });
   // up to three codes on one artboard — same design, different destinations
