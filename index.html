@@ -785,6 +785,7 @@
     <!-- Artboard -->
     <section class="preview">
       <div class="top-bar" id="topBar">
+        <button class="mini-btn" id="addTextBtn"><i data-lucide="plus"></i> Text</button>
         <i data-lucide="type"></i>
         <input type="text" id="tbCaption" placeholder="Add a caption…" maxlength="80" />
         <button class="select" id="fontSelect" style="min-width:150px;">
@@ -887,6 +888,7 @@
     qrScale: 0.58,
     pos: "center",
     caption: "SCAN ME",
+    texts: [], /* free text items: { t, x, y, s, f, c } — x/y relative, s size vs u */
   };
 
   const swatchSet = ["#FFE14D","#163300","#18181b","#ffffff","#9FE870","#ef4444","#6366f1","#ec4899","#0ea5e9","#f97316"];
@@ -1374,6 +1376,8 @@
       }
     }
 
+    const capture = ctx.canvas === canvas; // preview pass → refresh the selection hit rects
+    if (capture) hitRects = { caption: null, texts: [] };
     if (cap) {
       ctx.save();
       ctx.fillStyle = state.capColor;
@@ -1382,11 +1386,28 @@
       const fontFor = (px) => `700 ${px}px "${state.capFont}", Urbanist, 'Open Sans', -apple-system, Arial, sans-serif`;
       ctx.font = fontFor(fs);
       try { ctx.letterSpacing = `${u * 0.008}px`; } catch (e) {}
-      const tw = ctx.measureText(cap).width;
-      if (tw > W * 0.92) { fs = Math.max(9, Math.floor(fs * (W * 0.92) / tw)); ctx.font = fontFor(fs); }
-      ctx.fillText(cap, W / 2, y + cardSize + capGap);
+      let tw = ctx.measureText(cap).width;
+      if (tw > W * 0.92) { fs = Math.max(9, Math.floor(fs * (W * 0.92) / tw)); ctx.font = fontFor(fs); tw = ctx.measureText(cap).width; }
+      const capY = y + cardSize + capGap;
+      ctx.fillText(cap, W / 2, capY);
+      if (capture) hitRects.caption = { x: W / 2 - tw / 2, y: capY - fs, w: tw, h: fs * 1.25 };
       ctx.restore();
     }
+
+    // free text items — the user's own words, anywhere on the artboard
+    state.texts.forEach((it, i) => {
+      ctx.save();
+      ctx.fillStyle = it.c;
+      ctx.textAlign = "center";
+      const fs = Math.max(9, Math.round(u * it.s));
+      ctx.font = `700 ${fs}px "${it.f}", Urbanist, 'Open Sans', -apple-system, Arial, sans-serif`;
+      try { ctx.letterSpacing = `${u * 0.008}px`; } catch (e) {}
+      const tw = ctx.measureText(it.t).width;
+      const tx = it.x * W, ty = it.y * H;
+      ctx.fillText(it.t, tx, ty);
+      if (capture) hitRects.texts[i] = { x: tx - tw / 2, y: ty - fs, w: tw, h: fs * 1.3 };
+      ctx.restore();
+    });
   }
 
   // ================= Preview canvas =================
@@ -1477,6 +1498,57 @@
     fitPreview();
     applyPageBg();
     drawScene(ctx, canvas.width, canvas.height, qrImg, false);
+    drawSelection();
+  }
+
+  // ---- click-to-select: caption + text items get a dashed box and an ✕ handle.
+  // Overlay lives only in drawPreview — exports never see it.
+  let hitRects = { caption: null, texts: [] };
+  let sel = null;    // { kind: "caption" } | { kind: "text", i }
+  let delBtn = null; // ✕ handle hit circle, canvas px
+  function selRect() {
+    if (!sel) return null;
+    return sel.kind === "caption" ? hitRects.caption : hitRects.texts[sel.i] || null;
+  }
+  function deleteSelection() {
+    if (!sel) return;
+    if (sel.kind === "caption") {
+      state.caption = ""; custom.caption = true; // removed on purpose — looks won't re-add it
+      $("caption").value = ""; $("tbCaption").value = "";
+    } else {
+      state.texts.splice(sel.i, 1);
+    }
+    sel = null;
+    syncBarToSelection();
+    update(false);
+  }
+  function drawSelection() {
+    delBtn = null;
+    const rct = selRect();
+    if (!rct) return;
+    const W = canvas.width, p = Math.max(6, W * 0.012);
+    ctx.save();
+    ctx.strokeStyle = "#2E7D32";
+    ctx.lineWidth = Math.max(1.5, W * 0.0035);
+    ctx.setLineDash([Math.max(4, W * 0.012), Math.max(3, W * 0.008)]);
+    roundRectPath(ctx, rct.x - p, rct.y - p, rct.w + p * 2, rct.h + p * 2, p);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // ✕ handle at the box's top-right corner
+    const r = Math.max(11, W * 0.02);
+    const cx = rct.x + rct.w + p, cy = rct.y - p;
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7);
+    ctx.fillStyle = "#ffffff"; ctx.fill();
+    ctx.strokeStyle = "#2E7D32"; ctx.lineWidth = Math.max(1.5, W * 0.003); ctx.stroke();
+    ctx.strokeStyle = "#101113"; ctx.lineWidth = Math.max(1.8, W * 0.0045);
+    ctx.lineCap = "round";
+    const k = r * 0.4;
+    ctx.beginPath();
+    ctx.moveTo(cx - k, cy - k); ctx.lineTo(cx + k, cy + k);
+    ctx.moveTo(cx + k, cy - k); ctx.lineTo(cx - k, cy + k);
+    ctx.stroke();
+    ctx.restore();
+    delBtn = { x: cx, y: cy, r: r * 1.5 }; // generous tap target
   }
 
   // larger screens: keep a card open so the sheet zone isn't dead whitespace
@@ -1501,6 +1573,12 @@
     cornerType: { k: "c", ok: (v) => ["extra-rounded", "dot", "square"].includes(v) },
     dotType: { k: "y", ok: (v) => ["rounded", "dots", "square"].includes(v) },
     capFont: { k: "q", ok: (v) => v in FONT_DEFS },
+    texts:  { k: "v", ok: (v) => Array.isArray(v) && v.length <= 8 && v.every((it) =>
+      it && typeof it.t === "string" && it.t.length <= 80 &&
+      typeof it.x === "number" && it.x >= 0 && it.x <= 1 &&
+      typeof it.y === "number" && it.y >= 0 && it.y <= 1 &&
+      typeof it.s === "number" && it.s >= 0.02 && it.s <= 0.12 &&
+      it.f in FONT_DEFS && isHex(it.c)) },
     sceneBg:{ k: "s", ok: (v) => v === "gradient" || v === "solid" },
     format: { k: "z", ok: (v) => v in FORMATS },
     texture:{ k: "x", ok: (v) => v in TEXTURE_NAMES },
@@ -1829,25 +1907,49 @@
     $("fmtChips").appendChild(b);
   });
 
-  // ---- studio editor bar: caption text, font, color — mirrors the Artboard card
+  // ---- studio editor bar: edits the SELECTED text item when one is picked on
+  // the canvas, the caption otherwise — one strip, selection-aware
+  function selText() { return sel && sel.kind === "text" ? state.texts[sel.i] : null; }
+  function syncBarToSelection() {
+    const it = selText();
+    $("tbCaption").value = it ? it.t : state.caption;
+    $("tbCaption").placeholder = it ? "Edit selected text…" : "Add a caption…";
+    $("fontSelLabel").textContent = it ? it.f : state.capFont;
+    $("tbCapDot").style.background = it ? it.c : state.capColor;
+  }
+  $("addTextBtn").addEventListener("click", () => {
+    if (state.texts.length >= 8) return; // the share hash stays small
+    state.texts.push({ t: "YOUR TEXT", x: 0.5, y: 0.1, s: 0.05, f: state.capFont, c: state.capColor });
+    sel = { kind: "text", i: state.texts.length - 1 };
+    syncBarToSelection();
+    $("tbCaption").select();
+    update(false);
+  });
   $("tbCaption").addEventListener("input", (e) => {
-    state.caption = e.target.value; custom.caption = true;
-    $("caption").value = state.caption;
+    const it = selText();
+    if (it) it.t = e.target.value;
+    else {
+      state.caption = e.target.value; custom.caption = true;
+      $("caption").value = state.caption;
+    }
     update(false);
   });
   $("tbCapChip").addEventListener("click", () => {
     const i = $("tbCapInput");
-    i.value = state.capColor;
+    i.value = selText() ? selText().c : state.capColor;
     i.click();
   });
   $("tbCapInput").addEventListener("input", (e) => {
-    state.capColor = e.target.value;
-    syncChips(); update(false);
+    const it = selText();
+    if (it) { it.c = e.target.value; $("tbCapDot").style.background = it.c; }
+    else { state.capColor = e.target.value; syncChips(); }
+    update(false);
   });
   // caption font — floating dropdown, same body-hosted pattern as format/texture
   function setCapFont(f) {
-    state.capFont = f;
-    custom.capFont = true;
+    const it = selText();
+    if (it) it.f = f;
+    else { state.capFont = f; custom.capFont = true; }
     $("fontSelLabel").textContent = f;
     fontList.querySelectorAll(".fmt-row").forEach(x => x.classList.toggle("active", x.dataset.font === f));
     fontList.hidden = true; $("fontSelect").classList.remove("open");
@@ -2286,10 +2388,48 @@
   $("sheetClose").addEventListener("click", closeSheet);
   $("exportClose").addEventListener("click", closeSheet);
   // tapping the QR: poke the ink (ripple) — or poke the pet (it startles awake)
+  let dragSel = null, suppressOpen = false;
   $("artboard").addEventListener("pointerdown", (e) => {
     const r = canvas.getBoundingClientRect();
     const px = (e.clientX - r.left) * (canvas.width / r.width);
     const py = (e.clientY - r.top) * (canvas.height / r.height);
+    // 1) the selection's ✕ handle
+    if (delBtn && Math.hypot(px - delBtn.x, py - delBtn.y) <= delBtn.r) {
+      suppressOpen = true;
+      deleteSelection();
+      return;
+    }
+    // 2) text items (topmost first), then the caption — tap to select, drag to move
+    const pad = Math.max(8, canvas.width * 0.012);
+    let hit = null;
+    for (let i = state.texts.length - 1; i >= 0; i--) {
+      const t = hitRects.texts[i];
+      if (t && px >= t.x - pad && px <= t.x + t.w + pad && py >= t.y - pad && py <= t.y + t.h + pad) {
+        hit = { kind: "text", i }; break;
+      }
+    }
+    const c = hitRects.caption;
+    if (!hit && c && px >= c.x - pad && px <= c.x + c.w + pad && py >= c.y - pad && py <= c.y + c.h + pad) {
+      hit = { kind: "caption" };
+    }
+    if (hit) {
+      sel = hit; suppressOpen = true;
+      live.lastInteract = performance.now(); // keep the liquid asleep while selecting
+      syncBarToSelection();
+      if (hit.kind === "text") {
+        const it = state.texts[hit.i];
+        dragSel = { i: hit.i, dx: px - it.x * canvas.width, dy: py - it.y * canvas.height };
+        try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+      }
+      drawPreview();
+      return; // selecting shouldn't also poke the ink
+    }
+    if (sel) { // tap on empty space clears the selection
+      sel = null; suppressOpen = true;
+      syncBarToSelection();
+      drawPreview();
+      return;
+    }
     if (pet.state !== "off" && pet.state !== "exit") {
       const L = sceneLayout(canvas.width, canvas.height);
       const ps = L.cardSize * 0.19, feetY = L.y + ps * 0.06;
@@ -2302,7 +2442,32 @@
     if (live.ripples.length > 6) live.ripples.shift();
     live.lastInteract = performance.now();
   });
-  $("artboard").addEventListener("click", () => { if (!openPanel) openSheet("content"); });
+  $("artboard").addEventListener("pointermove", (e) => {
+    if (!dragSel) return;
+    const r = canvas.getBoundingClientRect();
+    const px = (e.clientX - r.left) * (canvas.width / r.width);
+    const py = (e.clientY - r.top) * (canvas.height / r.height);
+    const it = state.texts[dragSel.i];
+    if (!it) { dragSel = null; return; }
+    it.x = Math.round(Math.min(0.98, Math.max(0.02, (px - dragSel.dx) / canvas.width)) * 1000) / 1000;
+    it.y = Math.round(Math.min(0.98, Math.max(0.02, (py - dragSel.dy) / canvas.height)) * 1000) / 1000;
+    live.lastInteract = performance.now();
+    drawPreview();
+  });
+  ["pointerup", "pointercancel"].forEach((ev) => $("artboard").addEventListener(ev, () => {
+    if (dragSel) { dragSel = null; syncURL(); }
+  }));
+  document.addEventListener("keydown", (e) => {
+    if ((e.key === "Delete" || e.key === "Backspace") && sel &&
+        !/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)) {
+      e.preventDefault();
+      deleteSelection();
+    }
+  });
+  $("artboard").addEventListener("click", () => {
+    if (suppressOpen) { suppressOpen = false; return; }
+    if (!openPanel) openSheet("content");
+  });
 
   // step through the cards in order
   const PANEL_ORDER = ["content", "style", "scene", "export"];
@@ -2530,7 +2695,9 @@
   $("fontSelLabel").textContent = state.capFont;
   fontList.querySelectorAll(".fmt-row").forEach(x =>
     x.classList.toggle("active", x.dataset.font === state.capFont));
-  if (state.capFont !== "Urbanist") ensureFont(state.capFont).then(() => drawPreview());
+  // a shared design may use faces we haven't loaded yet — fetch, then repaint once
+  const bootFonts = [state.capFont, ...state.texts.map((it) => it.f)].filter((f) => f !== "Urbanist");
+  if (bootFonts.length) Promise.all(bootFonts.map(ensureFont)).then(() => drawPreview());
   openSheet("content"); // land with the Content card open on every device
   drawPreview();
   queueQr();

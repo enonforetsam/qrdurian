@@ -47,6 +47,12 @@ Signature touches:
   Space Mono), lazy-loaded from Google Fonts on first use; dressed looks pick their own
   (Wedding→Playfair, Receipt→Space Mono, Neon→Bebas, Makan→Caveat). `font=` query param,
   hash key `q`.
+- **Free text items + canvas selection** — "+ Text" in the editor bar drops a text item on
+  the artboard (up to 8, hash key `v`). Click any text (or the caption) on the canvas to
+  select it: dashed box + ✕ handle, drag to move, Delete key works, and the editor bar
+  becomes selection-aware (edits the picked item's text/font/color). Exports render items
+  via the same `drawScene` — the overlay never ships. Caption removal marks it
+  user-customized so looks don't re-add it.
 
 ## Design system
 

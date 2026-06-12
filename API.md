@@ -55,6 +55,7 @@ https://qrdurian.com/?data=https://example.com&ink=stamp&bg=163300&fg=9FE870&bas
 | `s` | sceneBg | | `z` | format |
 | `x` | texture | | `i` | ink mood |
 | `y` | dot (module) shape | | `q` | caption font |
+| `v` | free text items (array of `{t,x,y,s,f,c}`: text, relative x/y, size, font, color) | | | |
 
 Encoding: `JSON.stringify` → UTF-8 → base64 with `+/` → `-_` and padding stripped.
 All fields are optional and validated on load; invalid values fall back to defaults.
