@@ -55,3 +55,19 @@ CREATE TABLE IF NOT EXISTS events (
   ctype TEXT DEFAULT '',     -- url | wifi | mail | text
   n INTEGER DEFAULT 1        -- codes on the artboard
 );
+
+-- trackable QRs: short redirect links + per-link anonymous scan events
+CREATE TABLE IF NOT EXISTS links (
+  id TEXT PRIMARY KEY,            -- public short id: /r/<id>
+  url TEXT NOT NULL,
+  secret TEXT UNIQUE NOT NULL,    -- capability key for the owner's /l/<secret> stats page
+  created_at INTEGER NOT NULL,
+  scans INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS link_scans (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  link_id TEXT NOT NULL,
+  at INTEGER NOT NULL,
+  country TEXT DEFAULT '',        -- coarse, anonymous (same stance as events)
+  device TEXT DEFAULT ''          -- mobile | tablet | desktop
+);

@@ -802,6 +802,10 @@
         <div class="hint" id="shortenRow" hidden>
           ⚡ Long link? <button class="mini-btn" id="shortenBtn"><i data-lucide="link"></i> Shorten it</button> — easier to scan.
         </div>
+        <div class="hint" id="trackRow" hidden>
+          📈 Want to know how many people scan it? <button class="mini-btn" id="trackBtn"><i data-lucide="chart-line"></i> Track scans</button>
+        </div>
+        <div class="hint" id="trackDone" hidden style="color:var(--accent); font-weight:600;"></div>
         <div class="hint" id="contentHint" hidden style="color:var(--accent); font-weight:600;"></div>
         <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:10px;">
           <button class="mini-btn" id="addQrBtn"><i data-lucide="plus"></i> Add another QR</button>
@@ -1783,7 +1787,45 @@
     const v = $("content").value.trim();
     // the suggestion row appears only when shortening actually helps the scan
     $("shortenRow").hidden = !(/^https?:\/\//i.test(v) && v.length > 35 && !/^https?:\/\/tinyurl\.com\//i.test(v));
+    // tracking is offered for any plain link that isn't already one of ours
+    $("trackRow").hidden = !(/^https?:\/\//i.test(v) && !/qrdurian\.com\/r\//i.test(v));
   }
+  // trackable QRs: swap the link for our short redirect, hand back a private stats page
+  $("trackBtn").addEventListener("click", async () => {
+    const v = $("content").value.trim();
+    if (!/^https?:\/\//i.test(v)) return;
+    const b = $("trackBtn");
+    b.disabled = true;
+    flashHint("Setting up tracking…");
+    try {
+      const res = await fetch("https://trace.qrdurian.com/api/track", {
+        method: "POST", body: JSON.stringify({ url: v }), // text/plain → no preflight
+      });
+      const j = await res.json();
+      if (!j.short || !j.stats) throw new Error(j.error || "no link");
+      $("content").value = j.short;
+      $("content").dispatchEvent(new Event("input", { bubbles: true }));
+      const done = $("trackDone");
+      done.innerHTML = `Tracking on ✓ — your private stats page:<br>` +
+        `<a href="${j.stats}" target="_blank" rel="noopener" style="word-break:break-all">${j.stats}</a> ` +
+        `<button class="mini-btn" id="copyStatsBtn">Copy</button><br>` +
+        `<span style="color:var(--muted); font-weight:400;">Bookmark it — it's the only key.</span>`;
+      done.hidden = false;
+      $("copyStatsBtn").addEventListener("click", async () => {
+        try { await navigator.clipboard.writeText(j.stats); $("copyStatsBtn").textContent = "✓ Copied"; } catch (e2) {}
+      });
+      // remember the owner's tracked links — the My Designs shelf will surface these
+      try {
+        const list = JSON.parse(localStorage.getItem("qrd_tracked") || "[]");
+        list.push({ short: j.short, stats: j.stats, url: v, at: Date.now() });
+        localStorage.setItem("qrd_tracked", JSON.stringify(list.slice(-50)));
+      } catch (e3) {}
+    } catch (err) {
+      flashHint("Couldn't set up tracking — the plain link still works.");
+    }
+    b.disabled = false;
+    syncShorten();
+  });
   // Content tabs: New link / Existing QR — two journeys, clearly separated
   function setContentTab(name) {
     $("contentPanel").dataset.ctab = name;

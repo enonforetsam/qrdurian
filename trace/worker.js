@@ -311,6 +311,87 @@ export default {
         return Response.json({ short }, { headers: CNT_CORS });
       }
 
+      // ---- trackable QRs: short redirect links with per-link scan stats ----
+      // POST /api/track {url} → { short, stats }; GET /r/<id> counts + redirects;
+      // GET /l/<secret> is the owner's private stats page (capability URL — no accounts)
+      const ensureLinkTables = async () => {
+        await DB.prepare("CREATE TABLE IF NOT EXISTS links (id TEXT PRIMARY KEY, url TEXT NOT NULL, secret TEXT UNIQUE NOT NULL, created_at INTEGER NOT NULL, scans INTEGER NOT NULL DEFAULT 0)").run();
+        await DB.prepare("CREATE TABLE IF NOT EXISTS link_scans (id INTEGER PRIMARY KEY AUTOINCREMENT, link_id TEXT NOT NULL, at INTEGER NOT NULL, country TEXT DEFAULT '', device TEXT DEFAULT '')").run();
+      };
+      if (p === "/api/track") {
+        if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CNT_CORS });
+        if (req.method !== "POST") return Response.json({ error: "POST only" }, { status: 405, headers: CNT_CORS });
+        let body = {};
+        try { body = JSON.parse((await req.text()) || "{}"); } catch (e2) {}
+        const dest = String(body.url || "").trim().slice(0, 2000);
+        if (!/^https?:\/\/.{4,}/i.test(dest) || /^\s*(javascript|data|vbscript|file|blob):/i.test(dest)) {
+          return Response.json({ error: "bad url" }, { status: 400, headers: CNT_CORS });
+        }
+        const ip = req.headers.get("cf-connecting-ip") || "?";
+        if (rateLimitedCount(ip)) {
+          return Response.json({ error: "rate limited" }, { status: 429, headers: CNT_CORS });
+        }
+        const id = shortId(7);
+        const secret = crypto.randomUUID().replace(/-/g, "") + shortId(8);
+        const insert = () => DB.prepare("INSERT INTO links (id, url, secret, created_at) VALUES (?,?,?,?)")
+          .bind(id, dest, secret, Date.now()).run();
+        try { await insert(); }
+        catch (e3) { await ensureLinkTables(); await insert(); }
+        return Response.json({
+          short: `https://trace.qrdurian.com/r/${id}`,
+          stats: `https://trace.qrdurian.com/l/${secret}`,
+        }, { headers: CNT_CORS });
+      }
+      const rMatch = p.match(/^\/r\/([a-z0-9]{4,12})$/i);
+      if (rMatch) {
+        let link = null;
+        try { link = await DB.prepare("SELECT * FROM links WHERE id=?").bind(rMatch[1]).first(); } catch (e2) {}
+        if (!link) return page("Not found", "<h1>Link not recognised</h1><p>This tracked QR doesn't exist (or was mistyped).</p>", 404);
+        // coarse anonymous scan event — same stance as /api/count: no IPs, no identifiers
+        try {
+          const ua = req.headers.get("user-agent") || "";
+          const device = /iPad|Tablet/i.test(ua) ? "tablet" : /Mobi|Android|iPhone/i.test(ua) ? "mobile" : "desktop";
+          await DB.prepare("UPDATE links SET scans=scans+1 WHERE id=?").bind(link.id).run();
+          await DB.prepare("INSERT INTO link_scans (link_id, at, country, device) VALUES (?,?,?,?)")
+            .bind(link.id, Date.now(), (req.cf && req.cf.country) || "", device).run();
+        } catch (e3) { /* the redirect must never fail because of stats */ }
+        return Response.redirect(link.url, 302);
+      }
+      const lMatch = p.match(/^\/l\/([a-z0-9]{30,50})$/i);
+      if (lMatch) {
+        let link = null;
+        try { link = await DB.prepare("SELECT * FROM links WHERE secret=?").bind(lMatch[1]).first(); } catch (e2) {}
+        if (!link) return page("Not found", "<h1>Stats link not recognised</h1><p>Check the bookmarked link from when you created the tracked QR.</p>", 404);
+        const since30 = Date.now() - 30 * 86400e3;
+        const dim = async (col) => {
+          try {
+            return (await DB.prepare(`SELECT ${col} AS d, COUNT(*) AS c FROM link_scans WHERE link_id=? AND at>? GROUP BY ${col} ORDER BY c DESC LIMIT 10`)
+              .bind(link.id, since30).all()).results || [];
+          } catch (e3) { return []; }
+        };
+        const daily = async () => {
+          try {
+            return (await DB.prepare("SELECT date(at/1000,'unixepoch') AS d, COUNT(*) AS c FROM link_scans WHERE link_id=? AND at>? GROUP BY d ORDER BY d DESC LIMIT 14")
+              .bind(link.id, Date.now() - 14 * 86400e3).all()).results || [];
+          } catch (e3) { return []; }
+        };
+        const kv = (rows) => rows.map((r) => `<div class="kv"><span>${esc(String(r.d || "—"))}</span><b>${r.c}</b></div>`).join("");
+        const [byCountry, byDevice, byDay] = [await dim("country"), await dim("device"), await daily()];
+        return page("Your QR stats", `
+          <h1>Your QR stats</h1>
+          <div class="hero ok"><div class="big">${link.scans}</div><p>total scans</p></div>
+          <div class="card">
+            <div class="kv"><span>Short link</span><b><code>trace.qrdurian.com/r/${esc(link.id)}</code></b></div>
+            <div class="kv"><span>Opens</span><b style="word-break:break-all">${esc(link.url)}</b></div>
+            <div class="kv"><span>Created</span><b>${new Date(link.created_at).toISOString().slice(0, 10)}</b></div>
+          </div>
+          ${byDay.length ? `<h2>Last 14 days</h2><div class="card">${kv(byDay)}</div>` : ""}
+          ${byCountry.length ? `<h2>Country (30d)</h2><div class="card">${kv(byCountry)}</div>` : ""}
+          ${byDevice.length ? `<h2>Device (30d)</h2><div class="card">${kv(byDevice)}</div>` : ""}
+          <p class="muted">Scans are counted anonymously — country and device class only. Keep this page's link private: anyone with it can see these numbers.</p>
+        `);
+      }
+
       if (p === "/" || p === "") return landingPage();
       if (p === "/register") return registerPage();
 
