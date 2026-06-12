@@ -546,9 +546,8 @@
       .card.controls, .export-sheet { max-height: 62vh; bottom: 70px; }
     }
 
-    /* ===== Studio: thin top toolbar + small popovers, canvas owns everything below ===== */
-    .side-rail { display: none; }   /* never shown */
-    .top-bar { display: none; }     /* hidden except inside studio media */
+    /* ===== Studio (≥1100px): fontpair anatomy — top bar, looks sidebar,
+       canvas center, floating edit bar, popovers from the top-bar buttons ===== */
     .panel-title { display: none; }
     .fmt-chips { display: none; gap: 2px; align-items: center; }
     .fmt-chip {
@@ -564,7 +563,6 @@
     .studio-topbar { display: none; }
     .looks-sidebar { display: none; }
     .edit-bar { display: none; }
-    .top-bar { display: none; } /* the old top-bar is now the studio-topbar */
 
     @media (min-width: 1100px) {
       /* ---- TOP BAR: thin, 48px, full width ---- */
@@ -638,7 +636,7 @@
 
       /* ---- CANVAS ZONE: right of sidebar, below top bar ---- */
       main { padding-left: 200px; padding-right: 0; padding-top: 48px; padding-bottom: 72px; }
-      header { padding-left: 200px; display: none; } /* studio topbar replaces header */
+      header { display: none; } /* the studio top bar replaces the header */
 
       /* ---- BOTTOM EDIT BAR: floating pill above the bottom edge ---- */
       .edit-bar {
@@ -670,47 +668,17 @@
       }
       .card.controls .panel { display: none !important; }
       .card.controls .panel.active { display: block !important; }
-      .card.controls .panel + .panel { border-top: none; margin-top: 0; padding-top: 0; }
+      /* the Design popover stacks Style + Artboard — titled, with a divider */
+      .card.controls .panel.active[data-panel="style"] .panel-title,
+      .card.controls .panel.active[data-panel="scene"] .panel-title {
+        display: block; font-family: "Urbanist", sans-serif; font-weight: 800;
+        font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+        color: var(--muted); margin: 0 0 12px;
+      }
+      .card.controls .panel.active + .panel.active {
+        border-top: 1px solid var(--border-2); margin-top: 18px; padding-top: 16px;
+      }
       /* backdrop dismisses the popover */
-      body.sheet-open .sheet-backdrop { pointer-events: auto; }
-      /* non-square artboards: dashed file-bounds frame */
-      .artboard-wrap.framed { overflow: visible; }
-      .artboard-wrap.framed #artboard {
-        outline: 1.5px dashed rgba(16, 17, 19, .25);
-        outline-offset: 7px; border-radius: 3px;
-      }
-      [data-theme="dark"] .artboard-wrap.framed #artboard {
-        outline-color: rgba(255, 255, 255, .35);
-      }
-    }
-
-      /* popover: a small floating card that drops below the active tab button */
-      .card.controls, .export-sheet {
-        /* JS sets left/top per-button; these are the size/shape */
-        right: auto; bottom: auto; margin: 0;
-        width: 360px; max-width: calc(100vw - 32px);
-        max-height: min(72vh, 600px);
-        border-radius: 18px;
-        padding: 22px 22px 18px;
-        /* re-enable the border and shadow (they were stripped for the full-height panel) */
-        border: 1px solid var(--border);
-        box-shadow: 0 8px 32px rgba(0,0,0,.12), 0 2px 8px rgba(0,0,0,.06);
-      }
-      /* looks panel gets more width for the gallery grid */
-      body.looks-tab .card.controls { width: 520px; }
-
-      /* one panel at a time — the active tab controls which */
-      .card.controls .panel { display: none !important; }
-      .card.controls .panel.active { display: block !important; }
-      .card.controls .panel + .panel { border-top: none; margin-top: 0; padding-top: 0; }
-
-      /* looks grid inside the popover */
-      .card.controls .looks {
-        flex-wrap: wrap; justify-content: flex-start; row-gap: 10px;
-        max-width: none; margin: 0; padding: 4px 0; overflow: visible;
-        opacity: 1 !important; pointer-events: auto !important;
-      }
-      /* backdrop click closes the popover (re-enabled — canvas click dismisses) */
       body.sheet-open .sheet-backdrop { pointer-events: auto; }
       /* non-square artboards: dashed file-bounds frame */
       .artboard-wrap.framed { overflow: visible; }
@@ -871,11 +839,6 @@
         <span class="clabel">Quick logo</span>
         <div class="emoji-row" id="emojiRow"></div>
       </div>
-      </div>
-
-      <div class="panel" data-panel="looks">
-        <label class="lbl">Looks</label>
-        <div id="looksHost"></div>
       </div>
 
       <div class="color-pop" id="colorPop" hidden>
@@ -1577,8 +1540,9 @@
     const wrap = $("artboardWrap");
     const desktop = window.innerWidth > 880;
     const toolbarH = studio ? (($("studioTopbar") && $("studioTopbar").offsetHeight) || 48) : 0;
-    const sidebarW = studio ? 200 : 0;
-    const wrapW = Math.min((wrap.clientWidth || wrap.parentElement.clientWidth) - sidebarW * 0, studio ? 680 : desktop ? 580 : 440);
+    // the floating edit bar reserves the bottom strip of the studio canvas zone
+    const editBarReserve = studio ? (($("editBar") && $("editBar").offsetHeight) || 48) + 28 : 0;
+    const wrapW = Math.min(wrap.clientWidth || wrap.parentElement.clientWidth, studio ? 680 : desktop ? 580 : 440);
     // static: always leave room below for a sheet, so the QR never moves
     // must match the cards' CSS max-height — including desktop + short-landscape overrides
     // (studio reserves nothing below: the panel is docked left, not bottom)
@@ -1589,22 +1553,21 @@
       : Math.min(window.innerHeight * 0.46, 420);
     const sat = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--sat")) || 0;
     const stripH = studio ? 0 : $("looksStrip").offsetHeight; // studio hosts the gallery in the panel
-    const barH = 0; // edit bar is at the bottom now, not above the canvas
     const chrome = (studio
-      ? document.querySelector("header").offsetHeight + toolbarH + barH + 24 // toolbar + editor bar
+      ? toolbarH + editBarReserve + 24 // header is hidden in studio
       : window.innerWidth >= 1400 ? 280 : desktop ? 250 : 205) + sat; // header grows with logo + notch
     const zoneH = Math.max(150, window.innerHeight - sheetH - chrome);
     const ar = fmt.w / fmt.h;
 
     // start with a strict fit, then enlarge so the QR itself stays readable —
-    // but never beyond what the zone can show (card + caption must fit the crop window)
-    // (studio non-square formats stay strict: seeing the whole artboard is the point)
+    // but never beyond what the zone can show (card + caption must fit the crop window).
+    // Studio always stays strict: the whole artboard must sit between the bars.
     const ef = 0.32 + ((state.qrScale - 0.35) / 0.45) * 0.49; // effective scale of the slider mapping
     let w = Math.min(wrapW, zoneH * ar);
     const capRatio = state.caption.trim() ? 0.075 / ef : 0;
     const fitCap = zoneH / (1.3 + capRatio);
     const targetQR = Math.min(desktop ? 430 : 300, fitCap, Math.max(120, zoneH * 0.62));
-    if (w * ef < targetQR && !(studio && ar !== 1)) w = Math.min(wrapW, targetQR / ef);
+    if (w * ef < targetQR && !studio) w = Math.min(wrapW, targetQR / ef);
     const h = w / ar;
 
     // non-square studio artboard: dash the file bounds (page bg bleeds past them)
@@ -1629,8 +1592,8 @@
     // (studio always centers: the panel sits beside the canvas, never over it)
     let shift = 0;
     if (studio) {
-      const headTotal = document.querySelector("header").offsetHeight + toolbarH + 8;
-      shift = Math.max(0, (window.innerHeight - 28 - headTotal - barH - Math.min(h, zoneH)) / 2);
+      // center in the zone between the top bar and the floating edit bar
+      shift = Math.max(0, (window.innerHeight - toolbarH - editBarReserve - Math.min(h, zoneH)) / 2 - 12);
     } else if (!document.body.classList.contains("sheet-open")) {
       const headTotal = document.querySelector("header").offsetHeight + (window.innerWidth <= 880 ? 16 : 8);
       const navTop = window.innerHeight - ((window.innerWidth > 880 ? 32 : 14) + 80);
@@ -1720,9 +1683,12 @@
 
   // larger screens: keep a card open so the sheet zone isn't dead whitespace
   let wasMobile = window.innerWidth <= 880;
+  let wasStudio = isStudio();
   window.addEventListener("resize", () => {
     const mobile = window.innerWidth <= 880;
-    if (wasMobile && !mobile && !openPanel) openSheet("content");
+    if (wasMobile && !mobile && !openPanel && !isStudio()) openSheet("content"); // mid-desktop keeps a card open
+    if (!wasStudio && isStudio() && openPanel) closeSheet(); // crossing into studio: start clean
+    wasStudio = isStudio();
     wasMobile = mobile;
     applyStudioPadding();
     placeLooks(); // gallery hops between panel tab (studio) and under-canvas dock
@@ -2546,7 +2512,6 @@
     const isExport = name === "export";
     $("exportSheet").classList.toggle("visible", isExport);
     $("controlsCard").classList.toggle("visible", !isExport);
-    document.body.classList.toggle("looks-tab", name === "looks");
     if (!isExport) {
       document.querySelectorAll("#controlsCard .panel").forEach(p =>
         p.classList.toggle("active", p.dataset.panel === name));
@@ -2693,7 +2658,7 @@
   });
   $("artboard").addEventListener("click", () => {
     if (suppressOpen) { suppressOpen = false; return; }
-    if (!openPanel) openSheet("content");
+    if (!openPanel && !isStudio()) openSheet("content"); // studio: tapping the canvas is for poking the ink
   });
 
   // step through the cards in order
@@ -2931,7 +2896,7 @@
   // a shared design may use faces we haven't loaded yet — fetch, then repaint once
   const bootFonts = [state.capFont, ...state.texts.map((it) => it.f)].filter((f) => f !== "Urbanist");
   if (bootFonts.length) Promise.all(bootFonts.map(ensureFont)).then(() => drawPreview());
-  openSheet("content"); // land with the Content card open on every device
+  if (!isStudio()) openSheet("content"); // mobile/tablet land with the Content card; studio lands clean
   drawPreview();
   queueQr();
 </script>
