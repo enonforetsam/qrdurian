@@ -559,6 +559,15 @@
     .fmt-chip.active { background: var(--accent); color: var(--accent-ink); }
     .looks-dock { width: 100%; display: flex; justify-content: center; }
 
+    /* inline text editor — floats exactly over the text on the canvas */
+    .canvas-edit {
+      position: fixed; z-index: 90; transform: translateX(-50%);
+      background: transparent; border: 1.5px dashed var(--accent);
+      border-radius: 8px; outline: none;
+      text-align: center; font-weight: 700; padding: 2px 10px;
+      min-width: 40px; caret-color: var(--accent);
+    }
+
     /* all studio-only elements hidden by default */
     .studio-topbar { display: none; }
     .looks-sidebar { display: none; }
@@ -888,17 +897,16 @@
       </div>
     </section>
 
-    <!-- Studio bottom edit bar (≥1100px only) -->
+    <!-- Studio bottom edit bar (≥1100px only) — text lives ON the canvas;
+         this bar only adds items and styles the current selection -->
     <div class="edit-bar" id="editBar">
       <button class="mini-btn" id="addTextBtn"><i data-lucide="plus"></i> Text</button>
       <span class="eb-sep"></span>
-      <i data-lucide="type"></i>
-      <input type="text" id="tbCaption" placeholder="Caption…" maxlength="80" />
       <button class="select eb-font" id="fontSelect">
         <span id="fontSelLabel">Urbanist</span>
         <i data-lucide="chevron-down"></i>
       </button>
-      <button class="chip-color compact" id="tbCapChip" aria-label="Caption color"><span class="cdot" id="tbCapDot"></span></button>
+      <button class="chip-color compact" id="tbCapChip" aria-label="Text color"><span class="cdot" id="tbCapDot"></span></button>
       <input type="color" id="tbCapInput" class="vhid" />
     </div>
   </main>
@@ -1347,6 +1355,7 @@
       if (capture) hitRects.qrs[i] = { x: c.x, y: c.y, w: cardSize, h: cardSize };
     });
 
+    const hideCap = capture && editing && editing.kind === "caption"; // being edited inline
     if (cap) {
       ctx.save();
       ctx.fillStyle = state.capColor;
@@ -1358,8 +1367,8 @@
       let tw = ctx.measureText(cap).width;
       if (tw > W * 0.92) { fs = Math.max(9, Math.floor(fs * (W * 0.92) / tw)); ctx.font = fontFor(fs); tw = ctx.measureText(cap).width; }
       const capY = gy + groupH + capGap; // under the whole group, not just card one
-      ctx.fillText(cap, W / 2, capY);
-      if (capture) hitRects.caption = { x: W / 2 - tw / 2, y: capY - fs, w: tw, h: fs * 1.25 };
+      if (!hideCap) ctx.fillText(cap, W / 2, capY);
+      if (capture) hitRects.caption = { x: W / 2 - tw / 2, y: capY - fs, w: tw, h: fs * 1.25, fs };
       ctx.restore();
     }
 
@@ -1373,8 +1382,8 @@
       try { ctx.letterSpacing = `${u * 0.008}px`; } catch (e) {}
       const tw = ctx.measureText(it.t).width;
       const tx = it.x * W, ty = it.y * H;
-      ctx.fillText(it.t, tx, ty);
-      if (capture) hitRects.texts[i] = { x: tx - tw / 2, y: ty - fs, w: tw, h: fs * 1.3 };
+      if (!(capture && editing && editing.kind === "text" && editing.i === i)) ctx.fillText(it.t, tx, ty);
+      if (capture) hitRects.texts[i] = { x: tx - tw / 2, y: ty - fs, w: tw, h: fs * 1.3, fs };
       ctx.restore();
     });
   }
@@ -1492,7 +1501,7 @@
     if (!sel) return;
     if (sel.kind === "caption") {
       state.caption = ""; custom.caption = true; // removed on purpose — looks won't re-add it
-      $("caption").value = ""; $("tbCaption").value = "";
+      $("caption").value = "";
     } else if (sel.kind === "qr") {
       if (state.extra.length === 0) return; // the last code stays
       if (sel.i === 0) state.data = state.extra.shift();
@@ -1840,7 +1849,6 @@
   });
   $("caption").addEventListener("input", (e) => {
     state.caption = e.target.value; custom.caption = true;
-    $("tbCaption").value = state.caption; // editor bar mirrors the card
     update(false);
   });
 
@@ -1914,33 +1922,99 @@
     $("fmtChips").appendChild(b);
   });
 
-  // ---- studio editor bar: edits the SELECTED text item when one is picked on
-  // the canvas, the caption otherwise — one strip, selection-aware
+  // ---- studio editor bar: adds text + styles the selection. The text itself
+  // is edited ON the canvas — a floating input sits exactly over the words.
   function selText() { return sel && sel.kind === "text" ? state.texts[sel.i] : null; }
   function syncBarToSelection() {
     const it = selText();
-    $("tbCaption").value = it ? it.t : state.caption;
-    $("tbCaption").placeholder = it ? "Edit selected text…" : "Add a caption…";
     $("fontSelLabel").textContent = it ? it.f : state.capFont;
     $("tbCapDot").style.background = it ? it.c : state.capColor;
   }
-  $("addTextBtn").addEventListener("click", () => {
-    if (state.texts.length >= 8) return; // the share hash stays small
-    state.texts.push({ t: "YOUR TEXT", x: 0.5, y: 0.1, s: 0.05, f: state.capFont, c: state.capColor });
-    sel = { kind: "text", i: state.texts.length - 1 };
+
+  // ---- inline canvas text editing
+  let editing = null, editInput = null;
+  function startTextEdit(target) {
+    commitTextEdit(); // one at a time
+    const rct = target.kind === "caption" ? hitRects.caption : hitRects.texts[target.i];
+    if (!rct) return;
+    const it = target.kind === "text" ? state.texts[target.i] : null;
+    editing = target;
+    sel = target;
     syncBarToSelection();
-    $("tbCaption").select();
-    update(false);
-  });
-  $("tbCaption").addEventListener("input", (e) => {
-    const it = selText();
-    if (it) it.t = e.target.value;
-    else {
-      state.caption = e.target.value; custom.caption = true;
-      $("caption").value = state.caption;
+    drawPreview(); // hides the canvas-rendered text underneath
+
+    const r = canvas.getBoundingClientRect();
+    const k = r.width / canvas.width; // canvas px → css px
+    const inp = document.createElement("input");
+    inp.type = "text";
+    inp.maxLength = 80;
+    inp.className = "canvas-edit";
+    inp.value = it ? it.t : state.caption;
+    inp.placeholder = "Type…";
+    inp.style.left = (r.left + (rct.x + rct.w / 2) * k) + "px";
+    inp.style.top = (r.top + rct.y * k - 4) + "px";
+    inp.style.fontSize = (rct.fs * k) + "px";
+    inp.style.fontFamily = `"${it ? it.f : state.capFont}", Urbanist, sans-serif`;
+    inp.style.color = it ? it.c : state.capColor;
+    inp.style.width = Math.max(80, rct.w * k + 40) + "px";
+    const apply = () => {
+      if (it) it.t = inp.value;
+      else { state.caption = inp.value; custom.caption = true; $("caption").value = inp.value; }
+      inp.style.width = Math.max(80, inp.value.length * rct.fs * k * 0.62 + 40) + "px";
+      syncURL();
+    };
+    inp.addEventListener("input", apply);
+    inp.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === "Escape") { e.preventDefault(); commitTextEdit(); }
+      e.stopPropagation(); // typing must never trigger the canvas Delete handler
+    });
+    inp.addEventListener("blur", () => commitTextEdit());
+    document.body.appendChild(inp);
+    editInput = inp;
+    inp.focus();
+    inp.select();
+  }
+  function commitTextEdit() {
+    if (!editing) return;
+    const was = editing;
+    editing = null;
+    if (editInput) { const el = editInput; editInput = null; el.remove(); }
+    // an emptied text item removes itself; an emptied caption just disappears
+    if (was.kind === "text" && state.texts[was.i] && !state.texts[was.i].t.trim()) {
+      state.texts.splice(was.i, 1);
+      sel = null;
+      syncBarToSelection();
     }
     update(false);
+  }
+  $("addTextBtn").addEventListener("click", () => {
+    if (state.texts.length >= 8) return; // the share hash stays small
+    commitTextEdit();
+    state.texts.push({ t: "Your text", x: 0.5, y: 0.1, s: 0.05, f: state.capFont, c: state.capColor });
+    sel = { kind: "text", i: state.texts.length - 1 };
+    update(false);
+    // the hit rect exists after the repaint — then drop the editor right on it
+    requestAnimationFrame(() => startTextEdit({ kind: "text", i: state.texts.length - 1 }));
   });
+  // double-click (or double-tap) any words on the canvas to edit them in place
+  $("artboard").addEventListener("dblclick", (e) => {
+    const r = canvas.getBoundingClientRect();
+    const px = (e.clientX - r.left) * (canvas.width / r.width);
+    const py = (e.clientY - r.top) * (canvas.height / r.height);
+    const pad = Math.max(8, canvas.width * 0.012);
+    for (let i = state.texts.length - 1; i >= 0; i--) {
+      const t = hitRects.texts[i];
+      if (t && px >= t.x - pad && px <= t.x + t.w + pad && py >= t.y - pad && py <= t.y + t.h + pad) {
+        startTextEdit({ kind: "text", i });
+        return;
+      }
+    }
+    const c = hitRects.caption;
+    if (c && px >= c.x - pad && px <= c.x + c.w + pad && py >= c.y - pad && py <= c.y + c.h + pad) {
+      startTextEdit({ kind: "caption" });
+    }
+  });
+  window.addEventListener("resize", () => commitTextEdit());
   $("tbCapChip").addEventListener("click", () => {
     const i = $("tbCapInput");
     i.value = selText() ? selText().c : state.capColor;
@@ -2124,7 +2198,6 @@
   function applyLook(t) {
     lookState(t);
     $("caption").value = state.caption;
-    $("tbCaption").value = state.caption;
     $("fontSelLabel").textContent = state.capFont;
     ensureFont(state.capFont).then(() => drawPreview()); // caption re-renders when the face arrives
     if (state.logo) $("logoPrev").innerHTML = `<img src="${state.logo}" alt="logo" />`;
@@ -2609,7 +2682,6 @@
   syncGalleryUI();
   syncQrBtn(); // a shared multi-code design may already be at the 3-code cap
   placeLooks(); // gallery into the panel tab (studio) or under the canvas (mobile)
-  $("tbCaption").value = state.caption;
   $("fontSelLabel").textContent = state.capFont;
   fontList.querySelectorAll(".fmt-row").forEach(x =>
     x.classList.toggle("active", x.dataset.font === state.capFont));
