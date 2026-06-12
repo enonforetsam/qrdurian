@@ -234,6 +234,26 @@ export default {
         return Response.json({ qrs: row?.v ?? 0 }, { headers: CNT_CORS });
       }
 
+      // link shortener proxy for qrdurian.com — public shorteners don't send
+      // CORS headers, so the browser can't call them; we can, server-side
+      if (p === "/api/shorten") {
+        if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CNT_CORS });
+        const long = (url.searchParams.get("url") || "").slice(0, 2000);
+        if (!/^https?:\/\/.{4,}/i.test(long)) {
+          return Response.json({ error: "bad url" }, { status: 400, headers: CNT_CORS });
+        }
+        const ip = req.headers.get("cf-connecting-ip") || "?";
+        if (rateLimitedCount(ip)) {
+          return Response.json({ error: "rate limited" }, { status: 429, headers: CNT_CORS });
+        }
+        const r = await fetch("https://tinyurl.com/api-create.php?url=" + encodeURIComponent(long));
+        const short = (await r.text()).trim();
+        if (!r.ok || !/^https?:\/\/tinyurl\.com\//i.test(short)) {
+          return Response.json({ error: "upstream failed" }, { status: 502, headers: CNT_CORS });
+        }
+        return Response.json({ short }, { headers: CNT_CORS });
+      }
+
       if (p === "/" || p === "") return landingPage();
       if (p === "/register") return registerPage();
 

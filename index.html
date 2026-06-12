@@ -764,6 +764,12 @@
         <label class="lbl" for="content">What should the code open?</label>
         <textarea id="content" placeholder="https://your-link.com" style="min-height:44px;"></textarea>
         <div class="hint">A link, plain text, email, or Wi-Fi details — the code updates live.</div>
+        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:10px;">
+          <button class="mini-btn" id="beautifyBtn"><i data-lucide="scan-line"></i> Beautify an existing QR</button>
+          <button class="mini-btn" id="shortenBtn" hidden><i data-lucide="link"></i> Shorten link</button>
+          <input type="file" id="qrUpload" accept="image/*" hidden />
+        </div>
+        <div class="hint" id="contentHint" hidden style="color:var(--accent); font-weight:600;"></div>
         <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:10px;">
           <button class="mini-btn" id="addQrBtn"><i data-lucide="plus"></i> Add another QR</button>
           <button class="btn primary" id="generateBtn" style="flex:0 0 auto;"><i data-lucide="qr-code"></i> Generate QR</button>
@@ -1712,11 +1718,108 @@
   }
 
   // ================= Wire controls =================
+  // one link per code — paste two URLs and the first one wins
+  let hintTimer = null;
+  function flashHint(msg) {
+    const h = $("contentHint");
+    h.textContent = msg;
+    h.hidden = false;
+    clearTimeout(hintTimer);
+    hintTimer = setTimeout(() => { h.hidden = true; }, 3500);
+  }
+  function enforceSingleLink(v) {
+    const urls = v.match(/https?:\/\/\S+/gi);
+    if (urls && urls.length > 1) {
+      flashHint("One link per QR — kept the first.");
+      return urls[0];
+    }
+    return v;
+  }
+  function syncShorten() {
+    const v = $("content").value.trim();
+    $("shortenBtn").hidden = !(/^https?:\/\//i.test(v) && v.length > 35 && !/^https?:\/\/tinyurl\.com\//i.test(v));
+  }
   $("content").addEventListener("input", (e) => {
-    const v = e.target.value.trim() || "https://qrdurian.com";
+    let v = e.target.value.trim() || "https://qrdurian.com";
+    const single = enforceSingleLink(v);
+    if (single !== v) { v = single; e.target.value = v; }
     if (sel && sel.kind === "qr" && sel.i > 0) state.extra[sel.i - 1] = v;
     else state.data = v;
+    syncShorten();
     update(true);
+  });
+
+  // shorten long links — smaller payload = chunkier, easier-to-scan modules
+  $("shortenBtn").addEventListener("click", async () => {
+    const v = $("content").value.trim();
+    if (!/^https?:\/\//i.test(v)) return;
+    const b = $("shortenBtn");
+    b.disabled = true;
+    flashHint("Shortening…");
+    try {
+      // our own worker proxies TinyURL — public shorteners don't speak CORS
+      const res = await fetch("https://trace.qrdurian.com/api/shorten?url=" + encodeURIComponent(v));
+      const j = await res.json();
+      if (!j.short) throw new Error(j.error || "no short url");
+      $("content").value = j.short;
+      $("content").dispatchEvent(new Event("input", { bubbles: true }));
+      flashHint("Shortened ✓ — chunkier modules, easier scans.");
+    } catch (err) {
+      flashHint("Couldn't shorten right now — kept the long link.");
+    }
+    b.disabled = false;
+    syncShorten();
+  });
+
+  // beautify an existing QR: photo/screenshot in → content out, restyled here.
+  // jsQR loads lazily — nobody pays for the decoder until they use it.
+  let jsQRLoad = null;
+  function loadJsQR() {
+    if (window.jsQR) return Promise.resolve();
+    if (!jsQRLoad) jsQRLoad = new Promise((res, rej) => {
+      const s = document.createElement("script");
+      s.src = "https://unpkg.com/jsqr@1.4.0/dist/jsQR.js";
+      s.onload = res;
+      s.onerror = () => { jsQRLoad = null; rej(new Error("jsQR failed to load")); };
+      document.head.appendChild(s);
+    });
+    return jsQRLoad;
+  }
+  $("beautifyBtn").addEventListener("click", () => $("qrUpload").click());
+  $("qrUpload").addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    flashHint("Reading your QR…");
+    try {
+      await loadJsQR();
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
+      let found = null;
+      for (const target of [800, 1200, 400]) { // photos are huge, screenshots tiny — try a few scales
+        const k = Math.min(1, target / Math.max(img.width, img.height));
+        const c = document.createElement("canvas");
+        c.width = Math.max(1, Math.round(img.width * k));
+        c.height = Math.max(1, Math.round(img.height * k));
+        const x = c.getContext("2d");
+        x.drawImage(img, 0, 0, c.width, c.height);
+        const d = x.getImageData(0, 0, c.width, c.height);
+        found = jsQR(d.data, d.width, d.height);
+        if (found && found.data) break;
+      }
+      URL.revokeObjectURL(url);
+      if (found && found.data) {
+        $("content").value = found.data;
+        $("content").dispatchEvent(new Event("input", { bubbles: true }));
+        animateGenerate(900);
+        flashHint("Got it — your code, beautified ✨");
+      } else {
+        flashHint("Couldn't find a QR in that image — try a clearer shot.");
+      }
+    } catch (err) {
+      flashHint("Couldn't read that image.");
+    }
   });
   // up to three codes on one artboard — same design, different destinations
   function syncQrBtn() {
