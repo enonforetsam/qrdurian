@@ -569,33 +569,11 @@
     }
 
     /* all studio-only elements hidden by default */
-    .studio-topbar { display: none; }
     .looks-sidebar { display: none; }
     .edit-bar { display: none; }
 
     @media (min-width: 1100px) {
-      /* ---- TOP BAR: thin, 48px, full width ---- */
-      .studio-topbar {
-        display: flex; align-items: center;
-        position: fixed; top: 0; left: 0; right: 0; z-index: 70;
-        height: 48px;
-        background: var(--panel); border-bottom: 1px solid var(--border);
-        padding: 0 16px;
-      }
-      .stb-left { display: flex; align-items: center; gap: 2px; flex: 1; }
-      .stb-center {
-        display: flex; align-items: center; gap: 10px;
-        position: absolute; left: 50%; transform: translateX(-50%);
-        pointer-events: none;
-      }
-      .stb-logo { width: 26px; height: 26px; flex: 0 0 auto; }
-      .stb-logo img { width: 100%; height: 100%; display: block; }
-      .stb-wordmark {
-        font-family: "Urbanist", sans-serif; font-weight: 800; font-size: 16px;
-        letter-spacing: -.02em; color: var(--text); pointer-events: none;
-      }
-      .stb-right { display: flex; align-items: center; gap: 6px; margin-left: auto; }
-      /* icon buttons in the top bar */
+      /* icon buttons in the bar */
       .stb-icon {
         width: 32px; height: 32px; border-radius: 9px; flex: 0 0 auto;
         border: none; background: transparent; color: var(--muted);
@@ -615,16 +593,14 @@
       }
       .stb-export svg { width: 13px; height: 13px; }
       .stb-export:hover { background: #2a2a2d; }
-      /* format chips in the top bar */
-      .fmt-chips { display: flex; gap: 2px; }
-      /* the old header brand disappears in studio */
-      header .brand { display: none; }
+      /* format chips live in the bar */
+      .fmt-chips { display: flex; gap: 2px; flex: 0 0 auto; }
       .bottom-nav { display: none; }
 
-      /* ---- LEFT SIDEBAR: looks gallery ---- */
+      /* ---- LEFT SIDEBAR: looks gallery, full height ---- */
       .looks-sidebar {
         display: block;
-        position: fixed; top: 48px; left: 0; bottom: 0; width: 200px; z-index: 60;
+        position: fixed; top: 0; left: 0; bottom: 0; width: 200px; z-index: 60;
         background: var(--panel); border-right: 1px solid var(--border);
         overflow-y: auto; padding: 14px 12px;
         scrollbar-width: thin; scrollbar-color: var(--border) transparent;
@@ -643,11 +619,11 @@
       .looks-sidebar .look-chip canvas { display: block; width: 100% !important; height: 100% !important; }
       .looks-sidebar .look-name { font-size: 9px; }
 
-      /* ---- CANVAS ZONE: right of sidebar, below top bar ---- */
-      main { padding-left: 200px; padding-right: 0; padding-top: 48px; padding-bottom: 72px; }
-      header { display: none; } /* the studio top bar replaces the header */
+      /* ---- CANVAS ZONE: right of sidebar, above the bar ---- */
+      main { padding-left: 200px; padding-right: 0; padding-top: 16px; padding-bottom: 88px; }
+      header { display: none; } /* the bar carries the brand now */
 
-      /* ---- BOTTOM EDIT BAR: floating pill above the bottom edge ---- */
+      /* ---- THE BAR: one floating strip along the bottom, holds everything ---- */
       .edit-bar {
         display: flex; align-items: center; gap: 8px;
         position: fixed; bottom: 16px;
@@ -655,16 +631,13 @@
         background: var(--panel); border: 1px solid var(--border);
         border-radius: 16px; padding: 8px 14px;
         box-shadow: 0 4px 20px rgba(0,0,0,.10), 0 1px 4px rgba(0,0,0,.06);
-        z-index: 60;
+        z-index: 70;
       }
-      .edit-bar > svg { width: 14px; height: 14px; color: var(--muted); flex: 0 0 auto; }
-      .edit-bar input[type="text"] {
-        flex: 1 1 120px; min-width: 60px; max-width: 220px;
-        border: none; background: transparent; font: inherit; font-size: 13px;
-        color: var(--text); outline: none;
-      }
+      .eb-logo { width: 26px; height: 26px; flex: 0 0 auto; }
+      .eb-logo img { width: 100%; height: 100%; display: block; }
       .eb-font { flex: 0 0 auto; width: auto; min-width: 120px; gap: 8px; }
       .eb-sep { width: 1px; align-self: stretch; background: var(--border); margin: 0 4px; flex: 0 0 auto; }
+      .eb-flex { flex: 1 1 auto; }
 
       /* popovers drop from the stb-icon / stb-export buttons */
       .card.controls, .export-sheet {
@@ -862,26 +835,6 @@
       </div>
     </section>
 
-    <!-- Studio top bar (≥1100px only) -->
-    <div class="studio-topbar" id="studioTopbar">
-      <!-- left: format chips -->
-      <div class="stb-left">
-        <div class="fmt-chips" id="fmtChips" aria-label="Canvas size"></div>
-      </div>
-      <!-- center: logo -->
-      <div class="stb-center">
-        <span class="stb-logo"><img src="durian.svg" alt="qrdurian" /></span>
-        <span class="stb-wordmark">qrdurian</span>
-      </div>
-      <!-- right: action icon buttons + export -->
-      <div class="stb-right">
-        <button class="stb-icon nav-item" data-nav="content" aria-label="URL"><i data-lucide="link-2"></i></button>
-        <button class="stb-icon nav-item" data-nav="style" aria-label="Design"><i data-lucide="sliders-horizontal"></i></button>
-        <button class="stb-icon" id="tbShuffle" aria-label="Shuffle look"><i data-lucide="shuffle"></i></button>
-        <button class="stb-export nav-item" data-nav="export" aria-label="Export"><i data-lucide="download"></i> Export</button>
-      </div>
-    </div>
-
     <!-- Studio left sidebar: looks gallery (≥1100px only) -->
     <aside class="looks-sidebar" id="looksSidebar">
       <div class="looks-sidebar-inner" id="looksSidebarInner"></div>
@@ -897,17 +850,25 @@
       </div>
     </section>
 
-    <!-- Studio bottom edit bar (≥1100px only) — text lives ON the canvas;
-         this bar only adds items and styles the current selection -->
+    <!-- Studio bottom bar (≥1100px only): THE bar — logo, sections, text tools,
+         artboard size, export. Popovers drop upward from their buttons. -->
     <div class="edit-bar" id="editBar">
-      <button class="mini-btn" id="addTextBtn"><i data-lucide="plus"></i> Text</button>
+      <span class="eb-logo"><img src="durian.svg" alt="qrdurian" /></span>
       <span class="eb-sep"></span>
+      <button class="stb-icon" data-nav="content" aria-label="URL"><i data-lucide="link-2"></i></button>
+      <button class="stb-icon" data-nav="style" aria-label="Design"><i data-lucide="sliders-horizontal"></i></button>
+      <button class="stb-icon" id="tbShuffle" aria-label="Shuffle look"><i data-lucide="shuffle"></i></button>
+      <span class="eb-sep"></span>
+      <button class="mini-btn" id="addTextBtn"><i data-lucide="plus"></i> Text</button>
       <button class="select eb-font" id="fontSelect">
         <span id="fontSelLabel">Urbanist</span>
         <i data-lucide="chevron-down"></i>
       </button>
       <button class="chip-color compact" id="tbCapChip" aria-label="Text color"><span class="cdot" id="tbCapDot"></span></button>
       <input type="color" id="tbCapInput" class="vhid" />
+      <span class="eb-flex"></span>
+      <div class="fmt-chips" id="fmtChips" aria-label="Canvas size"></div>
+      <button class="stb-export" data-nav="export" aria-label="Export"><i data-lucide="download"></i> Export</button>
     </div>
   </main>
 
@@ -1393,11 +1354,6 @@
   const ctx = canvas.getContext("2d");
 
   const isStudio = () => window.innerWidth >= 1100; // must match the studio CSS media query
-  function applyStudioPadding() {
-    if (!isStudio()) { document.querySelector("main").style.paddingTop = ""; return; }
-    const tbH = $("studioTopbar") ? $("studioTopbar").offsetHeight : 48;
-    document.querySelector("main").style.paddingTop = tbH + "px";
-  }
   function fitPreview() {
     // mobile/tablet: preview is format-independent — the QR stays put, aspect applies
     // only to the exported file. Studio: the canvas IS the artboard — it reshapes live
@@ -1406,8 +1362,7 @@
     const fmt = studio ? FORMATS[state.format] : { w: 1, h: 1 };
     const wrap = $("artboardWrap");
     const desktop = window.innerWidth > 880;
-    const toolbarH = studio ? (($("studioTopbar") && $("studioTopbar").offsetHeight) || 48) : 0;
-    // the floating edit bar reserves the bottom strip of the studio canvas zone
+    // the floating bottom bar reserves the bottom strip of the studio canvas zone
     const editBarReserve = studio ? (($("editBar") && $("editBar").offsetHeight) || 48) + 28 : 0;
     const wrapW = Math.min(wrap.clientWidth || wrap.parentElement.clientWidth, studio ? 680 : desktop ? 580 : 440);
     // static: always leave room below for a sheet, so the QR never moves
@@ -1421,7 +1376,7 @@
     const sat = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--sat")) || 0;
     const stripH = studio ? 0 : $("looksStrip").offsetHeight; // studio hosts the gallery in the panel
     const chrome = (studio
-      ? toolbarH + editBarReserve + 24 // header is hidden in studio
+      ? editBarReserve + 36 // no header, no top bar — just breathing room + the bar
       : window.innerWidth >= 1400 ? 280 : desktop ? 250 : 205) + sat; // header grows with logo + notch
     const zoneH = Math.max(150, window.innerHeight - sheetH - chrome);
     const ar = fmt.w / fmt.h;
@@ -1460,7 +1415,7 @@
     let shift = 0;
     if (studio) {
       // center in the zone between the top bar and the floating edit bar
-      shift = Math.max(0, (window.innerHeight - toolbarH - editBarReserve - Math.min(h, zoneH)) / 2 - 12);
+      shift = Math.max(0, (window.innerHeight - editBarReserve - Math.min(h, zoneH)) / 2 - 16);
     } else if (!document.body.classList.contains("sheet-open")) {
       const headTotal = document.querySelector("header").offsetHeight + (window.innerWidth <= 880 ? 16 : 8);
       const navTop = window.innerHeight - ((window.innerWidth > 880 ? 32 : 14) + 80);
@@ -1555,10 +1510,15 @@
     const mobile = window.innerWidth <= 880;
     if (wasMobile && !mobile && !openPanel && !isStudio()) openSheet("content"); // mid-desktop keeps a card open
     if (!wasStudio && isStudio() && openPanel) closeSheet(); // crossing into studio: start clean
+    if (wasStudio && !isStudio()) {
+      // leaving studio: the popover anchoring set inline left/top/bottom — CSS owns them again
+      [$("controlsCard"), $("exportSheet")].forEach((c) => {
+        c.style.left = ""; c.style.top = ""; c.style.bottom = "";
+      });
+    }
     wasStudio = isStudio();
     wasMobile = mobile;
-    applyStudioPadding();
-    placeLooks(); // gallery hops between panel tab (studio) and under-canvas dock
+    placeLooks(); // gallery hops between sidebar (studio) and under-canvas dock
     drawPreview();
   });
 
@@ -2057,7 +2017,15 @@
     const r = sel.getBoundingClientRect();
     fontList.style.left = r.left + "px";
     fontList.style.width = Math.max(r.width, 190) + "px";
-    fontList.style.top = (r.bottom + 6) + "px";
+    // flip upward when the button sits near the bottom (the studio bar) —
+    // anchored by its bottom edge, so late font loads grow the list upward
+    if (r.bottom + 6 + fontList.offsetHeight > window.innerHeight - 12) {
+      fontList.style.top = "auto";
+      fontList.style.bottom = (window.innerHeight - r.top + 6) + "px";
+    } else {
+      fontList.style.bottom = "auto";
+      fontList.style.top = (r.bottom + 6) + "px";
+    }
   });
   document.addEventListener("click", (e) => {
     if (!fontList.hidden && !fontList.contains(e.target)) {
@@ -2448,19 +2416,19 @@
       document.querySelectorAll("#controlsCard .panel").forEach(p =>
         p.classList.toggle("active", p.dataset.panel === "style" || p.dataset.panel === "scene"));
     }
-    // studio: anchor the popover below the active button in the top bar
+    // studio: the popover rises from its button in the bottom bar
     if (isStudio()) {
       const card = isExport ? $("exportSheet") : $("controlsCard");
-      const btn = document.querySelector(`#studioTopbar [data-nav="${name}"]`);
+      const btn = document.querySelector(`#editBar [data-nav="${name}"]`);
       if (btn) {
         const r = btn.getBoundingClientRect();
         const popW = parseInt(getComputedStyle(card).width, 10) || 360;
-        let left = r.left;
         // clamp so the popover never overflows the viewport
-        left = Math.min(left, window.innerWidth - popW - 12);
-        left = Math.max(12, left);
+        const left = Math.max(12, Math.min(r.left, window.innerWidth - popW - 12));
         card.style.left = left + "px";
-        card.style.top = (r.bottom + 6) + "px";
+        card.style.top = "auto";
+        // clear the whole bar, not just the button
+        card.style.bottom = (window.innerHeight - $("editBar").getBoundingClientRect().top + 10) + "px";
       }
     }
     $("navBack").disabled = name === "content";
@@ -2676,7 +2644,6 @@
     if (bootLook) document.querySelectorAll("#looksStrip .look").forEach(b =>
       b.classList.toggle("active", b.dataset.theme === bootLook));
   }
-  applyStudioPadding();
   syncChips();
   syncFmtSelect();
   syncGalleryUI();
