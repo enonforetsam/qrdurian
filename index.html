@@ -1043,7 +1043,6 @@
         const imgs = await Promise.all(codes().map((d) => qrImageAt(1024, true, d)));
         if (t === qrToken) {
           qrImgs = imgs.map((img) => inkify(img, 1024));
-          creatureImg = inkify(creatureMask(1024), 1024); // same ink, same mood — same creature
           drawPreview();
           if (firstInk) { firstInk = false; animateGenerate(900); } // the QR is born, not loaded
         }
@@ -1148,142 +1147,6 @@
 
   // generate-animation state (preview only)
   const fx = { blur: 0, alpha: 1 };
-
-  // ================= Living ink =================
-  // The QR is a creature: it breathes, ripples when poked, and when left
-  // alone melts into a little ink durian-gotchi before reforming.
-  const live = {
-    phase: "qr",            // qr | meltOut | creature | meltBack
-    t0: 0,
-    lastInteract: performance.now(),
-    ripples: [],
-    energy: 0,              // 0 = perfectly still, 1 = fully liquid (idle state)
-  };
-  let creatureImg = null;
-  const CREATURE_EYES = [[0.385, 0.46], [0.615, 0.46]]; // centers, relative to sprite box
-
-  function creatureMask(s) {
-    const c = document.createElement("canvas");
-    c.width = c.height = s;
-    const x = c.getContext("2d");
-    x.fillStyle = "#000";
-    // body
-    roundRectPath(x, s * .19, s * .26, s * .62, s * .52, s * .17);
-    x.fill();
-    // durian spikes along the top
-    for (let i = 0; i < 5; i++) {
-      const sx = s * (.24 + i * .115);
-      x.beginPath();
-      x.moveTo(sx, s * .28);
-      x.lineTo(sx + s * .05, s * .14);
-      x.lineTo(sx + s * .10, s * .28);
-      x.closePath();
-      x.fill();
-    }
-    // little feet
-    roundRectPath(x, s * .30, s * .76, s * .13, s * .11, s * .05); x.fill();
-    roundRectPath(x, s * .57, s * .76, s * .13, s * .11, s * .05); x.fill();
-    // carve finder-style eyes (ring + dot, like a QR's own eyes)
-    x.globalCompositeOperation = "destination-out";
-    for (const [ex, ey] of CREATURE_EYES) {
-      roundRectPath(x, s * ex - s * .075, s * ey - s * .075, s * .15, s * .15, s * .045);
-      x.fill();
-    }
-    x.globalCompositeOperation = "source-over";
-    for (const [ex, ey] of CREATURE_EYES) {
-      roundRectPath(x, s * ex - s * .032, s * ey - s * .032, s * .064, s * .064, s * .02);
-      x.fill();
-    }
-    // carve a smile
-    x.globalCompositeOperation = "destination-out";
-    x.lineWidth = s * .028;
-    x.lineCap = "round";
-    x.beginPath();
-    x.arc(s * .5, s * .56, s * .085, Math.PI * .15, Math.PI * .85);
-    x.stroke();
-    x.globalCompositeOperation = "source-over";
-    return c;
-  }
-
-  // liquid renderer: two-axis multi-octave displacement + wet-edge blur + sheen.
-  // The ink should read as black water held inside the card.
-  const LQ = { a: document.createElement("canvas"), b: document.createElement("canvas"), S: 320 };
-  LQ.a.width = LQ.a.height = LQ.b.width = LQ.b.height = LQ.S;
-
-  function drawSpriteLive(ctx, img, x, y, size, r, now) {
-    const S = LQ.S, strips = 48;
-    const PAD = S * 0.08;               // headroom so waves never hit the canvas wall
-    const C = S - PAD * 2;              // content size inside the padded canvas
-    const seg = C / strips;
-    const ga = LQ.a.getContext("2d"), gb = LQ.b.getContext("2d");
-    live.ripples = live.ripples.filter((rp) => now - rp.start < 800);
-
-    // pass 1 — horizontal flow: rows displaced by a slow swell + fast shimmer + pokes.
-    // Strips never overlap at the destination (overlap = double-alpha gridlines);
-    // instead each samples its source with a half-pixel bleed to close hairlines.
-    ga.clearRect(0, 0, S, S);
-    const E = live.energy;
-    const ih = img.height / strips, ib = img.height / C * 0.75; // source bleed
-    for (let i = 0; i < strips; i++) {
-      const yc = (i + 0.5) / strips;
-      let off = E * (
-        C * 0.016 * Math.sin(now / 1900 + yc * 4.8) +
-        C * 0.006 * Math.sin(now / 540 - yc * 9.5 + 1.7));
-      for (const rp of live.ripples) {
-        const age = (now - rp.start) / 800;
-        const ry = (rp.y - y) / size;
-        const dist = (yc - ry) / 0.24;
-        off += Math.exp(-dist * dist) * Math.sin(age * Math.PI * 3.2) * (1 - age) * C * 0.05;
-      }
-      ga.drawImage(img, 0, Math.max(0, i * ih - ib), img.width, ih + ib * 2,
-        PAD + off, PAD + i * seg, C, seg);
-    }
-
-    // pass 2 — vertical flow: full-height columns of pass 1, other axis
-    gb.clearRect(0, 0, S, S);
-    const cw = S / strips, cb = 0.75;
-    for (let i = 0; i < strips; i++) {
-      const xc = (i + 0.5) / strips;
-      const off = E * (
-        C * 0.011 * Math.sin(now / 2300 + xc * 5.6 + 0.9) +
-        C * 0.004 * Math.sin(now / 700 - xc * 11));
-      gb.drawImage(LQ.a, Math.max(0, i * cw - cb), 0, cw + cb * 2, S,
-        i * cw, off, cw, S);
-    }
-
-    // sheen — a soft highlight band drifting across the ink (only while liquid)
-    if (E > 0.05) {
-      const sp = ((now / 5200) % 1) * 2.6 - 0.8;
-      const grad = gb.createLinearGradient(sp * S - S * .3, sp * S - S * .3, sp * S + S * .35, sp * S + S * .35);
-      grad.addColorStop(0, "rgba(255,255,255,0)");
-      grad.addColorStop(0.5, `rgba(255,255,255,${(0.13 * E).toFixed(3)})`);
-      grad.addColorStop(1, "rgba(255,255,255,0)");
-      gb.save();
-      gb.globalCompositeOperation = "source-atop";
-      gb.fillStyle = grad;
-      gb.fillRect(0, 0, S, S);
-      gb.restore();
-    }
-
-    // composite: breathe, wet-edge blur, melt fx
-    ctx.save();
-    roundRectPath(ctx, x - size * .05, y - size * .05, size * 1.10, size * 1.10, r + size * .05);
-    ctx.clip();
-    const cx = x + size / 2, cy = y + size / 2;
-    const br = 1 + 0.0045 * E * Math.sin(now / 1150);
-    ctx.translate(cx, cy);
-    ctx.scale(br, 2 - br);
-    ctx.translate(-cx, -cy);
-    if (typeof ctx.filter === "string") {
-      const wet = size * 0.005 * E + fx.blur;
-      if (wet > 0.1) ctx.filter = `blur(${wet}px)`;
-    }
-    ctx.globalAlpha = fx.alpha;
-    // map the padded canvas so the content area lands exactly on the QR box
-    const k = size / C;
-    ctx.drawImage(LQ.b, x - PAD * k, y - PAD * k, S * k, S * k);
-    ctx.restore();
-  }
 
   function drawQrRounded(ctx, img, x, y, size, r, fxBlur = 0, fxAlpha = 1) {
     ctx.save();
@@ -1392,7 +1255,7 @@
   // single source of truth for where everything sits on the artboard —
   // clamps the QR group so cards + caption can never overflow the canvas.
   // Multi-code artboards lay the cards in a row (wide) or a column (tall);
-  // x/y keep pointing at the first card for single-minded callers (pet, poke).
+  // x/y keep pointing at the first card for single-minded callers.
   function sceneLayout(W, H) {
     const n = 1 + state.extra.length;
     const u = Math.min(W, H);
@@ -1428,8 +1291,7 @@
   }
 
   // paintBg=false for the live preview — the page itself provides the background
-  // liveNow (timestamp) enables the living-ink renderer; null = static (exports)
-  function drawScene(ctx, W, H, qrImage, paintBg = true, texImg = null, liveNow = null) {
+  function drawScene(ctx, W, H, qrImage, paintBg = true, texImg = null) {
     if (paintBg) {
       if (state.sceneBg === "solid") {
         ctx.fillStyle = state.bg;
@@ -1479,12 +1341,8 @@
 
       const img = imgs[i] || imgs[0];
       if (img) {
-        if (liveNow !== null && cards.length === 1) {
-          drawSpriteLive(ctx, img, c.x + pad, c.y + pad, qs, qs * 0.05, liveNow);
-        } else {
-          drawQrRounded(ctx, img, c.x + pad, c.y + pad, qs, qs * 0.05,
-            paintBg ? 0 : fx.blur, paintBg ? 1 : fx.alpha);
-        }
+        drawQrRounded(ctx, img, c.x + pad, c.y + pad, qs, qs * 0.05,
+          paintBg ? 0 : fx.blur, paintBg ? 1 : fx.alpha);
       }
       if (capture) hitRects.qrs[i] = { x: c.x, y: c.y, w: cardSize, h: cardSize };
     });
@@ -1784,8 +1642,6 @@
   // update(): qrChanged = the QR module image itself needs re-rendering
   function update(qrChanged) {
     if (qrChanged) queueQr();
-    live.lastInteract = performance.now();
-    petDismiss();
     drawPreview();
     syncURL();
   }
@@ -2504,8 +2360,6 @@
   function openSheet(name) {
     const prev = openPanel;
     openPanel = name;
-    petDismiss(); // back to work — the pet hops away
-    live.lastInteract = performance.now();
     document.body.classList.add("sheet-open");
     document.querySelectorAll(".nav-item, .stb-icon[data-nav], .stb-export[data-nav]").forEach(n =>
       n.classList.toggle("active", n.dataset.nav === name));
@@ -2569,7 +2423,7 @@
   $("sheetBackdrop").addEventListener("click", closeSheet);
   $("sheetClose").addEventListener("click", closeSheet);
   $("exportClose").addEventListener("click", closeSheet);
-  // tapping the QR: poke the ink (ripple) — or poke the pet (it startles awake)
+  // tapping the QR: select/deselect items (caption, texts, multi-code cards)
   let dragSel = null, suppressOpen = false;
   $("artboard").addEventListener("pointerdown", (e) => {
     const r = canvas.getBoundingClientRect();
@@ -2605,7 +2459,6 @@
     }
     if (hit) {
       sel = hit; suppressOpen = true;
-      live.lastInteract = performance.now(); // keep the liquid asleep while selecting
       syncBarToSelection();
       if (hit.kind === "qr") $("content").value = codes()[hit.i]; // the Content field edits this code now
       if (hit.kind === "text") {
@@ -2614,25 +2467,13 @@
         try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
       }
       drawPreview();
-      return; // selecting shouldn't also poke the ink
+      return;
     }
     if (sel) { // tap on empty space clears the selection
       sel = null; suppressOpen = true;
       syncBarToSelection();
       drawPreview();
-      return;
     }
-    if (pet.state !== "off" && pet.state !== "exit") {
-      const L = sceneLayout(canvas.width, canvas.height);
-      const ps = L.cardSize * 0.19, feetY = L.y + ps * 0.06;
-      if (Math.abs(px - pet.x) < ps * 0.8 && py > feetY - ps * 1.2 && py < feetY + ps * 0.3) {
-        pet.state = "enter"; pet.t0 = performance.now(); pet.walks = 0; pet.zzz = []; // startle hop
-        return;
-      }
-    }
-    live.ripples.push({ y: py, start: performance.now() });
-    if (live.ripples.length > 6) live.ripples.shift();
-    live.lastInteract = performance.now();
   });
   $("artboard").addEventListener("pointermove", (e) => {
     if (!dragSel) return;
@@ -2643,7 +2484,6 @@
     if (!it) { dragSel = null; return; }
     it.x = Math.round(Math.min(0.98, Math.max(0.02, (px - dragSel.dx) / canvas.width)) * 1000) / 1000;
     it.y = Math.round(Math.min(0.98, Math.max(0.02, (py - dragSel.dy) / canvas.height)) * 1000) / 1000;
-    live.lastInteract = performance.now();
     drawPreview();
   });
   ["pointerup", "pointercancel"].forEach((ev) => $("artboard").addEventListener(ev, () => {
@@ -2658,7 +2498,7 @@
   });
   $("artboard").addEventListener("click", () => {
     if (suppressOpen) { suppressOpen = false; return; }
-    if (!openPanel && !isStudio()) openSheet("content"); // studio: tapping the canvas is for poking the ink
+    if (!openPanel && !isStudio()) openSheet("content"); // studio: canvas taps are for selecting items
   });
 
   // step through the cards in order
@@ -2671,144 +2511,24 @@
   $("navNext").addEventListener("click", () => stepSheet(1));
   $("navBack2").addEventListener("click", () => stepSheet(-1));
 
-  // generate = melt the code into ink, reform it, then move into styling
+  // generate = melt the code into ink, reform it. The animation drives its
+  // own frames — there's no always-on render loop; drawPreview repaints on demand.
   let fxRaf = null;
   function animateGenerate(duration = 950) {
     cancelAnimationFrame(fxRaf);
-    live.phase = "qr"; // a generate always shows the code being born
-    live.lastInteract = performance.now();
+    if (REDUCED_MOTION.matches) { fx.blur = 0; fx.alpha = 1; drawPreview(); return; }
     const start = performance.now();
     function frame(now) {
       const t = Math.min(1, (now - start) / duration);
       const k = Math.sin(t * Math.PI); // 0 → 1 → 0: melt then reform
       fx.blur = k * 7;
       fx.alpha = 1 - k * 0.4;
-      if (t < 1) fxRaf = requestAnimationFrame(frame);
-      else { fx.blur = 0; fx.alpha = 1; }
-    }
-    fxRaf = requestAnimationFrame(frame); // the live loop does the drawing
-  }
-
-  // ================= The heartbeat =================
-  let lastFrameT = 0;
-  function liveFrame(now) {
-    requestAnimationFrame(liveFrame);
-    if (!qrImgs[0]) return;
-    const dt = Math.min(64, now - lastFrameT); lastFrameT = now;
-    if (REDUCED_MOTION.matches) {
       drawScene(ctx, canvas.width, canvas.height, qrImgs, false);
       drawSelection();
-      return;
+      if (t < 1) fxRaf = requestAnimationFrame(frame);
+      else { fx.blur = 0; fx.alpha = 1; drawPreview(); }
     }
-    // energy envelope: still during use, liquid only when idle (or rippling) —
-    // and only single-code artboards breathe (multi stays calm and crisp)
-    const single = state.extra.length === 0;
-    const ripplesActive = live.ripples.length > 0;
-    const idleLiquid = !openPanel && now - live.lastInteract > 8000;
-    const wantLiquid = (ripplesActive || idleLiquid) && single;
-    const rate = wantLiquid ? (ripplesActive ? 130 : 1600) : 240; // wake slow, ripple fast, settle quick
-    live.energy += ((wantLiquid ? 1 : 0) - live.energy) * Math.min(1, dt / rate);
-    if (live.energy < 0.01) live.energy = 0;
-
-    // fully settled and not melting → render the crisp static path
-    if (live.energy === 0 && fx.blur === 0) {
-      drawScene(ctx, canvas.width, canvas.height, qrImgs, false);
-    } else {
-      drawScene(ctx, canvas.width, canvas.height, qrImgs, false, null, now);
-    }
-    drawSelection(); // the dashed box survives every repaint
-    petFrame(now, dt); // the little durian lives on top of the card
-  }
-  requestAnimationFrame(liveFrame);
-
-  // ================= The durian pet =================
-  // A small ink durian that appears when you're idle: waddles along the top
-  // edge of the QR card, pauses, falls asleep (z z z), startles when poked,
-  // and vanishes the moment you get back to work.
-  const pet = { state: "off", x: 0, dir: 1, t0: 0, target: 0, walks: 0, phase: 0, zzz: [] };
-  function petDismiss() {
-    if (pet.state !== "off" && pet.state !== "exit") { pet.state = "exit"; pet.t0 = performance.now(); }
-  }
-  function petFrame(now, dt) {
-    if (!creatureImg || REDUCED_MOTION.matches) return;
-    if (pet.state === "off") {
-      if (!openPanel && state.extra.length === 0 && now - live.lastInteract > 12000 && !document.hidden) {
-        const L0 = sceneLayout(canvas.width, canvas.height);
-        pet.state = "enter"; pet.t0 = now;
-        pet.x = L0.x + L0.cardSize * (0.25 + 0.5 * Math.random());
-        pet.dir = Math.random() < 0.5 ? -1 : 1;
-        pet.walks = 0; pet.zzz = [];
-      } else return;
-    }
-    const L = sceneLayout(canvas.width, canvas.height);
-    const ps = L.cardSize * 0.19;
-    const minX = L.x + ps * 0.7, maxX = L.x + L.cardSize - ps * 0.7;
-    pet.x = Math.max(minX, Math.min(maxX, pet.x));
-    let scale = 1, bob = 0, tilt = 0, asleep = false;
-
-    if (pet.state === "enter") {
-      const k = Math.min(1, (now - pet.t0) / 380);
-      scale = k < .7 ? (k / .7) * 1.08 : 1.08 - ((k - .7) / .3) * .08; // pop with overshoot
-      if (k === 1) { pet.state = "pause"; pet.t0 = now; }
-    } else if (pet.state === "pause") {
-      if (now - pet.t0 > 1100) {
-        pet.state = "walk";
-        pet.target = minX + Math.random() * (maxX - minX);
-        pet.dir = pet.target > pet.x ? 1 : -1;
-      }
-    } else if (pet.state === "walk") {
-      pet.phase += dt * 0.013;
-      bob = Math.abs(Math.sin(pet.phase)) * ps * 0.07;        // waddle hops
-      tilt = Math.sin(pet.phase) * 0.07;
-      pet.x += pet.dir * L.cardSize * 0.0001 * dt;
-      if ((pet.dir > 0 && pet.x >= pet.target) || (pet.dir < 0 && pet.x <= pet.target)) {
-        pet.walks++;
-        pet.state = pet.walks >= 3 ? "sleep" : "pause";
-        pet.t0 = now;
-      }
-    } else if (pet.state === "sleep") {
-      asleep = true;
-      bob = Math.sin(now / 900) * ps * 0.02; // slow breathing
-      if (!pet.zzz.length || now - pet.zzz[pet.zzz.length - 1].start > 1500) pet.zzz.push({ start: now });
-      pet.zzz = pet.zzz.filter((z) => now - z.start < 2000);
-    } else if (pet.state === "exit") {
-      const k = Math.min(1, (now - pet.t0) / 220);
-      scale = 1 - k;
-      if (k === 1) { pet.state = "off"; return; }
-    }
-
-    // draw — feet planted on the card's top edge
-    const feetY = L.y + ps * 0.06;
-    ctx.save();
-    ctx.translate(pet.x, feetY - bob);
-    ctx.rotate(tilt);
-    ctx.scale(pet.dir * scale, scale);
-    ctx.drawImage(creatureImg, -ps / 2, -ps, ps, ps);
-    if (asleep) {
-      for (const [ex, ey] of CREATURE_EYES) {
-        const exp = (ex - 0.5) * ps, eyp = (ey - 1) * ps;
-        ctx.fillStyle = state.fg;
-        roundRectPath(ctx, exp - ps * .085, eyp - ps * .085, ps * .17, ps * .17, ps * .05);
-        ctx.fill();
-        ctx.strokeStyle = cardColor();
-        ctx.lineWidth = ps * .03;
-        ctx.lineCap = "round";
-        ctx.beginPath();
-        ctx.moveTo(exp - ps * .05, eyp);
-        ctx.lineTo(exp + ps * .05, eyp);
-        ctx.stroke();
-      }
-    }
-    ctx.restore();
-    for (const z of pet.zzz) {
-      const k = (now - z.start) / 2000;
-      ctx.save();
-      ctx.globalAlpha = (1 - k) * 0.8;
-      ctx.fillStyle = state.fg;
-      ctx.font = `700 ${ps * (0.26 + k * 0.12)}px Urbanist, sans-serif`;
-      ctx.fillText("z", pet.x + ps * 0.45, feetY - ps * (1.02 + k * 0.65));
-      ctx.restore();
-    }
+    fxRaf = requestAnimationFrame(frame);
   }
 
   $("generateBtn").addEventListener("click", () => {
