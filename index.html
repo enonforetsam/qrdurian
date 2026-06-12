@@ -578,6 +578,26 @@
     .sticker-pop .sp-btn svg { width: 19px; height: 19px; }
     .sticker-pop .sp-divider { height: 1px; background: var(--border-2); margin: 10px 2px; }
 
+    /* mini toolbar — rides beside the selected item: font, color, size */
+    .mini-bar {
+      position: fixed; z-index: 85;
+      display: flex; align-items: center; gap: 2px;
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 12px; padding: 4px 5px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.14), 0 1px 4px rgba(0,0,0,.06);
+    }
+    .mini-bar[hidden] { display: none; }
+    .mb-btn {
+      min-width: 30px; height: 30px; border-radius: 9px; border: none;
+      background: transparent; color: var(--text); cursor: pointer;
+      display: grid; place-items: center; padding: 0 7px;
+      font-family: "Urbanist", sans-serif; font-weight: 800; font-size: 14px;
+      transition: background .12s;
+    }
+    .mb-btn:hover { background: var(--panel-2); }
+    .mb-btn .cdot { width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--border); display: block; }
+    .mb-sep { width: 1px; align-self: stretch; background: var(--border-2); margin: 3px 2px; }
+
     /* inline text editor — floats exactly over the text on the canvas */
     .canvas-edit {
       position: fixed; z-index: 90; transform: translateX(-50%);
@@ -873,7 +893,6 @@
         <i data-lucide="chevron-down"></i>
       </button>
       <button class="chip-color compact" id="tbCapChip" aria-label="Text color"><span class="cdot" id="tbCapDot"></span></button>
-      <input type="color" id="tbCapInput" class="vhid" />
       <span class="eb-flex"></span>
       <div class="fmt-chips" id="fmtChips" aria-label="Canvas size"></div>
       <button class="stb-export" data-nav="export" aria-label="Export"><i data-lucide="download"></i> Export</button>
@@ -881,6 +900,8 @@
 
     <!-- Studio looks rail: the palettes glide across the bottom, under the bar -->
     <div class="looks-rail" id="looksRail"></div>
+    <!-- shared color input — outside the studio-only bar so it works on mobile too -->
+    <input type="color" id="tbCapInput" class="vhid" />
   </main>
 
   <div class="sheet-backdrop" id="sheetBackdrop"></div>
@@ -1482,6 +1503,7 @@
     applyPageBg();
     drawScene(ctx, canvas.width, canvas.height, qrImgs, false);
     drawSelection();
+    positionMiniBar(); // the mini toolbar follows its selection
   }
 
   // ---- click-to-select: caption, text items and (multi-code) QR cards get a
@@ -2038,6 +2060,55 @@
     // the hit rect exists after the repaint — then drop the editor right on it
     requestAnimationFrame(() => startTextEdit({ kind: "text", i: state.texts.length - 1 }));
   });
+  // ---- mini toolbar: rides beside the selection — font (text), color, size
+  const miniBar = document.createElement("div");
+  miniBar.className = "mini-bar";
+  miniBar.hidden = true;
+  miniBar.innerHTML =
+    `<button class="mb-btn" id="mbFont" aria-label="Font">Aa</button>` +
+    `<button class="mb-btn" id="mbColor" aria-label="Color"><span class="cdot" id="mbColorDot"></span></button>` +
+    `<span class="mb-sep" id="mbSizeSep"></span>` +
+    `<button class="mb-btn" id="mbSmaller" aria-label="Smaller">−</button>` +
+    `<button class="mb-btn" id="mbBigger" aria-label="Bigger">+</button>`;
+  document.body.appendChild(miniBar);
+  function positionMiniBar() {
+    const rct = selRect();
+    if (!rct || !sel || sel.kind === "qr" || editing) { miniBar.hidden = true; return; }
+    miniBar.hidden = false;
+    const isText = sel.kind === "text" || sel.kind === "caption";
+    const resizable = sel.kind !== "caption"; // the caption's size is layout-driven
+    $("mbFont").style.display = isText ? "" : "none";
+    $("mbSizeSep").style.display = resizable ? "" : "none";
+    $("mbSmaller").style.display = resizable ? "" : "none";
+    $("mbBigger").style.display = resizable ? "" : "none";
+    const st = selSticker(), it = selText();
+    $("mbColorDot").style.background = st ? st.c : it ? it.c : state.capColor;
+    const r = canvas.getBoundingClientRect();
+    const k = r.width / canvas.width;
+    const w = miniBar.offsetWidth, hgt = miniBar.offsetHeight;
+    let left = r.left + (rct.x + rct.w / 2) * k - w / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - w - 8));
+    let top = r.top + rct.y * k - hgt - 22; // above the box, clear of the ✕ handle
+    if (top < 8) top = r.top + (rct.y + rct.h) * k + 18; // no room above → below
+    miniBar.style.left = left + "px";
+    miniBar.style.top = top + "px";
+  }
+  function bumpSize(dir) {
+    const st = selSticker(), it = selText();
+    if (st) st.s = Math.max(0.05, Math.min(0.4, +(st.s + dir * 0.025).toFixed(3)));
+    else if (it) it.s = Math.max(0.025, Math.min(0.14, +(it.s + dir * 0.007).toFixed(3)));
+    else return;
+    update(false);
+  }
+  $("mbSmaller").addEventListener("click", (e) => { e.stopPropagation(); bumpSize(-1); });
+  $("mbBigger").addEventListener("click", (e) => { e.stopPropagation(); bumpSize(1); });
+  $("mbColor").addEventListener("click", (e) => { e.stopPropagation(); $("tbCapChip").click(); });
+  $("mbFont").addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (!fontList.hidden) { fontList.hidden = true; $("fontSelect").classList.remove("open"); return; }
+    openFontList($("mbFont"));
+  });
+
   // ---- sticker picker: Lucide icons + emoji, dropped onto the artboard
   const stickerPop = document.createElement("div");
   stickerPop.className = "sticker-pop";
@@ -2152,16 +2223,13 @@
     fontList.appendChild(b);
   });
   document.body.appendChild(fontList); // floats over everything, like fmtList/texList
-  $("fontSelect").addEventListener("click", (e) => {
-    e.stopPropagation();
-    const sel = $("fontSelect");
-    if (!fontList.hidden) { fontList.hidden = true; sel.classList.remove("open"); return; }
+  function openFontList(anchor) {
     Object.keys(FONT_DEFS).forEach(ensureFont); // rows preview themselves in their own face
-    fontList.hidden = false; sel.classList.add("open");
-    const r = sel.getBoundingClientRect();
-    fontList.style.left = r.left + "px";
+    fontList.hidden = false; $("fontSelect").classList.add("open");
+    const r = anchor.getBoundingClientRect();
+    fontList.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 198)) + "px";
     fontList.style.width = Math.max(r.width, 190) + "px";
-    // flip upward when the button sits near the bottom (the studio bar) —
+    // flip upward when the anchor sits near the bottom (the studio bar) —
     // anchored by its bottom edge, so late font loads grow the list upward
     if (r.bottom + 6 + fontList.offsetHeight > window.innerHeight - 12) {
       fontList.style.top = "auto";
@@ -2170,6 +2238,11 @@
       fontList.style.bottom = "auto";
       fontList.style.top = (r.bottom + 6) + "px";
     }
+  }
+  $("fontSelect").addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (!fontList.hidden) { fontList.hidden = true; $("fontSelect").classList.remove("open"); return; }
+    openFontList($("fontSelect"));
   });
   document.addEventListener("click", (e) => {
     if (!fontList.hidden && !fontList.contains(e.target)) {
