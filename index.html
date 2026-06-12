@@ -560,75 +560,129 @@
     .fmt-chip.active { background: var(--accent); color: var(--accent-ink); }
     .looks-dock { width: 100%; display: flex; justify-content: center; }
 
-    /* ---- studio toolbar ---- */
-    .studio-toolbar {
-      display: none;
-    }
+    /* all studio-only elements hidden by default */
+    .studio-topbar { display: none; }
+    .looks-sidebar { display: none; }
+    .edit-bar { display: none; }
+    .top-bar { display: none; } /* the old top-bar is now the studio-topbar */
 
     @media (min-width: 1100px) {
-      /* thin toolbar pinned to the top — logo left, tabs centre-left, export right */
-      .studio-toolbar {
-        display: flex; align-items: center; gap: 4px;
+      /* ---- TOP BAR: thin, 48px, full width ---- */
+      .studio-topbar {
+        display: flex; align-items: center;
         position: fixed; top: 0; left: 0; right: 0; z-index: 70;
         height: 48px;
-        background: var(--panel);
-        border-bottom: 1px solid var(--border);
+        background: var(--panel); border-bottom: 1px solid var(--border);
         padding: 0 16px;
       }
-      .studio-toolbar .tb-logo {
-        width: 28px; height: 28px; flex: 0 0 auto; margin-right: 12px;
+      .stb-left { display: flex; align-items: center; gap: 2px; flex: 1; }
+      .stb-center {
+        display: flex; align-items: center; gap: 10px;
+        position: absolute; left: 50%; transform: translateX(-50%);
+        pointer-events: none;
       }
-      .studio-toolbar .tb-logo img { width: 100%; height: 100%; display: block; }
-      .studio-tab {
-        display: flex; align-items: center; gap: 6px;
-        border: none; background: transparent;
-        color: var(--muted); font-family: "Urbanist", sans-serif;
-        font-weight: 700; font-size: 13px; letter-spacing: .01em;
-        padding: 0 14px; height: 100%; cursor: pointer;
-        border-bottom: 2px solid transparent; margin-bottom: -1px;
-        transition: color .15s ease, border-color .15s ease;
+      .stb-logo { width: 26px; height: 26px; flex: 0 0 auto; }
+      .stb-logo img { width: 100%; height: 100%; display: block; }
+      .stb-wordmark {
+        font-family: "Urbanist", sans-serif; font-weight: 800; font-size: 16px;
+        letter-spacing: -.02em; color: var(--text); pointer-events: none;
       }
-      .studio-tab svg { width: 14px; height: 14px; flex: 0 0 auto; }
-      .studio-tab:hover { color: var(--text); }
-      .studio-tab.active { color: #276A2A; border-bottom-color: #276A2A; }
-      .studio-tab.export-tab {
-        margin-left: auto; color: #fff; background: #101113;
-        border-radius: 10px; height: 32px; padding: 0 16px;
-        border-bottom: none; margin-bottom: 0;
-      }
-      .studio-tab.export-tab:hover { background: #2a2a2d; }
-      .studio-tab.export-tab.active { background: #101113; border-bottom-color: transparent; color: #fff; }
-      .tb-shuffle {
-        margin-left: 4px; width: 30px; height: 30px; border-radius: 8px;
+      .stb-right { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+      /* icon buttons in the top bar */
+      .stb-icon {
+        width: 32px; height: 32px; border-radius: 9px; flex: 0 0 auto;
         border: none; background: transparent; color: var(--muted);
         display: grid; place-items: center; cursor: pointer;
-        transition: color .15s, background .15s;
+        transition: background .15s, color .15s;
       }
-      .tb-shuffle:hover { color: #276A2A; background: var(--panel-2); }
-      .tb-shuffle svg { width: 14px; height: 14px; }
-      /* the header hands the brand to the toolbar */
+      .stb-icon svg { width: 15px; height: 15px; }
+      .stb-icon:hover { background: var(--panel-2); color: var(--text); }
+      .stb-icon.active { background: var(--panel-2); color: #276A2A; }
+      /* export button */
+      .stb-export {
+        display: flex; align-items: center; gap: 6px;
+        height: 30px; padding: 0 14px; border-radius: 10px; border: none;
+        background: #101113; color: #fff; cursor: pointer;
+        font-family: "Urbanist", sans-serif; font-weight: 700; font-size: 13px;
+        transition: background .15s;
+      }
+      .stb-export svg { width: 13px; height: 13px; }
+      .stb-export:hover { background: #2a2a2d; }
+      /* format chips in the top bar */
+      .fmt-chips { display: flex; gap: 2px; }
+      /* the old header brand disappears in studio */
       header .brand { display: none; }
-      header { padding-left: 0; }
-      /* the bottom pill is replaced by the toolbar */
       .bottom-nav { display: none; }
-      /* canvas owns everything below the toolbar */
-      main { padding-left: 0; padding-right: 0; padding-top: 0; }
 
-      /* editor bar (text / font / color / artboard chips) still floats above the canvas */
-      .top-bar {
-        display: flex; align-items: center; gap: 10px;
-        width: 100%; max-width: 880px; margin: 0 auto 18px;
-        background: var(--panel); border-radius: 18px; padding: 9px 16px;
+      /* ---- LEFT SIDEBAR: looks gallery ---- */
+      .looks-sidebar {
+        display: block;
+        position: fixed; top: 48px; left: 0; bottom: 0; width: 200px; z-index: 60;
+        background: var(--panel); border-right: 1px solid var(--border);
+        overflow-y: auto; padding: 14px 12px;
+        scrollbar-width: thin; scrollbar-color: var(--border) transparent;
       }
-      .top-bar > svg { width: 17px; height: 17px; color: var(--muted); flex: 0 0 auto; }
-      .top-bar input[type="text"] {
-        flex: 1 1 140px; min-width: 90px; max-width: 250px;
-        border: none; background: transparent; font: inherit; color: var(--text);
-        outline: none;
+      /* the looksStrip inside the sidebar switches from flex-row to 2-col grid */
+      .looks-sidebar .looks {
+        display: grid !important; grid-template-columns: 1fr 1fr; gap: 10px;
+        overflow: visible; padding: 0; max-width: none;
+        opacity: 1 !important; pointer-events: auto !important;
       }
-      .top-bar .select { flex: 0 0 auto; width: auto; min-width: 150px; gap: 10px; }
-      .tb-sep { width: 1px; align-self: stretch; background: var(--border); margin: 2px 4px; flex: 0 0 auto; }
-      .fmt-chips { display: flex; margin-left: auto; }
+      .looks-sidebar .look { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+      .looks-sidebar .look-chip {
+        display: block; width: 100%; aspect-ratio: 1;
+        border-radius: 14px; overflow: hidden;
+      }
+      .looks-sidebar .look-chip canvas { display: block; width: 100% !important; height: 100% !important; }
+      .looks-sidebar .look-name { font-size: 9px; }
+
+      /* ---- CANVAS ZONE: right of sidebar, below top bar ---- */
+      main { padding-left: 200px; padding-right: 0; padding-top: 48px; padding-bottom: 72px; }
+      header { padding-left: 200px; display: none; } /* studio topbar replaces header */
+
+      /* ---- BOTTOM EDIT BAR: floating pill above the bottom edge ---- */
+      .edit-bar {
+        display: flex; align-items: center; gap: 8px;
+        position: fixed; bottom: 16px;
+        left: calc(200px + 24px); right: 24px;
+        background: var(--panel); border: 1px solid var(--border);
+        border-radius: 16px; padding: 8px 14px;
+        box-shadow: 0 4px 20px rgba(0,0,0,.10), 0 1px 4px rgba(0,0,0,.06);
+        z-index: 60;
+      }
+      .edit-bar > svg { width: 14px; height: 14px; color: var(--muted); flex: 0 0 auto; }
+      .edit-bar input[type="text"] {
+        flex: 1 1 120px; min-width: 60px; max-width: 220px;
+        border: none; background: transparent; font: inherit; font-size: 13px;
+        color: var(--text); outline: none;
+      }
+      .eb-font { flex: 0 0 auto; width: auto; min-width: 120px; gap: 8px; }
+      .eb-sep { width: 1px; align-self: stretch; background: var(--border); margin: 0 4px; flex: 0 0 auto; }
+
+      /* popovers drop from the stb-icon / stb-export buttons */
+      .card.controls, .export-sheet {
+        right: auto; bottom: auto; margin: 0;
+        width: 360px; max-width: calc(100vw - 32px);
+        max-height: min(72vh, 580px);
+        border-radius: 18px; padding: 22px 22px 18px;
+        border: 1px solid var(--border);
+        box-shadow: 0 8px 32px rgba(0,0,0,.12), 0 2px 8px rgba(0,0,0,.06);
+      }
+      .card.controls .panel { display: none !important; }
+      .card.controls .panel.active { display: block !important; }
+      .card.controls .panel + .panel { border-top: none; margin-top: 0; padding-top: 0; }
+      /* backdrop dismisses the popover */
+      body.sheet-open .sheet-backdrop { pointer-events: auto; }
+      /* non-square artboards: dashed file-bounds frame */
+      .artboard-wrap.framed { overflow: visible; }
+      .artboard-wrap.framed #artboard {
+        outline: 1.5px dashed rgba(16, 17, 19, .25);
+        outline-offset: 7px; border-radius: 3px;
+      }
+      [data-theme="dark"] .artboard-wrap.framed #artboard {
+        outline-color: rgba(255, 255, 255, .35);
+      }
+    }
 
       /* popover: a small floating card that drops below the active tab button */
       .card.controls, .export-sheet {
@@ -836,21 +890,33 @@
       </div>
     </section>
 
-    <!-- Artboard -->
-    <section class="preview">
-      <div class="top-bar" id="topBar">
-        <button class="mini-btn" id="addTextBtn"><i data-lucide="plus"></i> Text</button>
-        <i data-lucide="type"></i>
-        <input type="text" id="tbCaption" placeholder="Add a caption…" maxlength="80" />
-        <button class="select" id="fontSelect" style="min-width:150px;">
-          <span id="fontSelLabel">Urbanist</span>
-          <i data-lucide="chevron-down"></i>
-        </button>
-        <button class="chip-color compact" id="tbCapChip" aria-label="Caption color"><span class="cdot" id="tbCapDot"></span></button>
-        <input type="color" id="tbCapInput" class="vhid" />
-        <span class="tb-sep"></span>
+    <!-- Studio top bar (≥1100px only) -->
+    <div class="studio-topbar" id="studioTopbar">
+      <!-- left: format chips -->
+      <div class="stb-left">
         <div class="fmt-chips" id="fmtChips" aria-label="Canvas size"></div>
       </div>
+      <!-- center: logo -->
+      <div class="stb-center">
+        <span class="stb-logo"><img src="durian.svg" alt="qrdurian" /></span>
+        <span class="stb-wordmark">qrdurian</span>
+      </div>
+      <!-- right: action icon buttons + export -->
+      <div class="stb-right">
+        <button class="stb-icon nav-item" data-nav="content" aria-label="URL"><i data-lucide="link-2"></i></button>
+        <button class="stb-icon nav-item" data-nav="style" aria-label="Design"><i data-lucide="sliders-horizontal"></i></button>
+        <button class="stb-icon" id="tbShuffle" aria-label="Shuffle look"><i data-lucide="shuffle"></i></button>
+        <button class="stb-export nav-item" data-nav="export" aria-label="Export"><i data-lucide="download"></i> Export</button>
+      </div>
+    </div>
+
+    <!-- Studio left sidebar: looks gallery (≥1100px only) -->
+    <aside class="looks-sidebar" id="looksSidebar">
+      <div class="looks-sidebar-inner" id="looksSidebarInner"></div>
+    </aside>
+
+    <!-- Artboard -->
+    <section class="preview">
       <div class="artboard-wrap" id="artboardWrap">
         <canvas id="artboard"></canvas>
       </div>
@@ -858,6 +924,20 @@
         <div class="looks" id="looksStrip" aria-label="Theme gallery"></div>
       </div>
     </section>
+
+    <!-- Studio bottom edit bar (≥1100px only) -->
+    <div class="edit-bar" id="editBar">
+      <button class="mini-btn" id="addTextBtn"><i data-lucide="plus"></i> Text</button>
+      <span class="eb-sep"></span>
+      <i data-lucide="type"></i>
+      <input type="text" id="tbCaption" placeholder="Caption…" maxlength="80" />
+      <button class="select eb-font" id="fontSelect">
+        <span id="fontSelLabel">Urbanist</span>
+        <i data-lucide="chevron-down"></i>
+      </button>
+      <button class="chip-color compact" id="tbCapChip" aria-label="Caption color"><span class="cdot" id="tbCapDot"></span></button>
+      <input type="color" id="tbCapInput" class="vhid" />
+    </div>
   </main>
 
   <div class="sheet-backdrop" id="sheetBackdrop"></div>
@@ -894,17 +974,6 @@
     <div class="sheet-foot">
       <button class="sheet-close" id="navBack2" aria-label="Back"><i data-lucide="chevron-left"></i></button>
     </div>
-  </div>
-
-  <!-- Studio: thin toolbar, only shown at ≥1100px via CSS -->
-  <div class="studio-toolbar" id="studioToolbar" role="toolbar" aria-label="Editor">
-    <span class="tb-logo"><img src="durian.svg" alt="qrdurian" /></span>
-    <button class="studio-tab nav-item" data-nav="content" aria-label="URL"><i data-lucide="link-2"></i> URL</button>
-    <button class="studio-tab nav-item" data-nav="looks" aria-label="Looks"><i data-lucide="layout-grid"></i> Looks</button>
-    <button class="studio-tab nav-item" data-nav="style" aria-label="Style"><i data-lucide="palette"></i> Style</button>
-    <button class="studio-tab nav-item" data-nav="scene" aria-label="Artboard"><i data-lucide="image"></i> Artboard</button>
-    <button class="tb-shuffle" id="tbShuffle" aria-label="Random look"><i data-lucide="shuffle"></i></button>
-    <button class="studio-tab export-tab nav-item" data-nav="export" aria-label="Export"><i data-lucide="download"></i> Export</button>
   </div>
 
   <nav class="bottom-nav" id="bottomNav">
@@ -1496,7 +1565,7 @@
   const isStudio = () => window.innerWidth >= 1100; // must match the studio CSS media query
   function applyStudioPadding() {
     if (!isStudio()) { document.querySelector("main").style.paddingTop = ""; return; }
-    const tbH = $("studioToolbar").offsetHeight;
+    const tbH = $("studioTopbar") ? $("studioTopbar").offsetHeight : 48;
     document.querySelector("main").style.paddingTop = tbH + "px";
   }
   function fitPreview() {
@@ -1507,8 +1576,9 @@
     const fmt = studio ? FORMATS[state.format] : { w: 1, h: 1 };
     const wrap = $("artboardWrap");
     const desktop = window.innerWidth > 880;
-    const toolbarH = studio ? ($("studioToolbar").offsetHeight || 48) : 0;
-    const wrapW = Math.min(wrap.clientWidth || wrap.parentElement.clientWidth, studio ? 720 : desktop ? 580 : 440);
+    const toolbarH = studio ? (($("studioTopbar") && $("studioTopbar").offsetHeight) || 48) : 0;
+    const sidebarW = studio ? 200 : 0;
+    const wrapW = Math.min((wrap.clientWidth || wrap.parentElement.clientWidth) - sidebarW * 0, studio ? 680 : desktop ? 580 : 440);
     // static: always leave room below for a sheet, so the QR never moves
     // must match the cards' CSS max-height — including desktop + short-landscape overrides
     // (studio reserves nothing below: the panel is docked left, not bottom)
@@ -1519,7 +1589,7 @@
       : Math.min(window.innerHeight * 0.46, 420);
     const sat = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--sat")) || 0;
     const stripH = studio ? 0 : $("looksStrip").offsetHeight; // studio hosts the gallery in the panel
-    const barH = studio ? $("topBar").offsetHeight + 18 : 0;  // the editor bar sits above the canvas
+    const barH = 0; // edit bar is at the bottom now, not above the canvas
     const chrome = (studio
       ? document.querySelector("header").offsetHeight + toolbarH + barH + 24 // toolbar + editor bar
       : window.innerWidth >= 1400 ? 280 : desktop ? 250 : 205) + sat; // header grows with logo + notch
@@ -2102,8 +2172,13 @@
   // ---- the looks gallery lives under the canvas on mobile, inside the
   // panel's Looks tab in studio — one DOM node, reparented on breakpoint change
   function placeLooks() {
-    const host = isStudio() ? $("looksHost") : $("looksDock");
-    if (host && $("looksStrip").parentElement !== host) host.appendChild($("looksStrip"));
+    if (isStudio()) {
+      const host = $("looksSidebarInner");
+      if (host && $("looksStrip").parentElement !== host) host.appendChild($("looksStrip"));
+    } else {
+      const host = $("looksDock");
+      if (host && $("looksStrip").parentElement !== host) host.appendChild($("looksStrip"));
+    }
   }
   $("fmtSelect").addEventListener("click", (e) => {
     e.stopPropagation();
@@ -2453,7 +2528,7 @@
     document.body.classList.remove("sheet-open");
     $("controlsCard").classList.remove("visible");
     $("exportSheet").classList.remove("visible");
-    document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
+    document.querySelectorAll(".nav-item, .stb-icon, .stb-export").forEach(n => n.classList.remove("active"));
     $("fmtList").hidden = true;
     $("fmtSelect").classList.remove("open");
     $("texList").hidden = true;
@@ -2466,7 +2541,8 @@
     petDismiss(); // back to work — the pet hops away
     live.lastInteract = performance.now();
     document.body.classList.add("sheet-open");
-    document.querySelectorAll(".nav-item").forEach(n => n.classList.toggle("active", n.dataset.nav === name));
+    document.querySelectorAll(".nav-item, .stb-icon[data-nav], .stb-export[data-nav]").forEach(n =>
+      n.classList.toggle("active", n.dataset.nav === name));
     const isExport = name === "export";
     $("exportSheet").classList.toggle("visible", isExport);
     $("controlsCard").classList.toggle("visible", !isExport);
@@ -2475,10 +2551,15 @@
       document.querySelectorAll("#controlsCard .panel").forEach(p =>
         p.classList.toggle("active", p.dataset.panel === name));
     }
-    // studio: anchor the popover below the active tab button
+    // studio: in the Design popover show both style + scene panels stacked
+    if (isStudio() && (name === "style" || name === "scene")) {
+      document.querySelectorAll("#controlsCard .panel").forEach(p =>
+        p.classList.toggle("active", p.dataset.panel === "style" || p.dataset.panel === "scene"));
+    }
+    // studio: anchor the popover below the active button in the top bar
     if (isStudio()) {
       const card = isExport ? $("exportSheet") : $("controlsCard");
-      const btn = document.querySelector(`#studioToolbar [data-nav="${name}"]`);
+      const btn = document.querySelector(`#studioTopbar [data-nav="${name}"]`);
       if (btn) {
         const r = btn.getBoundingClientRect();
         const popW = parseInt(getComputedStyle(card).width, 10) || 360;
@@ -2515,10 +2596,8 @@
       drawPreview();
     }
   }
-  document.querySelectorAll(".nav-item").forEach(n => {
+  document.querySelectorAll(".nav-item, .stb-icon[data-nav], .stb-export[data-nav]").forEach(n => {
     n.addEventListener("click", () => {
-      // studio popover: re-clicking the active tab closes it (toggle);
-      // on mobile the same toggle behaviour keeps working
       openPanel === n.dataset.nav ? closeSheet() : openSheet(n.dataset.nav);
     });
   });
