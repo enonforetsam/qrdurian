@@ -483,6 +483,22 @@ export default {
         return Response.json({ ok: true }, { headers: CNT_CORS });
       }
 
+      // DEV-ONLY test sign-in — no email, no LemonSqueezy. Enabled only when the
+      // DEV_KEY secret is set; visiting with the right key signs you in (as Pro by
+      // default) and bounces to the app. Remove DEV_KEY (or the route) before launch.
+      if (p === "/api/auth/dev") {
+        if (!env.DEV_KEY || url.searchParams.get("key") !== env.DEV_KEY) return new Response("forbidden", { status: 403 });
+        const email = (url.searchParams.get("email") || "dev@qrdurian.com").trim().toLowerCase();
+        if (!validEmail(email)) return Response.json({ error: "bad email" }, { status: 400, headers: CNT_CORS });
+        const pro = url.searchParams.get("pro") !== "0" ? 1 : 0;
+        await ensureAccountTables();
+        await DB.prepare("INSERT INTO accounts (email, pro, plan, period_end, created_at) VALUES (?,?,?,?,?) " +
+          "ON CONFLICT(email) DO UPDATE SET pro=excluded.pro, plan=excluded.plan, period_end=excluded.period_end")
+          .bind(email, pro, pro ? "Dev Pro" : "", pro ? Date.now() + 365 * 86400e3 : 0, Date.now()).run();
+        const session = await signSession(email, env.SESSION_SECRET || "dev-secret");
+        return Response.redirect(`${MAIN}/?s=${encodeURIComponent(session)}`, 302);
+      }
+
       // ===================== Pro: dashboard, dynamic QR, analytics, domain =====================
       // GET /api/account/links → the signed-in user's owned tracked QRs (any plan)
       if (p === "/api/account/links") {
