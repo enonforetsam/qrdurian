@@ -41,6 +41,24 @@ npx wrangler d1 execute qrdurian-trace --remote --file=schema.sql   # creates ac
 - LemonSqueezy **test mode** → buy Pro → webhook fires → account icon turns green, popover
   shows PRO. Cancel → reverts.
 
+## 6. Custom domains (Pro, Phase 4) — optional, when you want it
+A Pro user can set a short-link domain (e.g. `go.kedai.my`) in **My QRs → Custom domain**.
+That stores the domain so their links read `go.kedai.my/r/abc`, but the host only *resolves*
+once you point it at this worker via **Cloudflare for SaaS**:
+- Cloudflare dashboard → the zone → SSL/TLS → Custom Hostnames (or the SaaS API) → add the
+  customer hostname as a custom hostname targeting the `qrdurian-trace` worker's fallback origin.
+- Until that's done, links still work on `trace.qrdurian.com`. Treat per-domain onboarding as
+  a manual concierge step for the first Pro customers; automate via the CF API later.
+
+## What's already built (code-complete, behind the spine)
+- **Phase 1 — Dynamic QR:** signed-in users' tracked QRs are owned; Pro can edit a printed
+  code's destination (`/api/link/update`) — no reprint.
+- **Phase 2 — Dashboard + analytics:** "My QRs & links" lists owned codes with scans; Pro
+  gets edit-destination + CSV export (`/api/link/export`).
+- **Phase 3 — Bulk + limits:** Pro bulk-creates tracked links → CSV; free accounts capped at
+  5 owned tracked QRs (`FREE_LINK_CAP`), Pro unlimited. (No watermark on free exports — kept
+  clean on purpose, viral-first.)
+
 ## Notes
 - Free stays 100% no-signup; none of this gates the design tool or basic tracking.
-- Phase 1 (dynamic QR — editable destination) builds on this spine next.
+- All Pro checks are enforced server-side (402 pro_only / 403 not_owner); client UI is cosmetic.

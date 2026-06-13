@@ -351,7 +351,12 @@ export default {
       const ensureLinkTables = async () => {
         await DB.prepare("CREATE TABLE IF NOT EXISTS links (id TEXT PRIMARY KEY, url TEXT NOT NULL, secret TEXT UNIQUE NOT NULL, created_at INTEGER NOT NULL, scans INTEGER NOT NULL DEFAULT 0)").run();
         await DB.prepare("CREATE TABLE IF NOT EXISTS link_scans (id INTEGER PRIMARY KEY AUTOINCREMENT, link_id TEXT NOT NULL, at INTEGER NOT NULL, country TEXT DEFAULT '', device TEXT DEFAULT '')").run();
+        // ownership + dynamic-QR + custom-domain columns (lazy migration; ignore "duplicate column")
+        for (const col of ["account TEXT DEFAULT ''", "editable INTEGER DEFAULT 0", "domain TEXT DEFAULT ''"]) {
+          try { await DB.prepare(`ALTER TABLE links ADD COLUMN ${col}`).run(); } catch (e) {}
+        }
       };
+      const FREE_LINK_CAP = 5; // owned tracked QRs a free signed-in account can keep
       if (p === "/api/track") {
         if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CNT_CORS });
         if (req.method !== "POST") return Response.json({ error: "POST only" }, { status: 405, headers: CNT_CORS });
@@ -365,15 +370,32 @@ export default {
         if (rateLimitedCount(ip)) {
           return Response.json({ error: "rate limited" }, { status: 429, headers: CNT_CORS });
         }
+        // signed-in? the link is OWNED (shows in the dashboard, editable if Pro)
+        const owner = await sessionEmail(body.token, env.SESSION_SECRET || "dev-secret");
+        let acct = null, ownerDomain = "";
+        if (owner) {
+          try { acct = await DB.prepare("SELECT * FROM accounts WHERE email=?").bind(owner).first(); } catch (e) {}
+          const isPro = !!(acct && acct.pro && (!acct.period_end || acct.period_end > Date.now()));
+          ownerDomain = (isPro && acct && acct.domain) ? acct.domain : "";
+          // free accounts: cap owned links (Pro = unlimited)
+          if (!isPro) {
+            try {
+              const n = (await DB.prepare("SELECT COUNT(*) c FROM links WHERE account=?").bind(owner).first())?.c || 0;
+              if (n >= FREE_LINK_CAP) return Response.json({ error: "free_cap", cap: FREE_LINK_CAP }, { status: 402, headers: CNT_CORS });
+            } catch (e) {}
+          }
+        }
         const id = shortId(7);
         const secret = crypto.randomUUID().replace(/-/g, "") + shortId(8);
-        const insert = () => DB.prepare("INSERT INTO links (id, url, secret, created_at) VALUES (?,?,?,?)")
-          .bind(id, dest, secret, Date.now()).run();
+        const insert = () => DB.prepare("INSERT INTO links (id, url, secret, created_at, account, editable, domain) VALUES (?,?,?,?,?,?,?)")
+          .bind(id, dest, secret, Date.now(), owner || "", owner ? 1 : 0, ownerDomain).run();
         try { await insert(); }
         catch (e3) { await ensureLinkTables(); await insert(); }
+        const host = ownerDomain || "trace.qrdurian.com";
         return Response.json({
-          short: `https://trace.qrdurian.com/r/${id}`,
+          short: `https://${host}/r/${id}`,
           stats: `https://trace.qrdurian.com/l/${secret}`,
+          owned: !!owner,
         }, { headers: CNT_CORS });
       }
       const rMatch = p.match(/^\/r\/([a-z0-9]{4,12})$/i);
@@ -463,10 +485,20 @@ export default {
       const ensureAccountTables = async () => {
         await DB.prepare("CREATE TABLE IF NOT EXISTS accounts (email TEXT PRIMARY KEY, pro INTEGER DEFAULT 0, plan TEXT DEFAULT '', period_end INTEGER DEFAULT 0, ls_customer TEXT DEFAULT '', ls_sub TEXT DEFAULT '', created_at INTEGER NOT NULL)").run();
         await DB.prepare("CREATE TABLE IF NOT EXISTS login_tokens (token TEXT PRIMARY KEY, email TEXT NOT NULL, expires INTEGER NOT NULL)").run();
+        try { await DB.prepare("ALTER TABLE accounts ADD COLUMN domain TEXT DEFAULT ''").run(); } catch (e) {} // custom branded domain
       };
       const getAccount = async (email) => {
         try { return await DB.prepare("SELECT * FROM accounts WHERE email=?").bind(email).first(); }
         catch (e) { await ensureAccountTables(); return null; }
+      };
+      const isProAcc = (a) => !!(a && a.pro && (!a.period_end || a.period_end > Date.now()));
+      // resolve a Bearer/`?s=` session → { email, acc, pro }; null if not signed in
+      const whoami = async (req2) => {
+        const tok = (req2.headers.get("authorization") || "").replace(/^Bearer\s+/i, "") || new URL(req2.url).searchParams.get("s") || "";
+        const email = await sessionEmail(tok, env.SESSION_SECRET || "dev-secret");
+        if (!email) return null;
+        const acc = await getAccount(email);
+        return { email, acc, pro: isProAcc(acc) };
       };
 
       // POST /api/auth/request {email} → email a one-time magic link
@@ -549,6 +581,64 @@ export default {
             String(attr.customer_id || ""), String(evt?.data?.id || ""), Date.now()).run();
         await up();
         return Response.json({ ok: true }, { headers: CNT_CORS });
+      }
+
+      // ===================== Pro: dashboard, dynamic QR, analytics, domain =====================
+      // GET /api/account/links → the signed-in user's owned tracked QRs (any plan)
+      if (p === "/api/account/links") {
+        if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CNT_CORS });
+        const me = await whoami(req);
+        if (!me) return Response.json({ signedIn: false }, { status: 401, headers: CNT_CORS });
+        let rows = [];
+        try {
+          rows = (await DB.prepare("SELECT id, url, secret, scans, created_at, domain FROM links WHERE account=? ORDER BY created_at DESC LIMIT 200").bind(me.email).all()).results || [];
+        } catch (e) { try { await ensureLinkTables(); } catch (e2) {} }
+        return Response.json({ signedIn: true, pro: me.pro, links: rows }, { headers: CNT_CORS });
+      }
+
+      // POST /api/link/update {secret, url} → dynamic QR: repoint a printed code (Pro + owner)
+      if (p === "/api/link/update" && req.method === "POST") {
+        const me = await whoami(req);
+        if (!me) return Response.json({ error: "signin" }, { status: 401, headers: CNT_CORS });
+        let body = {}; try { body = JSON.parse((await req.text()) || "{}"); } catch (e) {}
+        const dest = String(body.url || "").trim().slice(0, 2000);
+        if (!/^https?:\/\/.{4,}/i.test(dest) || /^\s*(javascript|data|vbscript|file|blob):/i.test(dest)) {
+          return Response.json({ error: "bad url" }, { status: 400, headers: CNT_CORS });
+        }
+        let link = null;
+        try { link = await DB.prepare("SELECT * FROM links WHERE secret=?").bind(String(body.secret || "")).first(); } catch (e) {}
+        if (!link || link.account !== me.email) return Response.json({ error: "not_owner" }, { status: 403, headers: CNT_CORS });
+        if (!me.pro) return Response.json({ error: "pro_only" }, { status: 402, headers: CNT_CORS });
+        await DB.prepare("UPDATE links SET url=? WHERE secret=?").bind(dest, link.secret).run();
+        return Response.json({ ok: true, url: dest }, { headers: CNT_CORS });
+      }
+
+      // GET /api/link/export?secret= → CSV of scans (Pro + owner)
+      if (p === "/api/link/export") {
+        const me = await whoami(req);
+        if (!me) return Response.json({ error: "signin" }, { status: 401, headers: CNT_CORS });
+        let link = null;
+        try { link = await DB.prepare("SELECT * FROM links WHERE secret=?").bind(url.searchParams.get("secret") || "").first(); } catch (e) {}
+        if (!link || link.account !== me.email) return Response.json({ error: "not_owner" }, { status: 403, headers: CNT_CORS });
+        if (!me.pro) return Response.json({ error: "pro_only" }, { status: 402, headers: CNT_CORS });
+        const rows = (await DB.prepare("SELECT at, country, device FROM link_scans WHERE link_id=? ORDER BY at DESC LIMIT 50000").bind(link.id).all()).results || [];
+        const csv = "scanned_at,country,device\n" + rows.map((r) => `${new Date(r.at).toISOString()},${r.country || ""},${r.device || ""}`).join("\n");
+        return new Response(csv, { headers: { ...CNT_CORS, "Content-Type": "text/csv", "Content-Disposition": `attachment; filename="qrdurian-scans-${link.id}.csv"` } });
+      }
+
+      // POST /api/account/domain {domain} → set a custom branded short-link host (Pro)
+      if (p === "/api/account/domain" && req.method === "POST") {
+        const me = await whoami(req);
+        if (!me) return Response.json({ error: "signin" }, { status: 401, headers: CNT_CORS });
+        if (!me.pro) return Response.json({ error: "pro_only" }, { status: 402, headers: CNT_CORS });
+        let body = {}; try { body = JSON.parse((await req.text()) || "{}"); } catch (e) {}
+        const domain = String(body.domain || "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "").slice(0, 100);
+        if (domain && !/^[a-z0-9.-]+\.[a-z]{2,}$/.test(domain)) return Response.json({ error: "bad domain" }, { status: 400, headers: CNT_CORS });
+        await ensureAccountTables();
+        await DB.prepare("UPDATE accounts SET domain=? WHERE email=?").bind(domain, me.email).run();
+        // NOTE: the domain must also be added as a Cloudflare-for-SaaS custom hostname pointing
+        // at this worker — see trace/PRO-SETUP.md. Until then links use trace.qrdurian.com.
+        return Response.json({ ok: true, domain }, { headers: CNT_CORS });
       }
 
       if (p === "/" || p === "") return landingPage();

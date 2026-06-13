@@ -1813,20 +1813,24 @@
     flashHint("Setting up tracking…");
     try {
       const res = await fetch("https://trace.qrdurian.com/api/track", {
-        method: "POST", body: JSON.stringify({ url: v }), // text/plain → no preflight
+        method: "POST", body: JSON.stringify({ url: v, token: sess() }), // signed-in → owned link
       });
       const j = await res.json();
+      if (j.error === "free_cap") { flashHint(`Free plan keeps ${j.cap} tracked QRs — upgrade for unlimited.`); openProModal(); b.disabled = false; return; }
       if (!j.short || !j.stats) throw new Error(j.error || "no link");
       $("content").value = j.short;
       $("content").dispatchEvent(new Event("input", { bubbles: true }));
       const done = $("trackDone");
-      done.innerHTML = `Tracking on ✓ — your private stats page:<br>` +
-        `<a href="${j.stats}" target="_blank" rel="noopener" style="word-break:break-all">${j.stats}</a> ` +
-        `<button class="mini-btn" id="copyStatsBtn">Copy</button><br>` +
-        `<span style="color:var(--muted); font-weight:400;">Bookmark it — it's the only key.</span>`;
+      done.innerHTML = j.owned
+        ? `Tracking on ✓ — saved to your account. Manage &amp; edit it in <b>My QRs</b> (account menu).`
+        : `Tracking on ✓ — your private stats page:<br>` +
+          `<a href="${j.stats}" target="_blank" rel="noopener" style="word-break:break-all">${j.stats}</a> ` +
+          `<button class="mini-btn" id="copyStatsBtn">Copy</button><br>` +
+          `<span style="color:var(--muted); font-weight:400;">Bookmark it — it's the only key.</span>`;
       done.hidden = false;
-      $("copyStatsBtn").addEventListener("click", async () => {
-        try { await navigator.clipboard.writeText(j.stats); $("copyStatsBtn").textContent = "✓ Copied"; } catch (e2) {}
+      const csb = $("copyStatsBtn");
+      if (csb) csb.addEventListener("click", async () => {
+        try { await navigator.clipboard.writeText(j.stats); csb.textContent = "✓ Copied"; } catch (e2) {}
       });
       // remember the owner's tracked links — the My Designs shelf will surface these
       try {
@@ -3171,9 +3175,11 @@
     if (account.signedIn) {
       acctPop.innerHTML = account.pro
         ? `<h4>Account <span class="pro-badge">PRO</span></h4><div class="ap-sub">${account.email}</div>
-           <div class="ap-row"><a class="mini-btn ghost" href="${LS_PORTAL}" target="_blank" rel="noopener">Manage billing</a><button class="mini-btn ghost" id="apOut">Sign out</button></div>`
+           <button class="btn primary" id="apDash" style="width:100%">My QRs &amp; links</button>
+           <div class="ap-row" style="margin-top:8px"><a class="mini-btn ghost" href="${LS_PORTAL}" target="_blank" rel="noopener">Manage billing</a><button class="mini-btn ghost" id="apOut">Sign out</button></div>`
         : `<h4>Account</h4><div class="ap-sub">${account.email}</div>
-           <button class="btn primary" id="apUp" style="width:100%">✨ Upgrade to Pro</button>
+           <button class="mini-btn ghost" id="apDash" style="width:100%">My QRs &amp; links</button>
+           <button class="btn primary" id="apUp" style="width:100%;margin-top:8px">✨ Upgrade to Pro</button>
            <button class="mini-btn ghost" id="apOut" style="width:100%;margin-top:8px">Sign out</button>`;
     } else {
       acctPop.innerHTML = `<h4>Sign in</h4>
@@ -3183,6 +3189,7 @@
     }
     const out = $("apOut"); if (out) out.onclick = () => { try { localStorage.removeItem("qrd_session"); } catch (e) {} account = { signedIn: false, email: "", pro: false }; paintAccount(); fillAcctPop(); };
     const up = $("apUp"); if (up) up.onclick = () => { acctPop.hidden = true; openProModal(); };
+    const dash = $("apDash"); if (dash) dash.onclick = () => { acctPop.hidden = true; openDashboard(); };
     const send = $("apSend");
     if (send) send.onclick = async () => {
       const email = ($("apEmail").value || "").trim();
@@ -3232,6 +3239,84 @@
     if (!account.signedIn) { proBack.hidden = true; openAcctPop($("accountBtn") || $("accountBtnM")); return; }
     const u = LS_CHECKOUT + (LS_CHECKOUT.includes("?") ? "&" : "?") + "checkout[email]=" + encodeURIComponent(account.email);
     window.open(u, "_blank", "noopener");
+  });
+
+  // ---- "My QRs" dashboard: owned tracked links, dynamic-QR editing, CSV, bulk, domain
+  const authFetch = (path, opts = {}) => fetch(API + path, { ...opts, headers: { ...(opts.headers || {}), Authorization: "Bearer " + sess() } });
+  const dashBack = document.createElement("div");
+  dashBack.className = "pro-back"; dashBack.hidden = true;
+  dashBack.innerHTML = `<div class="pro-modal" style="max-width:560px;max-height:84vh;overflow:auto">
+    <button class="pro-x" id="dashX">✕</button>
+    <h2>My QRs &amp; links</h2>
+    <div class="price" id="dashPlan"></div>
+    <div id="dashList" style="margin-top:8px"></div>
+    <details style="margin-top:16px"><summary style="cursor:pointer;font-weight:700;font-family:'Urbanist',sans-serif">Bulk create <span id="dashBulkPro" class="pro-badge" hidden>PRO</span></summary>
+      <div class="ap-sub" style="margin:8px 0">One link per line → tracked short links + a CSV.</div>
+      <textarea id="dashBulkIn" style="width:100%;min-height:80px;border:1px solid var(--border);border-radius:10px;padding:10px;font:inherit;background:var(--panel-2)"></textarea>
+      <button class="mini-btn" id="dashBulkGo" style="margin-top:8px">Create &amp; download CSV</button>
+      <div class="ap-sub" id="dashBulkOut" style="margin-top:8px"></div>
+    </details>
+    <details style="margin-top:12px"><summary style="cursor:pointer;font-weight:700;font-family:'Urbanist',sans-serif">Custom domain <span id="dashDomPro" class="pro-badge" hidden>PRO</span></summary>
+      <div class="ap-sub" style="margin:8px 0">Short links on your own domain, e.g. <code>go.kedai.my/r/abc</code>. (Also point it at our worker — see setup.)</div>
+      <div class="ap-row"><input type="text" id="dashDom" placeholder="go.kedai.my" style="border:1px solid var(--border);border-radius:10px;padding:9px 11px;font:inherit;background:var(--panel-2)"/><button class="mini-btn" id="dashDomGo">Save</button></div>
+    </details>
+  </div>`;
+  document.body.appendChild(dashBack);
+  $("dashX").addEventListener("click", () => dashBack.hidden = true);
+  dashBack.addEventListener("click", (e) => { if (e.target === dashBack) dashBack.hidden = true; });
+
+  async function openDashboard() {
+    dashBack.hidden = false;
+    $("dashPlan").textContent = account.pro ? "PRO — dynamic QRs, full analytics, unlimited" : "Free — upgrade to edit destinations & export";
+    [["dashBulkPro"], ["dashDomPro"]].forEach(([id]) => $(id).hidden = account.pro);
+    $("dashList").innerHTML = `<div class="ap-sub">Loading…</div>`;
+    if (window.lucide) lucide.createIcons();
+    let data = { links: [] };
+    try { data = await (await authFetch("/api/account/links")).json(); } catch (e) {}
+    const links = data.links || [];
+    if (!links.length) { $("dashList").innerHTML = `<div class="ap-sub">No tracked QRs yet. In the URL tab, paste a link and tap <b>Track scans</b> while signed in — it'll appear here.</div>`; return; }
+    $("dashList").innerHTML = links.map((l) => `
+      <div class="card" style="padding:12px;margin:8px 0">
+        <div class="kv" style="border:none;padding:2px 0"><span><b>${l.scans}</b> scans</span><b><code>${(l.domain || "trace.qrdurian.com")}/r/${l.id}</code></b></div>
+        <div class="ap-sub" style="margin:4px 0;word-break:break-all">→ <span data-dest="${l.secret}">${escapeHtml(l.url)}</span></div>
+        <div class="ap-row">
+          <button class="mini-btn" data-edit="${l.secret}">Edit destination</button>
+          <a class="mini-btn ghost" href="${API}/api/link/export?secret=${l.secret}&s=${encodeURIComponent(sess())}" target="_blank" rel="noopener">Export CSV</a>
+          <a class="mini-btn ghost" href="https://trace.qrdurian.com/l/${l.secret}" target="_blank" rel="noopener">Stats</a>
+        </div>
+      </div>`).join("");
+    dashBack.querySelectorAll("[data-edit]").forEach((btn) => btn.onclick = async () => {
+      if (!account.pro) { openProModal(); return; }
+      const secret = btn.dataset.edit;
+      const cur = dashBack.querySelector(`[data-dest="${secret}"]`).textContent;
+      const next = prompt("New destination for this printed QR:", cur);
+      if (!next || next === cur) return;
+      const r = await authFetch("/api/link/update", { method: "POST", body: JSON.stringify({ secret, url: next }) });
+      if (r.ok) openDashboard(); else if (r.status === 402) openProModal();
+    });
+  }
+  function escapeHtml(s) { return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+  $("dashBulkGo").addEventListener("click", async () => {
+    if (!account.pro) { openProModal(); return; }
+    const lines = $("dashBulkIn").value.split("\n").map((s) => s.trim()).filter((s) => /^https?:\/\//i.test(s)).slice(0, 100);
+    if (!lines.length) return;
+    $("dashBulkOut").textContent = `Creating ${lines.length}…`;
+    const rows = [["destination", "short_link", "stats_link"]];
+    for (const url of lines) {
+      try { const j = await (await fetch(API + "/api/track", { method: "POST", body: JSON.stringify({ url, token: sess() }) })).json(); if (j.short) rows.push([url, j.short, j.stats]); } catch (e) {}
+    }
+    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    a.download = "qrdurian-bulk-links.csv"; a.click();
+    $("dashBulkOut").textContent = `✓ ${rows.length - 1} links created — CSV downloaded.`;
+  });
+  $("dashDomGo").addEventListener("click", async () => {
+    if (!account.pro) { openProModal(); return; }
+    const r = await authFetch("/api/account/domain", { method: "POST", body: JSON.stringify({ domain: $("dashDom").value.trim() }) });
+    $("dashDom").nextSibling; const ok = r.ok;
+    $("dashDomGo").textContent = ok ? "✓ Saved" : "Error";
+    setTimeout(() => $("dashDomGo").textContent = "Save", 1500);
   });
 
   // ================= Boot =================

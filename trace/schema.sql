@@ -62,7 +62,10 @@ CREATE TABLE IF NOT EXISTS links (
   url TEXT NOT NULL,
   secret TEXT UNIQUE NOT NULL,    -- capability key for the owner's /l/<secret> stats page
   created_at INTEGER NOT NULL,
-  scans INTEGER NOT NULL DEFAULT 0
+  scans INTEGER NOT NULL DEFAULT 0,
+  account TEXT DEFAULT '',        -- owner email when created signed-in (dashboard + dynamic QR)
+  editable INTEGER DEFAULT 0,
+  domain TEXT DEFAULT ''          -- custom branded short-link host (Pro)
 );
 CREATE TABLE IF NOT EXISTS link_scans (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -87,6 +90,7 @@ CREATE TABLE IF NOT EXISTS accounts (
   period_end INTEGER DEFAULT 0,   -- subscription renew/end (ms); 0 = none
   ls_customer TEXT DEFAULT '',
   ls_sub TEXT DEFAULT '',
+  domain TEXT DEFAULT '',          -- custom branded short-link host (Pro)
   created_at INTEGER NOT NULL
 );
 CREATE TABLE IF NOT EXISTS login_tokens (
