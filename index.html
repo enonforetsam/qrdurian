@@ -34,6 +34,9 @@
     --border-2: #ededf0;
     --accent: #2E7D32;   /* durian-leaf green */
     --accent-ink: #ffffff; /* text/icons on accent */
+    --char: #2b2d31;        /* charcoal — the button colour */
+    --char-hover: #3a3d44;
+    --char-ink: #ffffff;
     --ring: rgba(46,125,50,.28);
     --shadow: 0 1px 2px rgba(0,0,0,.04), 0 12px 40px rgba(0,0,0,.08);
     --radius: 18px;
@@ -49,6 +52,9 @@
     --border-2: #2a2a2e;
     --accent: #9FE870;     /* bright green stays for dark backgrounds — visibility */
     --accent-ink: #163300;
+    --char: #3a3d44;        /* lighter charcoal on dark chrome so buttons separate */
+    --char-hover: #4a4e56;
+    --char-ink: #ffffff;
     --ring: rgba(159,232,112,.45);
     --shadow: 0 1px 2px rgba(0,0,0,.4), 0 20px 50px rgba(0,0,0,.5);
   }
@@ -216,8 +222,8 @@
   .btn:active { transform: translateY(0); }
   .btn:disabled { opacity: .55; cursor: wait; transform: none; }
   .btn[hidden] { display: none; }
-  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; box-shadow: 0 4px 14px var(--ring); }
-  .btn.primary:hover { box-shadow: 0 6px 20px var(--ring); }
+  .btn.primary { background: var(--char); color: var(--char-ink); border-color: transparent; box-shadow: 0 4px 14px rgba(0,0,0,.18); }
+  .btn.primary:hover { background: var(--char-hover); box-shadow: 0 6px 20px rgba(0,0,0,.22); }
   .btn svg { width: 16px; height: 16px; }
 
   /* ---------- Controls ---------- */
@@ -255,9 +261,9 @@
     transition: all .15s ease; font-family: inherit;
   }
   .preset:hover { border-color: var(--muted); }
-  .preset.active { border-color: var(--accent); background: var(--accent); }
-  .preset.active .swatch path, .preset.active .swatch rect, .preset.active .swatch circle { fill: var(--accent-ink); }
-  .preset.active .ptxt { color: var(--accent-ink); }
+  .preset.active { border-color: transparent; background: var(--char); }
+  .preset.active .swatch path, .preset.active .swatch rect, .preset.active .swatch circle { fill: var(--char-ink); }
+  .preset.active .ptxt { color: var(--char-ink); }
   .preset .swatch { width: 30px; height: 30px; margin: 0 auto 6px; }
   .preset .swatch path, .preset .swatch rect, .preset .swatch circle { fill: var(--text); }
   .preset .swatch [fill="none"] { fill: none !important; } /* keep outline-style icons hollow */
@@ -313,12 +319,12 @@
   .logo-prev img { width: 100%; height: 100%; object-fit: contain; }
   .logo-actions { display: flex; gap: 8px; }
   .mini-btn {
-    border: 1px solid var(--border); background: var(--panel); color: var(--text);
+    border: 1px solid transparent; background: var(--char); color: var(--char-ink);
     border-radius: 9px; padding: 8px 12px; font-size: 13px; font-weight: 600; cursor: pointer;
     transition: all .15s ease; font-family: inherit;
   }
-  .mini-btn:hover { border-color: var(--muted); }
-  .mini-btn.ghost { color: var(--muted); }
+  .mini-btn:hover { background: var(--char-hover); }
+  .mini-btn.ghost { background: transparent; color: var(--muted); border-color: var(--border); }
   .mini-btn:disabled { opacity: .45; cursor: default; }
   .mini-btn:disabled:hover { border-color: var(--border); }
 
@@ -333,7 +339,7 @@
   }
   .ct-tab:first-child { border-radius: 9px 3px 3px 9px; }
   .ct-tab:last-child { border-radius: 3px 9px 9px 3px; }
-  .ct-tab.active { background: #276A2A; color: #ffffff; }
+  .ct-tab.active { background: var(--char); color: var(--char-ink); }
   [data-ctab="link"] .ct-view[data-view="existing"] { display: none; }
   [data-ctab="existing"] .ct-view[data-view="link"] { display: none; }
   .ct-upload {
@@ -449,7 +455,7 @@
   .fmt-row.active { border-color: var(--accent); }
   .fmt-row.active .tick { opacity: 1; color: var(--accent); }
   .export-actions { display: flex; gap: 8px; margin-top: 14px; }
-  .export-actions .btn.primary { background: #101113; color: #fff; box-shadow: 0 4px 14px rgba(0,0,0,.22); }
+  .export-actions .btn.primary { background: var(--char); color: var(--char-ink); box-shadow: 0 4px 14px rgba(0,0,0,.22); }
   .export-actions .btn { padding: 9px 10px; line-height: 1.15; }
   .btn .bl { display: flex; flex-direction: column; align-items: flex-start; text-align: left; }
   .btn .sub { font-size: 10px; font-weight: 600; opacity: .6; letter-spacing: 0; }
@@ -483,8 +489,8 @@
     }
     .nav-item svg { width: 21px; height: 21px; }
     .nav-item:active { transform: scale(.92); }
-    .nav-item.active { background: var(--accent); color: var(--accent-ink); }
-    .nav-item.export { background: #101113; color: #fff; } /* black = download, everywhere */
+    .nav-item.active { background: var(--char); color: var(--char-ink); }
+    .nav-item.export { background: var(--char); color: var(--char-ink); } /* charcoal = download, everywhere */
 
     /* invisible click-catcher — QR stays bright while editing */
     .sheet-backdrop {
@@ -585,7 +591,7 @@
       padding: 8px 14px; border-radius: 999px; cursor: pointer;
       transition: background .18s ease, color .18s ease;
     }
-    .fmt-chip.active { background: var(--accent); color: var(--accent-ink); }
+    .fmt-chip.active { background: var(--char); color: var(--char-ink); }
     .looks-dock { width: 100%; display: flex; justify-content: center; }
 
     /* sticker picker — floats above the bar */
@@ -650,17 +656,17 @@
       }
       .stb-icon svg { width: 15px; height: 15px; }
       .stb-icon:hover { background: var(--panel-2); color: var(--text); }
-      .stb-icon.active { background: var(--panel-2); color: #276A2A; }
+      .stb-icon.active { background: var(--char); color: var(--char-ink); }
       /* export button */
       .stb-export {
         display: flex; align-items: center; gap: 6px;
         height: 30px; padding: 0 14px; border-radius: 10px; border: none;
-        background: #101113; color: #fff; cursor: pointer;
+        background: var(--char); color: var(--char-ink); cursor: pointer;
         font-family: "Urbanist", sans-serif; font-weight: 700; font-size: 13px;
         transition: background .15s;
       }
       .stb-export svg { width: 13px; height: 13px; }
-      .stb-export:hover { background: #2a2a2d; }
+      .stb-export:hover { background: var(--char-hover); }
       /* format chips live in the bar */
       .fmt-chips { display: flex; gap: 2px; flex: 0 0 auto; }
       .bottom-nav { display: none; }
