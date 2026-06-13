@@ -327,6 +327,32 @@
   .mini-btn.ghost { background: transparent; color: var(--muted); border-color: var(--border); }
   .mini-btn:disabled { opacity: .45; cursor: default; }
   .mini-btn:disabled:hover { border-color: var(--border); }
+  a.mini-btn { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+
+  /* account popover + Pro modal */
+  #accountBtn.is-pro, #accountBtnM.is-pro { color: var(--accent); }
+  .acct-pop {
+    position: fixed; z-index: 95; width: 280px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 16px;
+    padding: 16px; box-shadow: 0 10px 36px rgba(0,0,0,.16);
+  }
+  .acct-pop[hidden] { display: none; }
+  .acct-pop h4 { font-family: "Urbanist", sans-serif; font-size: 15px; margin: 0 0 8px; display: flex; align-items: center; gap: 8px; }
+  .acct-pop .ap-sub { font-size: 13px; color: var(--muted); word-break: break-word; margin-bottom: 12px; line-height: 1.45; }
+  .acct-pop input { width: 100%; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font: inherit; font-size: 14px; background: var(--panel-2); margin-bottom: 8px; outline: none; }
+  .acct-pop input:focus { border-color: var(--accent); }
+  .ap-row { display: flex; gap: 8px; }
+  .ap-row .mini-btn, .ap-row .btn { flex: 1; }
+  .pro-badge { background: var(--char); color: #fff; font-family: "Urbanist", sans-serif; font-weight: 800; font-size: 10px; letter-spacing: .08em; padding: 3px 7px; border-radius: 6px; }
+  .pro-back { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .pro-back[hidden] { display: none; }
+  .pro-modal { background: var(--panel); color: var(--text); border-radius: 22px; padding: 26px; max-width: 380px; width: 100%; box-shadow: 0 24px 64px rgba(0,0,0,.35); position: relative; }
+  .pro-modal h2 { font-family: "Urbanist", sans-serif; font-size: 23px; margin: 0; }
+  .pro-modal .price { font-family: "Urbanist", sans-serif; font-weight: 800; font-size: 15px; color: var(--accent); margin: 4px 0 16px; }
+  .pro-feat { display: flex; gap: 10px; align-items: flex-start; margin: 11px 0; font-size: 14px; line-height: 1.4; }
+  .pro-feat svg { width: 18px; height: 18px; color: var(--accent); flex: 0 0 auto; margin-top: 1px; }
+  .pro-modal .btn.primary { width: 100%; margin-top: 18px; padding: 14px; }
+  .pro-x { position: absolute; top: 14px; right: 14px; border: none; background: var(--panel-2); width: 30px; height: 30px; border-radius: 50%; cursor: pointer; color: var(--muted); font-size: 15px; }
 
   /* Content panel: two journeys, two tabs — New link / Existing QR */
   .ct-tabs { display: flex; gap: 3px; margin-bottom: 14px; }
@@ -747,6 +773,7 @@
       <span class="mark"><img src="durian.svg" alt="qrdurian" /></span>
     </div>
     <button class="shuffle-btn" id="shuffleBtn" aria-label="Random design"><i data-lucide="refresh-cw"></i></button>
+    <button class="shuffle-btn acct-m" id="accountBtnM" aria-label="Account" style="right:auto; left:18px;"><i data-lucide="user-round"></i></button>
   </header>
 
   <div class="promo" id="tracePromo" hidden>
@@ -929,6 +956,7 @@
       <button class="chip-color compact" id="tbCapChip" aria-label="Text color"><span class="cdot" id="tbCapDot"></span></button>
       <span class="eb-flex"></span>
       <div class="fmt-chips" id="fmtChips" aria-label="Canvas size"></div>
+      <button class="stb-icon" id="accountBtn" aria-label="Account"><i data-lucide="user-round"></i></button>
       <button class="stb-export" data-nav="export" aria-label="Export"><i data-lucide="download"></i> Export</button>
     </div>
 
@@ -3112,8 +3140,113 @@
     try { localStorage.setItem("tracePromoDismissed", "1"); } catch (e) {}
   });
 
+  // ================= Accounts / Pro =================
+  const API = "https://trace.qrdurian.com";
+  // TODO(setup): paste the LemonSqueezy product checkout + customer-portal URLs
+  const LS_CHECKOUT = "https://qrdurian.lemonsqueezy.com/buy/REPLACE-WITH-VARIANT";
+  const LS_PORTAL = "https://app.lemonsqueezy.com/my-orders";
+  let account = { signedIn: false, email: "", pro: false };
+  const sess = () => { try { return localStorage.getItem("qrd_session") || ""; } catch (e) { return ""; } };
+  const isPro = () => account.pro;
+
+  async function refreshAccount() {
+    const s = sess();
+    if (!s) { account = { signedIn: false, email: "", pro: false }; paintAccount(); return; }
+    try {
+      const r = await fetch(API + "/api/auth/me", { headers: { Authorization: "Bearer " + s } });
+      const j = await r.json();
+      if (j.signedIn) account = { signedIn: true, email: j.email, pro: !!j.pro };
+      else { account = { signedIn: false, email: "", pro: false }; localStorage.removeItem("qrd_session"); }
+    } catch (e) { /* offline — keep last known */ }
+    paintAccount();
+  }
+  function paintAccount() {
+    document.querySelectorAll("#accountBtn, #accountBtnM").forEach(b => b && b.classList.toggle("is-pro", account.pro));
+  }
+
+  const acctPop = document.createElement("div");
+  acctPop.className = "acct-pop"; acctPop.hidden = true;
+  document.body.appendChild(acctPop);
+  function fillAcctPop() {
+    if (account.signedIn) {
+      acctPop.innerHTML = account.pro
+        ? `<h4>Account <span class="pro-badge">PRO</span></h4><div class="ap-sub">${account.email}</div>
+           <div class="ap-row"><a class="mini-btn ghost" href="${LS_PORTAL}" target="_blank" rel="noopener">Manage billing</a><button class="mini-btn ghost" id="apOut">Sign out</button></div>`
+        : `<h4>Account</h4><div class="ap-sub">${account.email}</div>
+           <button class="btn primary" id="apUp" style="width:100%">✨ Upgrade to Pro</button>
+           <button class="mini-btn ghost" id="apOut" style="width:100%;margin-top:8px">Sign out</button>`;
+    } else {
+      acctPop.innerHTML = `<h4>Sign in</h4>
+        <div class="ap-sub">Track scans, edit live QRs, and more. We'll email you a one-tap link — no password.</div>
+        <input type="email" id="apEmail" placeholder="you@email.com" autocomplete="email" />
+        <button class="btn primary" id="apSend" style="width:100%">Email me a link</button>`;
+    }
+    const out = $("apOut"); if (out) out.onclick = () => { try { localStorage.removeItem("qrd_session"); } catch (e) {} account = { signedIn: false, email: "", pro: false }; paintAccount(); fillAcctPop(); };
+    const up = $("apUp"); if (up) up.onclick = () => { acctPop.hidden = true; openProModal(); };
+    const send = $("apSend");
+    if (send) send.onclick = async () => {
+      const email = ($("apEmail").value || "").trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { $("apEmail").focus(); return; }
+      send.disabled = true; send.textContent = "Sending…";
+      try {
+        await fetch(API + "/api/auth/request", { method: "POST", body: JSON.stringify({ email }) });
+        acctPop.innerHTML = `<h4>Check your inbox ✉️</h4><div class="ap-sub">We sent a sign-in link to <b>${email}</b>. Tap it (works once, expires in 15 min).</div>`;
+      } catch (e) { send.disabled = false; send.textContent = "Try again"; }
+    };
+  }
+  function openAcctPop(anchor) {
+    if (!acctPop.hidden) { acctPop.hidden = true; return; }
+    fillAcctPop();
+    acctPop.hidden = false;
+    const r = anchor.getBoundingClientRect();
+    const w = 280;
+    acctPop.style.left = Math.max(12, Math.min(r.left + r.width / 2 - w / 2, window.innerWidth - w - 12)) + "px";
+    // below the button if near the top (mobile header), else above (studio bar)
+    if (r.top < 120) { acctPop.style.top = (r.bottom + 8) + "px"; acctPop.style.bottom = "auto"; }
+    else { acctPop.style.bottom = (window.innerHeight - r.top + 8) + "px"; acctPop.style.top = "auto"; }
+  }
+  ["accountBtn", "accountBtnM"].forEach(id => { const el = $(id); if (el) el.addEventListener("click", (e) => { e.stopPropagation(); openAcctPop(el); }); });
+  document.addEventListener("click", (e) => { if (!acctPop.hidden && !acctPop.contains(e.target) && !e.target.closest("#accountBtn,#accountBtnM")) acctPop.hidden = true; });
+
+  // ---- Pro pricing modal
+  const proBack = document.createElement("div");
+  proBack.className = "pro-back"; proBack.hidden = true;
+  proBack.innerHTML = `<div class="pro-modal">
+    <button class="pro-x" id="proX">✕</button>
+    <h2>qrdurian Pro</h2>
+    <div class="price">RM19/mo · cancel anytime</div>
+    <div class="pro-feat"><i data-lucide="repeat"></i><div><b>Dynamic QRs</b> — change where a printed code points, no reprint.</div></div>
+    <div class="pro-feat"><i data-lucide="chart-line"></i><div><b>Full scan analytics</b> — history, date ranges, CSV export.</div></div>
+    <div class="pro-feat"><i data-lucide="globe"></i><div><b>Custom domain</b> — short links on your own brand.</div></div>
+    <div class="pro-feat"><i data-lucide="sparkles"></i><div><b>No branding, bulk export &amp; higher limits.</b></div></div>
+    <button class="btn primary" id="proGo">Upgrade — RM19/mo</button>
+  </div>`;
+  document.body.appendChild(proBack);
+  function openProModal() {
+    proBack.hidden = false;
+    if (window.lucide) lucide.createIcons();
+  }
+  proBack.addEventListener("click", (e) => { if (e.target === proBack) proBack.hidden = true; });
+  $("proX").addEventListener("click", () => proBack.hidden = true);
+  $("proGo").addEventListener("click", () => {
+    if (!account.signedIn) { proBack.hidden = true; openAcctPop($("accountBtn") || $("accountBtnM")); return; }
+    const u = LS_CHECKOUT + (LS_CHECKOUT.includes("?") ? "&" : "?") + "checkout[email]=" + encodeURIComponent(account.email);
+    window.open(u, "_blank", "noopener");
+  });
+
   // ================= Boot =================
   lucide.createIcons();
+  // magic-link handoff: the verify redirect lands at qrdurian.com/?s=<session>
+  try {
+    const sp = new URLSearchParams(location.search);
+    if (sp.get("s")) {
+      localStorage.setItem("qrd_session", sp.get("s"));
+      sp.delete("s");
+      const qs = sp.toString();
+      history.replaceState(null, "", location.pathname + (qs ? "?" + qs : "") + location.hash);
+    }
+  } catch (e) {}
+  refreshAccount();
   // hydrate from, in priority order: a shared #d= link, the query-param API,
   // or the local autosave (so a refresh restores your last session)
   let fromShare = false;

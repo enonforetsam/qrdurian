@@ -28,6 +28,39 @@ function shortId(n = 8) {
   return [...buf].map((b) => abc[b % abc.length]).join("");
 }
 
+/* ---------------- accounts: magic-link + stateless HMAC sessions ---------------- */
+
+const validEmail = (e) => typeof e === "string" && /^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{2,}$/.test(e);
+const b64u = (s) => btoa(unescape(encodeURIComponent(s))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const unb64u = (s) => decodeURIComponent(escape(atob(s.replace(/-/g, "+").replace(/_/g, "/"))));
+
+async function hmacHex(secret, msg) {
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(msg));
+  return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+// session token = <emailB64u>.<expMs>.<hmac> — stateless, verified by signature
+async function signSession(email, secret, days = 60) {
+  const exp = Date.now() + days * 86400e3;
+  const body = `${b64u(email)}.${exp}`;
+  return `${body}.${await hmacHex(secret, body)}`;
+}
+async function sessionEmail(token, secret) {
+  if (!token || !secret) return null;
+  const parts = String(token).split(".");
+  if (parts.length !== 3) return null;
+  const [eb, exp, sig] = parts;
+  if (!/^\d+$/.test(exp) || +exp < Date.now()) return null;
+  if (await hmacHex(secret, `${eb}.${exp}`) !== sig) return null;
+  try { return unb64u(eb).toLowerCase(); } catch (e) { return null; }
+}
+// timing-safe-ish hex compare
+function eqHex(a, b) {
+  if (typeof a !== "string" || typeof b !== "string" || a.length !== b.length) return false;
+  let d = 0; for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return d === 0;
+}
+
 const CSS = `
   * { box-sizing: border-box; }
   body { margin: 0; font-family: 'Open Sans', system-ui, sans-serif; background: #FFE14D; color: #18181b; min-height: 100vh; }
@@ -424,6 +457,98 @@ export default {
         try { row = await DB.prepare("SELECT payload FROM designs WHERE id=?").bind(dMatch[1]).first(); } catch (e2) {}
         if (!row) return page("Not found", "<h1>Design not found</h1><p>This share link doesn't exist (or was mistyped). <a href='https://qrdurian.com'>Make your own →</a></p>", 404);
         return Response.redirect(`${MAIN}/#d=${row.payload}`, 302);
+      }
+
+      // ===================== Pro accounts (magic-link auth) =====================
+      const ensureAccountTables = async () => {
+        await DB.prepare("CREATE TABLE IF NOT EXISTS accounts (email TEXT PRIMARY KEY, pro INTEGER DEFAULT 0, plan TEXT DEFAULT '', period_end INTEGER DEFAULT 0, ls_customer TEXT DEFAULT '', ls_sub TEXT DEFAULT '', created_at INTEGER NOT NULL)").run();
+        await DB.prepare("CREATE TABLE IF NOT EXISTS login_tokens (token TEXT PRIMARY KEY, email TEXT NOT NULL, expires INTEGER NOT NULL)").run();
+      };
+      const getAccount = async (email) => {
+        try { return await DB.prepare("SELECT * FROM accounts WHERE email=?").bind(email).first(); }
+        catch (e) { await ensureAccountTables(); return null; }
+      };
+
+      // POST /api/auth/request {email} → email a one-time magic link
+      if (p === "/api/auth/request") {
+        if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CNT_CORS });
+        if (req.method !== "POST") return Response.json({ error: "POST only" }, { status: 405, headers: CNT_CORS });
+        const ip = req.headers.get("cf-connecting-ip") || "?";
+        if (rateLimitedCount(ip)) return Response.json({ error: "rate limited" }, { status: 429, headers: CNT_CORS });
+        let body = {}; try { body = JSON.parse((await req.text()) || "{}"); } catch (e2) {}
+        const email = String(body.email || "").trim().toLowerCase();
+        if (!validEmail(email)) return Response.json({ error: "bad email" }, { status: 400, headers: CNT_CORS });
+        const token = crypto.randomUUID().replace(/-/g, "") + shortId(8);
+        const ins = () => DB.prepare("INSERT INTO login_tokens (token, email, expires) VALUES (?,?,?)").bind(token, email, Date.now() + 15 * 60e3).run();
+        try { await ins(); } catch (e3) { await ensureAccountTables(); await ins(); }
+        const link = `https://trace.qrdurian.com/api/auth/verify?token=${token}`;
+        try {
+          if (env.EMAIL) {
+            await env.EMAIL.send({
+              to: email,
+              from: { email: "hello@qrdurian.com", name: "qrdurian" },
+              subject: "Your qrdurian sign-in link",
+              text: `Tap to sign in to qrdurian:\n\n${link}\n\nThis link works once and expires in 15 minutes. If you didn't ask for it, ignore this email.`,
+              html: `<p>Tap to sign in to <b>qrdurian</b>:</p><p><a href="${link}">Sign in →</a></p><p style="color:#71717a;font-size:13px">Works once, expires in 15 minutes. Didn't ask for it? Ignore this.</p>`,
+            });
+          } else {
+            console.log("DEV magic link:", link); // no email binding (local) — log it
+          }
+        } catch (e4) { console.log("email send failed; link:", link); }
+        return Response.json({ ok: true }, { headers: CNT_CORS });
+      }
+
+      // GET /api/auth/verify?token= → consume token, mint session, redirect to the app signed in
+      if (p === "/api/auth/verify") {
+        const token = url.searchParams.get("token") || "";
+        let row = null;
+        try { row = await DB.prepare("SELECT * FROM login_tokens WHERE token=?").bind(token).first(); } catch (e2) {}
+        if (!row || row.expires < Date.now()) {
+          return page("Link expired", "<h1>This sign-in link has expired</h1><p>Request a fresh one from <a href='https://qrdurian.com'>qrdurian.com</a>.</p>", 410);
+        }
+        await DB.prepare("DELETE FROM login_tokens WHERE token=?").bind(token).run();
+        const email = row.email.toLowerCase();
+        const acc = await getAccount(email);
+        if (!acc) await DB.prepare("INSERT INTO accounts (email, created_at) VALUES (?,?)").bind(email, Date.now()).run();
+        const session = await signSession(email, env.SESSION_SECRET || "dev-secret");
+        // hand the session to the app's own origin so it lives in qrdurian.com localStorage
+        return Response.redirect(`${MAIN}/?s=${encodeURIComponent(session)}`, 302);
+      }
+
+      // GET /api/auth/me  (Authorization: Bearer <session>) → account state
+      if (p === "/api/auth/me") {
+        if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CNT_CORS });
+        const tok = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "") || url.searchParams.get("s") || "";
+        const email = await sessionEmail(tok, env.SESSION_SECRET || "dev-secret");
+        if (!email) return Response.json({ signedIn: false }, { headers: CNT_CORS });
+        const acc = await getAccount(email);
+        const pro = !!(acc && acc.pro && (!acc.period_end || acc.period_end > Date.now()));
+        return Response.json({ signedIn: true, email, pro, plan: acc?.plan || "" }, { headers: CNT_CORS });
+      }
+
+      // POST /api/ls/webhook → LemonSqueezy events flip Pro (verify X-Signature HMAC)
+      if (p === "/api/ls/webhook" && req.method === "POST") {
+        const raw = await req.text();
+        const sig = req.headers.get("x-signature") || "";
+        const expected = await hmacHex(env.LS_WEBHOOK_SECRET || "dev-ls", raw);
+        if (!eqHex(sig, expected)) return new Response("bad signature", { status: 401 });
+        let evt = {}; try { evt = JSON.parse(raw); } catch (e2) {}
+        const name = evt?.meta?.event_name || "";
+        const attr = evt?.data?.attributes || {};
+        const email = String(attr.user_email || attr.email || evt?.meta?.custom_data?.email || "").trim().toLowerCase();
+        if (!validEmail(email)) return Response.json({ ok: true, note: "no email" }, { headers: CNT_CORS });
+        const active = ["subscription_created", "subscription_updated", "subscription_resumed", "subscription_payment_success", "order_created"].includes(name)
+          && !["expired", "cancelled", "unpaid"].includes(attr.status);
+        const pro = active ? 1 : 0;
+        const periodEnd = attr.renews_at ? Date.parse(attr.renews_at) : (attr.ends_at ? Date.parse(attr.ends_at) : 0);
+        await ensureAccountTables();
+        const up = () => DB.prepare(
+          "INSERT INTO accounts (email, pro, plan, period_end, ls_customer, ls_sub, created_at) VALUES (?,?,?,?,?,?,?) " +
+          "ON CONFLICT(email) DO UPDATE SET pro=excluded.pro, plan=excluded.plan, period_end=excluded.period_end, ls_customer=excluded.ls_customer, ls_sub=excluded.ls_sub")
+          .bind(email, pro, String(attr.variant_name || attr.product_name || ""), periodEnd || 0,
+            String(attr.customer_id || ""), String(evt?.data?.id || ""), Date.now()).run();
+        await up();
+        return Response.json({ ok: true }, { headers: CNT_CORS });
       }
 
       if (p === "/" || p === "") return landingPage();

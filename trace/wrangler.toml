@@ -3,6 +3,11 @@ main = "worker.js"
 compatibility_date = "2026-06-01"
 routes = [{ pattern = "trace.qrdurian.com", custom_domain = true }]
 
+# magic-link sign-in emails (setup: `wrangler email sending enable qrdurian.com`)
+send_email = [{ name = "EMAIL" }]
+
+# secrets (set with `wrangler secret put`): SESSION_SECRET, LS_WEBHOOK_SECRET
+
 [[d1_databases]]
 binding = "DB"
 database_name = "qrdurian-trace"

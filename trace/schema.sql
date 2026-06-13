@@ -78,3 +78,19 @@ CREATE TABLE IF NOT EXISTS designs (
   payload TEXT NOT NULL,       -- the base64url #d= design hash
   created_at INTEGER NOT NULL
 );
+
+-- Pro accounts (magic-link auth + LemonSqueezy billing)
+CREATE TABLE IF NOT EXISTS accounts (
+  email TEXT PRIMARY KEY,
+  pro INTEGER DEFAULT 0,
+  plan TEXT DEFAULT '',
+  period_end INTEGER DEFAULT 0,   -- subscription renew/end (ms); 0 = none
+  ls_customer TEXT DEFAULT '',
+  ls_sub TEXT DEFAULT '',
+  created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS login_tokens (
+  token TEXT PRIMARY KEY,
+  email TEXT NOT NULL,
+  expires INTEGER NOT NULL        -- one-time magic link, 15-min TTL
+);
