@@ -393,6 +393,39 @@ export default {
         `);
       }
 
+      // ---- pretty share links for qrdurian.com designs ----
+      // POST /api/design {payload} stores the base64 design hash → short /d/<id>;
+      // GET /d/<id> 302s to qrdurian.com/#d=<payload> (editor already boots from #d=).
+      // The full #d= URL stays the zero-backend canonical; this is just a nicety.
+      if (p === "/api/design") {
+        if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CNT_CORS });
+        if (req.method !== "POST") return Response.json({ error: "POST only" }, { status: 405, headers: CNT_CORS });
+        let body = {};
+        try { body = JSON.parse((await req.text()) || "{}"); } catch (e2) {}
+        const payload = String(body.payload || "");
+        if (!/^[A-Za-z0-9_-]{8,8000}$/.test(payload)) { // base64url, sane length
+          return Response.json({ error: "bad payload" }, { status: 400, headers: CNT_CORS });
+        }
+        const ip = req.headers.get("cf-connecting-ip") || "?";
+        if (rateLimitedCount(ip)) return Response.json({ error: "rate limited" }, { status: 429, headers: CNT_CORS });
+        const id = shortId(7);
+        const insert = () => DB.prepare("INSERT INTO designs (id, payload, created_at) VALUES (?,?,?)")
+          .bind(id, payload, Date.now()).run();
+        try { await insert(); }
+        catch (e3) {
+          await DB.prepare("CREATE TABLE IF NOT EXISTS designs (id TEXT PRIMARY KEY, payload TEXT NOT NULL, created_at INTEGER NOT NULL)").run();
+          await insert();
+        }
+        return Response.json({ short: `https://trace.qrdurian.com/d/${id}` }, { headers: CNT_CORS });
+      }
+      const dMatch = p.match(/^\/d\/([a-z0-9]{4,12})$/i);
+      if (dMatch) {
+        let row = null;
+        try { row = await DB.prepare("SELECT payload FROM designs WHERE id=?").bind(dMatch[1]).first(); } catch (e2) {}
+        if (!row) return page("Not found", "<h1>Design not found</h1><p>This share link doesn't exist (or was mistyped). <a href='https://qrdurian.com'>Make your own →</a></p>", 404);
+        return Response.redirect(`${MAIN}/#d=${row.payload}`, 302);
+      }
+
       if (p === "/" || p === "") return landingPage();
       if (p === "/register") return registerPage();
 

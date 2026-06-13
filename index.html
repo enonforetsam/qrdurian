@@ -1694,10 +1694,16 @@
       return true;
     } catch (e) { return false; }
   }
+  // keep the address bar clean (`qrdurian.com`) while editing — the full design
+  // no longer lives in the URL on every keystroke. Instead it autosaves to
+  // localStorage, so a refresh restores your work; the shareable link is built
+  // on demand by "Copy design link".
   let urlTimer = null;
   function syncURL() {
     clearTimeout(urlTimer);
-    urlTimer = setTimeout(() => history.replaceState(null, "", location.pathname + "#d=" + encodeDesign()), 300);
+    urlTimer = setTimeout(() => {
+      try { localStorage.setItem("qrd_autosave", encodeDesign()); } catch (e) {}
+    }, 300);
   }
 
   // readable query-param API — ?data=...&look=kopitiam&ink=stamp (see API.md)
@@ -2782,16 +2788,29 @@
     if (sub) sub.textContent = fileType === "svg" ? "SVG file" : "to Files";
   }
   $("copyLinkBtn").addEventListener("click", async () => {
-    history.replaceState(null, "", "#d=" + encodeDesign()); // make sure it's fresh
     const b = $("copyLinkBtn");
+    const saved = b.innerHTML;
+    const payload = encodeDesign();
+    const longUrl = location.origin + location.pathname + "#d=" + payload; // always-works fallback
+    b.disabled = true; b.textContent = "Making link…";
+    let link = longUrl;
     try {
-      await navigator.clipboard.writeText(location.href);
-      const saved = b.innerHTML;
+      // ask the worker for a short, pretty link; fall back to the full hash
+      const res = await fetch("https://trace.qrdurian.com/api/design", {
+        method: "POST", body: JSON.stringify({ payload }),
+      });
+      const j = await res.json();
+      if (j.short) link = j.short;
+    } catch (e) { /* offline / worker down → the long link still works */ }
+    try {
+      await navigator.clipboard.writeText(link);
       b.textContent = "✓ Copied";
-      setTimeout(() => { b.innerHTML = saved; }, 1400);
     } catch (e) {
-      prompt("Copy this link:", location.href);
+      prompt("Copy this link:", link);
+      b.innerHTML = saved;
     }
+    b.disabled = false;
+    setTimeout(() => { b.innerHTML = saved; }, 1500);
   });
 
   // ================= Mobile nav + sheets =================
@@ -3095,10 +3114,15 @@
 
   // ================= Boot =================
   lucide.createIcons();
-  // arriving via a shared link (#d=) or the query-param API? hydrate everything
+  // hydrate from, in priority order: a shared #d= link, the query-param API,
+  // or the local autosave (so a refresh restores your last session)
+  let fromShare = false;
   const booted =
-    (location.hash.startsWith("#d=") && decodeDesign(location.hash.slice(3))) ||
-    applyQueryParams();
+    (location.hash.startsWith("#d=") && (fromShare = decodeDesign(location.hash.slice(3)))) ||
+    applyQueryParams() ||
+    (() => { try { const a = localStorage.getItem("qrd_autosave"); return a && decodeDesign(a); } catch (e) { return false; } })();
+  // a shared link has been absorbed into state — clean it out of the address bar
+  if (fromShare) history.replaceState(null, "", location.pathname);
   if (booted) {
     $("content").value = state.data;
     $("caption").value = state.caption;

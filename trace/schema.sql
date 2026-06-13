@@ -71,3 +71,10 @@ CREATE TABLE IF NOT EXISTS link_scans (
   country TEXT DEFAULT '',        -- coarse, anonymous (same stance as events)
   device TEXT DEFAULT ''          -- mobile | tablet | desktop
 );
+
+-- pretty share links for qrdurian.com designs (POST /api/design → /d/<id>)
+CREATE TABLE IF NOT EXISTS designs (
+  id TEXT PRIMARY KEY,         -- public short id: /d/<id>
+  payload TEXT NOT NULL,       -- the base64url #d= design hash
+  created_at INTEGER NOT NULL
+);
