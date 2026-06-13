@@ -153,7 +153,10 @@ export default {
     try {
       // public counters for qrdurian.com — generates ("qrs"), downloads, shares.
       // POST /api/count?k=<key> bumps one; GET returns them all.
-      const CNT_CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Cache-Control": "no-store" };
+      const CNT_CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "authorization, content-type", "Cache-Control": "no-store" };
+      // blanket CORS preflight for every /api/* route (authed routes send an
+      // Authorization header → the browser preflights; answer it once here)
+      if (req.method === "OPTIONS" && p.startsWith("/api/")) return new Response(null, { status: 204, headers: CNT_CORS });
       const STAT_KEYS = ["qrs", "downloads", "shares"];
       if (p === "/api/count") {
         if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CNT_CORS });
