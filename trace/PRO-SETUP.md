@@ -20,7 +20,9 @@ npx wrangler secret put LS_WEBHOOK_SECRET   # must match the LemonSqueezy webhoo
 ```
 
 ## 3. LemonSqueezy product + webhook
-- Create a store + a **Pro** product (monthly RM19; optional annual/lifetime).
+- Create a store + a **Pro** product (monthly **US$5**; optional annual/lifetime). LemonSqueezy
+  is USD-based and converts for buyers automatically. Keep the price in `index.html` (the
+  `.price` text + the Upgrade button) in sync with the product.
 - Copy the product's **checkout URL** → paste into `index.html` `LS_CHECKOUT`
   (and the customer-portal URL into `LS_PORTAL`).
 - Add a webhook: URL `https://trace.qrdurian.com/api/ls/webhook`, events =
