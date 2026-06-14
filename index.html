@@ -809,15 +809,15 @@
         <div class="hint" id="shortenRow" hidden>
           ⚡ Long link? <button class="mini-btn" id="shortenBtn"><i data-lucide="link"></i> Shorten it</button> — easier to scan.
         </div>
-        <div class="hint" id="trackRow" hidden>
-          📈 Want to know how many people scan it? <button class="mini-btn" id="trackBtn"><i data-lucide="chart-line"></i> Track scans</button>
-        </div>
         <div class="hint" id="trackDone" hidden style="color:var(--accent); font-weight:600;"></div>
         <div class="hint" id="contentHint" hidden style="color:var(--accent); font-weight:600;"></div>
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:10px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-top:12px; flex-wrap:wrap;">
+          <button class="mini-btn" id="trackBtn"><i data-lucide="chart-line"></i> Track scans</button>
           <button class="mini-btn" id="addQrBtn"><i data-lucide="plus"></i> Add another QR</button>
+          <span style="flex:1"></span>
           <button class="btn primary" id="generateBtn" style="flex:0 0 auto;"><i data-lucide="qr-code"></i> Generate QR</button>
         </div>
+        <div class="hint" id="trackRow" style="margin-top:6px;">📈 <b>Track scans</b> turns your link into a short code that counts every scan — and lets you change where it points later. Add a link above to use it.</div>
         <div class="gen-msg" id="genMsg" hidden>✓ QR Generated Successfully!</div>
       </div>
       </div>
@@ -1799,10 +1799,16 @@
   }
   function syncShorten() {
     const v = $("content").value.trim();
-    // the suggestion row appears only when shortening actually helps the scan
-    $("shortenRow").hidden = !(/^https?:\/\//i.test(v) && v.length > 35 && !/^https?:\/\/tinyurl\.com\//i.test(v));
-    // tracking is offered for any plain link that isn't already one of ours
-    $("trackRow").hidden = !(/^https?:\/\//i.test(v) && !/qrdurian\.com\/r\//i.test(v));
+    const isUrl = /^https?:\/\//i.test(v);
+    const tracked = /qrdurian\.com\/r\/|tinyurl\.com\//i.test(v);
+    // shorten suggestion appears only when shortening actually helps the scan
+    $("shortenRow").hidden = !(isUrl && v.length > 35 && !/^https?:\/\/tinyurl\.com\//i.test(v));
+    // Track scans is always visible (discoverable) but only actionable for a fresh URL
+    const tb = $("trackBtn");
+    tb.disabled = !isUrl || tracked;
+    tb.title = !isUrl ? "Add a link first — only web links can be tracked"
+      : tracked ? "This is already a tracked short link" : "Get a short link that counts every scan";
+    $("trackRow").hidden = tracked; // hide the explainer once the link is already tracked
   }
   // trackable QRs: swap the link for our short redirect, hand back a private stats page
   $("trackBtn").addEventListener("click", async () => {
