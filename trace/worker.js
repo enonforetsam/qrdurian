@@ -560,6 +560,96 @@ export default {
         return Response.json({ ok: true, domain }, { headers: CNT_CORS });
       }
 
+      // GET /api/account/overview → aggregate stats across the account's owned QRs
+      if (p === "/api/account/overview") {
+        const me = await whoami(req);
+        if (!me) return Response.json({ signedIn: false }, { status: 401, headers: CNT_CORS });
+        const q = async (sql, ...b) => { try { return (await DB.prepare(sql).bind(...b).all()).results || []; } catch (e) { return []; } };
+        const one = async (sql, ...b) => { try { return await DB.prepare(sql).bind(...b).first(); } catch (e) { return null; } };
+        const totalScans = (await one("SELECT COALESCE(SUM(scans),0) s FROM links WHERE account=?", me.email))?.s || 0;
+        const linkCount = (await one("SELECT COUNT(*) c FROM links WHERE account=?", me.email))?.c || 0;
+        let designCount = 0; try { designCount = (await one("SELECT COUNT(*) c FROM account_designs WHERE account=?", me.email))?.c || 0; } catch (e) {}
+        const top = await q("SELECT id, url, scans FROM links WHERE account=? ORDER BY scans DESC LIMIT 5", me.email);
+        const daily = await q(
+          "SELECT date(ls.at/1000,'unixepoch') d, COUNT(*) c FROM link_scans ls JOIN links l ON l.id=ls.link_id WHERE l.account=? AND ls.at>? GROUP BY d ORDER BY d",
+          me.email, Date.now() - 30 * 86400e3);
+        return Response.json({ signedIn: true, pro: me.pro, email: me.email, totalScans, linkCount, designCount, top, daily }, { headers: CNT_CORS });
+      }
+
+      // GET /api/link/stats?secret= → per-QR analytics JSON (owner; Pro = full)
+      if (p === "/api/link/stats") {
+        const me = await whoami(req);
+        if (!me) return Response.json({ error: "signin" }, { status: 401, headers: CNT_CORS });
+        let link = null;
+        try { link = await DB.prepare("SELECT * FROM links WHERE secret=?").bind(url.searchParams.get("secret") || "").first(); } catch (e) {}
+        if (!link || link.account !== me.email) return Response.json({ error: "not_owner" }, { status: 403, headers: CNT_CORS });
+        const since = Date.now() - (me.pro ? 365 : 30) * 86400e3;
+        const dim = async (col) => { try { return (await DB.prepare(`SELECT ${col} d, COUNT(*) c FROM link_scans WHERE link_id=? AND at>? GROUP BY ${col} ORDER BY c DESC LIMIT 12`).bind(link.id, since).all()).results || []; } catch (e) { return []; } };
+        let daily = []; try { daily = (await DB.prepare("SELECT date(at/1000,'unixepoch') d, COUNT(*) c FROM link_scans WHERE link_id=? AND at>? GROUP BY d ORDER BY d").bind(link.id, Date.now() - 30 * 86400e3).all()).results || []; } catch (e) {}
+        return Response.json({ scans: link.scans, daily, country: await dim("country"), device: await dim("device"), pro: me.pro }, { headers: CNT_CORS });
+      }
+
+      // POST /api/link/delete {secret} → owner removes a tracked QR + its scans
+      if (p === "/api/link/delete" && req.method === "POST") {
+        const me = await whoami(req);
+        if (!me) return Response.json({ error: "signin" }, { status: 401, headers: CNT_CORS });
+        let body = {}; try { body = JSON.parse((await req.text()) || "{}"); } catch (e) {}
+        const secret = String(body.secret || "");
+        let link = null;
+        try { link = await DB.prepare("SELECT * FROM links WHERE secret=?").bind(secret).first(); } catch (e) {}
+        if (!link || link.account !== me.email) return Response.json({ error: "not_owner" }, { status: 403, headers: CNT_CORS });
+        await DB.prepare("DELETE FROM link_scans WHERE link_id=?").bind(link.id).run();
+        await DB.prepare("DELETE FROM links WHERE id=?").bind(link.id).run();
+        return Response.json({ ok: true }, { headers: CNT_CORS });
+      }
+
+      // ---- saved designs synced to the account ----
+      const ensureDesignTable = async () => DB.prepare("CREATE TABLE IF NOT EXISTS account_designs (id TEXT PRIMARY KEY, account TEXT NOT NULL, name TEXT DEFAULT '', payload TEXT NOT NULL, thumb TEXT DEFAULT '', updated_at INTEGER NOT NULL, created_at INTEGER NOT NULL)").run();
+      const FREE_DESIGN_CAP = 10, PRO_DESIGN_CAP = 500;
+      if (p === "/api/designs") {
+        const me = await whoami(req);
+        if (!me) return Response.json({ signedIn: false }, { status: 401, headers: CNT_CORS });
+        let rows = [];
+        try { rows = (await DB.prepare("SELECT id, name, thumb, updated_at FROM account_designs WHERE account=? ORDER BY updated_at DESC LIMIT 600").bind(me.email).all()).results || []; }
+        catch (e) { await ensureDesignTable(); }
+        return Response.json({ signedIn: true, pro: me.pro, cap: me.pro ? PRO_DESIGN_CAP : FREE_DESIGN_CAP, designs: rows }, { headers: CNT_CORS });
+      }
+      if (p === "/api/designs/save" && req.method === "POST") {
+        const me = await whoami(req);
+        if (!me) return Response.json({ error: "signin" }, { status: 401, headers: CNT_CORS });
+        let body = {}; try { body = JSON.parse((await req.text()) || "{}"); } catch (e) {}
+        const payload = String(body.payload || "");
+        if (!/^[A-Za-z0-9_-]{8,8000}$/.test(payload)) return Response.json({ error: "bad payload" }, { status: 400, headers: CNT_CORS });
+        const name = String(body.name || "Untitled").slice(0, 80);
+        const thumb = String(body.thumb || "").slice(0, 40000); // small dataURL
+        const cap = me.pro ? PRO_DESIGN_CAP : FREE_DESIGN_CAP;
+        await ensureDesignTable();
+        const id = (body.id && /^[a-z0-9]{6,14}$/i.test(body.id)) ? body.id : shortId(10);
+        const exists = await DB.prepare("SELECT id FROM account_designs WHERE id=? AND account=?").bind(id, me.email).first();
+        if (!exists) {
+          const n = (await DB.prepare("SELECT COUNT(*) c FROM account_designs WHERE account=?").bind(me.email).first())?.c || 0;
+          if (n >= cap) return Response.json({ error: "cap", cap }, { status: 402, headers: CNT_CORS });
+        }
+        await DB.prepare("INSERT INTO account_designs (id, account, name, payload, thumb, updated_at, created_at) VALUES (?,?,?,?,?,?,?) " +
+          "ON CONFLICT(id) DO UPDATE SET name=excluded.name, payload=excluded.payload, thumb=excluded.thumb, updated_at=excluded.updated_at")
+          .bind(id, me.email, name, payload, thumb, Date.now(), Date.now()).run();
+        return Response.json({ ok: true, id }, { headers: CNT_CORS });
+      }
+      if (p === "/api/designs/get") {
+        const me = await whoami(req);
+        if (!me) return Response.json({ error: "signin" }, { status: 401, headers: CNT_CORS });
+        const row = await DB.prepare("SELECT payload, name FROM account_designs WHERE id=? AND account=?").bind(url.searchParams.get("id") || "", me.email).first();
+        if (!row) return Response.json({ error: "not_found" }, { status: 404, headers: CNT_CORS });
+        return Response.json({ payload: row.payload, name: row.name }, { headers: CNT_CORS });
+      }
+      if (p === "/api/designs/delete" && req.method === "POST") {
+        const me = await whoami(req);
+        if (!me) return Response.json({ error: "signin" }, { status: 401, headers: CNT_CORS });
+        let body = {}; try { body = JSON.parse((await req.text()) || "{}"); } catch (e) {}
+        await DB.prepare("DELETE FROM account_designs WHERE id=? AND account=?").bind(String(body.id || ""), me.email).run();
+        return Response.json({ ok: true }, { headers: CNT_CORS });
+      }
+
       if (p === "/" || p === "") return landingPage();
 
       return page("Not found", "<h1>404</h1><p><a href='/'>Home</a></p>", 404);

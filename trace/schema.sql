@@ -98,3 +98,15 @@ CREATE TABLE IF NOT EXISTS login_tokens (
   email TEXT NOT NULL,
   expires INTEGER NOT NULL        -- one-time magic link, 15-min TTL
 );
+
+-- saved designs synced to a Pro/free account (dashboard "My Designs")
+CREATE TABLE IF NOT EXISTS account_designs (
+  id TEXT PRIMARY KEY,
+  account TEXT NOT NULL,
+  name TEXT DEFAULT '',
+  payload TEXT NOT NULL,      -- the base64url #d= design hash
+  thumb TEXT DEFAULT '',      -- small PNG dataURL for the grid
+  updated_at INTEGER NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_designs_account ON account_designs(account);

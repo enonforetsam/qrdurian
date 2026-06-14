@@ -3175,10 +3175,12 @@
     if (account.signedIn) {
       acctPop.innerHTML = account.pro
         ? `<h4>Account <span class="pro-badge">PRO</span></h4><div class="ap-sub">${account.email}</div>
-           <button class="btn primary" id="apDash" style="width:100%">My QRs &amp; links</button>
+           <button class="btn primary" id="apSave" style="width:100%">Save to my designs</button>
+           <a class="mini-btn ghost" id="apDash" href="/dashboard" style="width:100%;margin-top:8px">Open dashboard →</a>
            <div class="ap-row" style="margin-top:8px"><a class="mini-btn ghost" href="${LS_PORTAL}" target="_blank" rel="noopener">Manage billing</a><button class="mini-btn ghost" id="apOut">Sign out</button></div>`
         : `<h4>Account</h4><div class="ap-sub">${account.email}</div>
-           <button class="mini-btn ghost" id="apDash" style="width:100%">My QRs &amp; links</button>
+           <button class="btn primary" id="apSave" style="width:100%">Save to my designs</button>
+           <a class="mini-btn ghost" id="apDash" href="/dashboard" style="width:100%;margin-top:8px">Open dashboard →</a>
            <button class="btn primary" id="apUp" style="width:100%;margin-top:8px">✨ Upgrade to Pro</button>
            <button class="mini-btn ghost" id="apOut" style="width:100%;margin-top:8px">Sign out</button>`;
     } else {
@@ -3189,7 +3191,7 @@
     }
     const out = $("apOut"); if (out) out.onclick = () => { try { localStorage.removeItem("qrd_session"); } catch (e) {} account = { signedIn: false, email: "", pro: false }; paintAccount(); fillAcctPop(); };
     const up = $("apUp"); if (up) up.onclick = () => { acctPop.hidden = true; openProModal(); };
-    const dash = $("apDash"); if (dash) dash.onclick = () => { acctPop.hidden = true; openDashboard(); };
+    const sv = $("apSave"); if (sv) sv.onclick = () => { acctPop.hidden = true; saveToMyDesigns(); };
     const send = $("apSend");
     if (send) send.onclick = async () => {
       const email = ($("apEmail").value || "").trim();
@@ -3240,6 +3242,33 @@
     const u = LS_CHECKOUT + (LS_CHECKOUT.includes("?") ? "&" : "?") + "checkout[email]=" + encodeURIComponent(account.email);
     window.open(u, "_blank", "noopener");
   });
+
+  // save the current design to the account (synced; shows in /dashboard → My Designs)
+  async function saveToMyDesigns() {
+    if (!account.signedIn) { openAcctPop($("accountBtn") || $("accountBtnM")); return; }
+    flashHint("Saving…");
+    let thumb = "";
+    try {
+      const full = await renderSceneCanvas();
+      const k = 180 / Math.max(full.width, full.height);
+      const tc = document.createElement("canvas");
+      tc.width = Math.round(full.width * k); tc.height = Math.round(full.height * k);
+      tc.getContext("2d").drawImage(full, 0, 0, tc.width, tc.height);
+      thumb = tc.toDataURL("image/jpeg", 0.72); // small enough for the D1 row
+      if (thumb.length > 38000) thumb = tc.toDataURL("image/jpeg", 0.5);
+    } catch (e) {}
+    const name = (state.caption && state.caption.trim()) ||
+      (/^https?:/i.test(state.data) ? state.data.replace(/^https?:\/\//, "").slice(0, 40) : "Untitled");
+    try {
+      const r = await fetch("https://trace.qrdurian.com/api/designs/save", {
+        method: "POST", headers: { Authorization: "Bearer " + sess() },
+        body: JSON.stringify({ name, payload: encodeDesign(), thumb }),
+      });
+      if (r.status === 402) { const j = await r.json(); flashHint(`Free plan keeps ${j.cap} designs — upgrade for more.`); openProModal(); return; }
+      const j = await r.json();
+      flashHint(j.ok ? "✓ Saved — see it in your dashboard." : "Couldn't save.");
+    } catch (e) { flashHint("Couldn't save — try again."); }
+  }
 
   // ---- "My QRs" dashboard: owned tracked links, dynamic-QR editing, CSV, bulk, domain
   const authFetch = (path, opts = {}) => fetch(API + path, { ...opts, headers: { ...(opts.headers || {}), Authorization: "Bearer " + sess() } });
