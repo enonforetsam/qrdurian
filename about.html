@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -16,7 +16,8 @@
 <link rel="icon" type="image/svg+xml" href="/durian.svg" />
 <link rel="manifest" href="/manifest.json" />
 <meta name="theme-color" content="#9FE870" />
-<link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@500;600;700;800&family=Open+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@500;600;700;800&family=Open+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/design-system.css" />
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -74,189 +75,163 @@
 }
 </script>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    background: #09090b; color: #fafafa;
-    font-family: "Open Sans", system-ui, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    line-height: 1.7;
-  }
-  a { color: inherit; }
-  header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 20px 32px; border-bottom: 1px solid #27272a;
-    max-width: 860px; margin: 0 auto; width: 100%;
-  }
-  .brand {
-    display: flex; align-items: center; gap: 10px;
-    font-family: "Urbanist", system-ui, sans-serif;
-    font-weight: 800; font-size: 18px; text-decoration: none; color: #fafafa;
-    letter-spacing: -.02em;
-  }
-  .brand svg, .brand img { width: 32px; height: 32px; object-fit: contain; }
-  .brand span { color: #9FE870; }
-  .try-btn {
-    background: #9FE870; color: #163300;
-    font-family: "Urbanist", system-ui, sans-serif;
-    font-weight: 700; font-size: 14px;
-    padding: 9px 20px; border-radius: 10px;
-    text-decoration: none; letter-spacing: -.01em;
-    transition: opacity .15s;
-  }
-  .try-btn:hover { opacity: .85; }
+  /* page-specific only — the scaffold (.spread/.wrap/.grid/.band/.guides/.toggle),
+     tokens, .brand and .btn all come from /design-system.css */
 
-  main {
-    max-width: 680px; margin: 0 auto;
-    padding: 64px 24px 96px;
-  }
+  .topbar { grid-column: 1 / -1; display: flex; align-items: center;
+    justify-content: space-between; margin-bottom: var(--sp-6); }
 
-  h1 {
-    font-family: "Urbanist", system-ui, sans-serif;
-    font-size: clamp(32px, 6vw, 52px);
-    font-weight: 800; letter-spacing: -.03em;
-    line-height: 1.1; margin-bottom: 20px;
-    color: #fafafa;
-  }
-  h1 em { color: #9FE870; font-style: normal; }
+  /* H1 — optically aligned via .h-display (design-system.js) */
+  .h-display { grid-column: 1 / 10; font-family: var(--font-display);
+    font-weight: 800; font-size: var(--fs-2xl); line-height: 1.08;
+    letter-spacing: -.03em; color: var(--text); margin: 0; }
+  .h-display em { color: var(--accent); font-style: normal; }
 
-  .intro {
-    font-size: 18px; color: #a1a1aa;
-    margin-bottom: 56px; max-width: 560px;
-  }
+  .lede { grid-column: 1 / 8; font-size: var(--fs-md); line-height: var(--lh);
+    color: var(--muted); margin: 0; }
 
-  h2 {
-    font-family: "Urbanist", system-ui, sans-serif;
-    font-size: 22px; font-weight: 700;
-    letter-spacing: -.02em; margin-bottom: 16px;
-    color: #fafafa;
-  }
+  /* section heading placed on a column line, body in a readable measure */
+  .h-section { grid-column: 1 / 4; font-family: var(--font-display);
+    font-weight: 700; font-size: var(--fs-lg); line-height: var(--lh);
+    letter-spacing: -.02em; color: var(--text); margin: 0; }
+  .sec-body { grid-column: 4 / 11; }
 
-  section { margin-bottom: 52px; }
+  /* why-list */
+  ul.why { list-style: none; margin: 0; padding: 0;
+    display: flex; flex-direction: column; gap: var(--sp-3); }
+  ul.why li { display: flex; align-items: flex-start; gap: var(--sp-3);
+    font-size: var(--fs-base); line-height: var(--lh); color: var(--text); }
+  ul.why li::before { content: "✦"; color: var(--accent);
+    font-size: var(--fs-xs); line-height: var(--lh); flex-shrink: 0; }
+  ul.why strong { font-weight: 600; }
+  ul.why a { color: var(--accent); text-decoration: none; }
+  ul.why a:hover { text-decoration: underline; }
 
-  ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
-  ul li {
-    display: flex; align-items: flex-start; gap: 10px;
-    font-size: 16px; color: #d4d4d8;
-  }
-  ul li::before {
-    content: "✦"; color: #9FE870;
-    font-size: 12px; margin-top: 4px; flex-shrink: 0;
-  }
+  /* how-it-works steps */
+  .steps { display: flex; flex-direction: column; gap: var(--sp-4); }
+  .step { display: flex; gap: var(--sp-4); align-items: flex-start; }
+  .step-num { width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+    color: var(--accent); font-family: var(--font-display);
+    font-weight: 700; font-size: var(--fs-sm);
+    display: flex; align-items: center; justify-content: center; }
+  .step-text { font-size: var(--fs-base); line-height: var(--lh); color: var(--text); }
+  .step-text strong { color: var(--text); font-weight: 600; }
+  .step-text a { color: var(--accent); text-decoration: none; }
+  .step-text a:hover { text-decoration: underline; }
 
-  .steps { display: flex; flex-direction: column; gap: 20px; counter-reset: steps; }
-  .step {
-    display: flex; gap: 16px; align-items: flex-start;
-    counter-increment: steps;
-  }
-  .step-num {
-    width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
-    background: rgba(159,232,112,0.12); border: 1px solid rgba(159,232,112,0.3);
-    color: #9FE870; font-family: "Urbanist", system-ui, sans-serif;
-    font-weight: 700; font-size: 14px;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .step-text { font-size: 16px; color: #d4d4d8; padding-top: 4px; }
-  .step-text strong { color: #fafafa; font-weight: 600; }
+  /* faq — two-column readable measure */
+  .faq { display: flex; flex-direction: column; gap: var(--sp-5); }
+  .faq-item h3 { font-family: var(--font-display); font-weight: 700;
+    font-size: var(--fs-base); line-height: var(--lh); letter-spacing: -.01em;
+    color: var(--text); margin: 0 0 var(--sp-1); }
+  .faq-item p { font-size: var(--fs-sm); line-height: var(--lh);
+    color: var(--muted); margin: 0; }
+  .faq-item strong { color: var(--text); }
 
-  .faq { display: flex; flex-direction: column; gap: 28px; }
-  .faq-item {}
-  .faq-item h3 {
-    font-family: "Urbanist", system-ui, sans-serif;
-    font-size: 17px; font-weight: 700;
-    letter-spacing: -.01em; margin-bottom: 8px;
-    color: #fafafa;
-  }
-  .faq-item p { font-size: 15px; color: #a1a1aa; }
+  /* CTA band */
+  .cta { grid-column: 1 / 8; display: flex; flex-direction: column;
+    align-items: flex-start; gap: var(--sp-4);
+    padding: var(--sp-6) 0 0; border-top: 1px solid var(--border); }
+  .cta p { font-size: var(--fs-md); line-height: var(--lh);
+    color: var(--muted); margin: 0; }
 
-  .cta-block {
-    text-align: center; padding: 52px 24px;
-    background: rgba(159,232,112,0.05);
-    border: 1px solid rgba(159,232,112,0.15);
-    border-radius: 20px; margin-top: 64px;
-  }
-  .cta-block p { font-size: 18px; color: #a1a1aa; margin-bottom: 24px; }
-  .cta-block a {
-    display: inline-block;
-    background: #9FE870; color: #163300;
-    font-family: "Urbanist", system-ui, sans-serif;
-    font-weight: 800; font-size: 16px;
-    padding: 14px 32px; border-radius: 12px;
-    text-decoration: none; letter-spacing: -.01em;
-    transition: opacity .15s;
-  }
-  .cta-block a:hover { opacity: .85; }
+  /* footer band */
+  .foot { grid-column: 1 / -1; padding-top: var(--sp-5);
+    border-top: 1px solid var(--border);
+    font-size: var(--fs-sm); color: var(--muted); }
+  .foot a { color: var(--muted); text-decoration: none; }
+  .foot a:hover { color: var(--text); }
 
-  footer {
-    text-align: center; padding: 32px 24px;
-    color: #52525b; font-size: 14px;
-    border-top: 1px solid #27272a;
-  }
-  footer a { color: #71717a; text-decoration: none; }
-  footer a:hover { color: #a1a1aa; }
+  .section-gap { margin-top: var(--sp-7); }
 
-  @media (max-width: 600px) {
-    header { padding: 16px 20px; }
-    main { padding: 40px 20px 72px; }
+  @media (max-width: 720px) {
+    .h-display, .lede, .h-section, .sec-body, .cta { grid-column: 1 / -1; }
   }
 </style>
 </head>
 <body>
+<button class="toggle" id="gridToggle" aria-pressed="false"><span class="dot"></span><span class="lbl">Show grid</span></button>
 
-<header>
-  <a class="brand" href="/">
-    <img src="/durian.svg" alt="qrdurian" />
-    QR <span>Durian</span>
-  </a>
-  <a class="try-btn" href="/">Try it free</a>
-</header>
+<section class="spread">
+  <div class="wrap">
+    <div class="grid">
 
-<main>
+      <div class="band">
+        <div class="topbar">
+          <a class="brand" href="/"><img src="/durian.svg" alt="qrdurian" /> QR <span>Durian</span></a>
+          <a class="btn accent" href="/">Try it free</a>
+        </div>
+      </div>
 
-  <h1>The free QR code designer that doesn't <em>look free</em>.</h1>
-  <p class="intro">QR Durian turns a plain link into a QR code worth printing — your colours, your words, your logo. No signup, no watermark, no per-export paywall. Make it, export it, done.</p>
+      <div class="band">
+        <h1 class="h-display">The free QR code designer that doesn't <em>look free</em>.</h1>
+      </div>
 
-  <section>
-    <h2>Why QR Durian</h2>
-    <ul>
-      <li><strong>No signup, no watermark.</strong> Design and export as many codes as you like, free. We never stamp our brand on your QR.</li>
-      <li><strong>Designed, not just generated.</strong> Custom colours, textures, rounded modules, a caption, and your logo in the middle — 20 ready-made <a href="/looks">looks</a> to start from.</li>
-      <li><strong>Restyle any existing QR.</strong> Got an ugly bank or DuitNow code? Upload a photo, we decode it and let you redesign it.</li>
-      <li><strong>Export anywhere.</strong> PNG and JPG for print and social, crisp SVG for posters and signage that scale to any size.</li>
-      <li><strong>Works on your phone.</strong> The whole studio runs in the browser — design a code on mobile in the queue, no app to install.</li>
-      <li><strong>Track scans when you want.</strong> Turn any code into a short link that counts every scan — and lets you change where it points later, without reprinting.</li>
-    </ul>
-  </section>
+      <div class="band">
+        <p class="lede">QR Durian turns a plain link into a QR code worth printing — your colours, your words, your logo. No signup, no watermark, no per-export paywall. Make it, export it, done.</p>
+      </div>
 
-  <section>
-    <h2>How it works</h2>
-    <div class="steps">
-      <div class="step"><div class="step-num">1</div><div class="step-text"><strong>Paste your link</strong> — a website, menu, WhatsApp, DuitNow, Wi-Fi, anything. Or upload a photo of an existing QR to restyle it.</div></div>
-      <div class="step"><div class="step-num">2</div><div class="step-text"><strong>Make it yours</strong> — pick a <a href="/looks">look</a> or set your own colours, add a caption and your logo, choose a texture and corner style.</div></div>
-      <div class="step"><div class="step-num">3</div><div class="step-text"><strong>Export</strong> — download PNG, JPG, or SVG. Print it, post it, or share the design link so someone can remix it.</div></div>
+      <div class="band section-gap">
+        <h2 class="h-section">Why QR Durian</h2>
+        <div class="sec-body">
+          <ul class="why">
+            <li><strong>No signup, no watermark.</strong> Design and export as many codes as you like, free. We never stamp our brand on your QR.</li>
+            <li><strong>Designed, not just generated.</strong> Custom colours, textures, rounded modules, a caption, and your logo in the middle — 20 ready-made <a href="/looks">looks</a> to start from.</li>
+            <li><strong>Restyle any existing QR.</strong> Got an ugly bank or DuitNow code? Upload a photo, we decode it and let you redesign it.</li>
+            <li><strong>Export anywhere.</strong> PNG and JPG for print and social, crisp SVG for posters and signage that scale to any size.</li>
+            <li><strong>Works on your phone.</strong> The whole studio runs in the browser — design a code on mobile in the queue, no app to install.</li>
+            <li><strong>Track scans when you want.</strong> Turn any code into a short link that counts every scan — and lets you change where it points later, without reprinting.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="band section-gap">
+        <h2 class="h-section">How it works</h2>
+        <div class="sec-body">
+          <div class="steps">
+            <div class="step"><div class="step-num">1</div><div class="step-text"><strong>Paste your link</strong> — a website, menu, WhatsApp, DuitNow, Wi-Fi, anything. Or upload a photo of an existing QR to restyle it.</div></div>
+            <div class="step"><div class="step-num">2</div><div class="step-text"><strong>Make it yours</strong> — pick a <a href="/looks">look</a> or set your own colours, add a caption and your logo, choose a texture and corner style.</div></div>
+            <div class="step"><div class="step-num">3</div><div class="step-text"><strong>Export</strong> — download PNG, JPG, or SVG. Print it, post it, or share the design link so someone can remix it.</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="band section-gap">
+        <h2 class="h-section">Common questions</h2>
+        <div class="sec-body">
+          <div class="faq">
+            <div class="faq-item"><h3>Is it really free?</h3><p>Yes. Designing and exporting QR codes is free with no signup and no watermark. An optional Pro plan adds dynamic QRs (re-point a printed code), full scan analytics, a custom domain and bulk tools — but you never need it to make and download a great-looking code.</p></div>
+            <div class="faq-item"><h3>Do the QR codes expire?</h3><p>No. A standard QR you design here points directly at your link and works forever — there's no redirect and nothing to keep alive. (Trackable short links and dynamic Pro codes are the exception, since they route through us by design.)</p></div>
+            <div class="faq-item"><h3>Will my logo stop it from scanning?</h3><p>No — QR codes carry built-in error correction, so a centred logo and styling still scan reliably. We keep the quiet margin and contrast safe while you design.</p></div>
+            <div class="faq-item"><h3>Can I redesign a QR I already have?</h3><p>Yes. Switch to the “Existing QR” tab and upload a photo or screenshot — we read the code and load it into the editor so you can restyle the ugly version.</p></div>
+            <div class="faq-item"><h3>Which format should I download?</h3><p>Use <strong>SVG</strong> for anything printed large (posters, signage, packaging) since it stays sharp at any size. Use <strong>PNG</strong> or <strong>JPG</strong> for screens, social posts and quick prints.</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="band section-gap">
+        <div class="cta">
+          <p>Make a QR code you'll actually want to print.</p>
+          <a class="btn accent" href="/">Start designing free</a>
+        </div>
+      </div>
+
+      <div class="band section-gap">
+        <div class="foot">
+          <a href="/">QR Durian</a> · <a href="/looks">Designs</a> · Free QR code designer · No signup required
+        </div>
+      </div>
+
     </div>
-  </section>
-
-  <section>
-    <h2>Common questions</h2>
-    <div class="faq">
-      <div class="faq-item"><h3>Is it really free?</h3><p>Yes. Designing and exporting QR codes is free with no signup and no watermark. An optional Pro plan adds dynamic QRs (re-point a printed code), full scan analytics, a custom domain and bulk tools — but you never need it to make and download a great-looking code.</p></div>
-      <div class="faq-item"><h3>Do the QR codes expire?</h3><p>No. A standard QR you design here points directly at your link and works forever — there's no redirect and nothing to keep alive. (Trackable short links and dynamic Pro codes are the exception, since they route through us by design.)</p></div>
-      <div class="faq-item"><h3>Will my logo stop it from scanning?</h3><p>No — QR codes carry built-in error correction, so a centred logo and styling still scan reliably. We keep the quiet margin and contrast safe while you design.</p></div>
-      <div class="faq-item"><h3>Can I redesign a QR I already have?</h3><p>Yes. Switch to the “Existing QR” tab and upload a photo or screenshot — we read the code and load it into the editor so you can restyle the ugly version.</p></div>
-      <div class="faq-item"><h3>Which format should I download?</h3><p>Use <strong>SVG</strong> for anything printed large (posters, signage, packaging) since it stays sharp at any size. Use <strong>PNG</strong> or <strong>JPG</strong> for screens, social posts and quick prints.</p></div>
+    <div class="guides" aria-hidden="true">
+      <div class="cols"></div><div class="rows"></div>
+      <div class="mline l"></div><div class="mline r"></div>
     </div>
-  </section>
-
-  <div class="cta-block">
-    <p>Make a QR code you'll actually want to print.</p>
-    <a href="/">Start designing free</a>
   </div>
+</section>
 
-</main>
-
-<footer>
-  <a href="/">QR Durian</a> · <a href="/looks">Designs</a> · Free QR code designer · No signup required
-</footer>
-
+<script src="/design-system.js"></script>
 </body>
 </html>

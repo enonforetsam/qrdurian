@@ -1,44 +1,57 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>404 — QR Durian</title>
 <link rel="icon" type="image/svg+xml" href="/durian.svg" />
-<link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@500;700;800&family=Open+Sans:wght@400;500&display=swap" rel="stylesheet">
+<link rel="manifest" href="/manifest.json" />
+<meta name="theme-color" content="#9FE870" />
+<link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@500;600;700;800&family=Open+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/design-system.css" />
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    background: #09090b; color: #fafafa;
-    font-family: "Open Sans", system-ui, sans-serif;
-    min-height: 100vh;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 24px; text-align: center; padding: 24px;
-    -webkit-font-smoothing: antialiased;
-  }
-  .logo { width: 72px; height: 72px; opacity: .85; object-fit: contain; }
-  h1 {
-    font-family: "Urbanist", system-ui, sans-serif;
-    font-size: 56px; font-weight: 800; letter-spacing: -.03em;
-    color: #9FE870;
-  }
-  p { color: #a1a1aa; font-size: 17px; }
-  a {
-    display: inline-flex; align-items: center; gap: 8px;
-    background: #9FE870; color: #163300;
-    font-family: "Urbanist", system-ui, sans-serif;
-    font-weight: 700; font-size: 15px;
-    padding: 12px 24px; border-radius: 12px;
-    text-decoration: none; letter-spacing: -.01em;
-    transition: opacity .15s ease;
-  }
-  a:hover { opacity: .85; }
+  body { min-height: 100vh; display: flex; flex-direction: column; }
+  .spread { flex: 1; display: flex; align-items: center; }
+  .wrap { width: 100%; }
+  .numeral { grid-column: 1 / 8; font-family: var(--font-display); font-weight: 800;
+    font-size: var(--fs-3xl); line-height: 96px; letter-spacing: -.04em; color: var(--accent); margin: 0; }
+  .msg { grid-column: 1 / 7; font-size: var(--fs-md); color: var(--muted); margin: 0; }
+  .actions { grid-column: 1 / 7; display: flex; gap: var(--sp-3); margin-top: var(--sp-2); }
+  .topbar { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--sp-6); }
+  @media (max-width: 720px) { .numeral, .msg, .actions { grid-column: 1 / -1; } }
 </style>
 </head>
 <body>
-  <img src="/durian.svg" alt="qrdurian" class="logo" />
-  <h1>404</h1>
-  <p>This page doesn't exist — but your QR codes do.</p>
-  <a href="/">Back to QR Durian</a>
+<button class="toggle" id="gridToggle" aria-pressed="false"><span class="dot"></span><span class="lbl">Show grid</span></button>
+
+<section class="spread">
+  <div class="wrap">
+    <div class="grid">
+      <div class="band">
+        <div class="topbar">
+          <a class="brand" href="/"><img src="/durian.svg" alt="qrdurian" /> QR <span>Durian</span></a>
+        </div>
+      </div>
+      <div class="band">
+        <h1 class="numeral">404</h1>
+      </div>
+      <div class="band">
+        <p class="msg">This page doesn't exist — but your QR codes do.</p>
+      </div>
+      <div class="band">
+        <div class="actions">
+          <a class="btn accent" href="/">Back to the editor</a>
+          <a class="btn ghost" href="/looks">Browse designs</a>
+        </div>
+      </div>
+    </div>
+    <div class="guides" aria-hidden="true">
+      <div class="cols"></div><div class="rows"></div>
+      <div class="mline l"></div><div class="mline r"></div>
+    </div>
+  </div>
+</section>
+
+<script src="/design-system.js"></script>
 </body>
 </html>

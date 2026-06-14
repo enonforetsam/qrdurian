@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -9,19 +9,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@600;700;800&family=Open+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/design-system.css" />
 <style>
-  * { box-sizing: border-box; }
-  :root {
-    --bg: #FFE14D; --panel: #ffffff; --panel-2: #fafafa; --text: #18181b; --muted: #71717a;
-    --border: #e8e6dd; --accent: #2E7D32; --char: #2b2d31; --char-hover: #3a3d44;
-  }
-  body {
-    margin: 0; font-family: "Open Sans", -apple-system, system-ui, sans-serif;
-    color: var(--text); background: #FFE14D;
-    background-image: repeating-linear-gradient(135deg, rgba(0,0,0,.025) 0 2px, transparent 2px 22px);
-    min-height: 100vh;
-  }
-  h1,h2,h3,.brand,.btn,.tab,.stat-n,.dn { font-family: "Urbanist", "Open Sans", sans-serif; }
+  /* tokens, .brand and base come from /design-system.css — this is dashboard-only chrome */
+  body { min-height: 100vh; }
+  h1,h2,h3,.tab,.stat-n,.dn { font-family: var(--font-display); }
   a { color: var(--accent); }
   .wrap { max-width: 940px; margin: 0 auto; padding: 0 18px 80px; }
 
@@ -80,20 +72,23 @@
   .acts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
   .dgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap: 12px; }
   .dcard { background: var(--panel-2); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
-  .dcard .thumb { width: 100%; aspect-ratio: 1; object-fit: cover; background: #FFE14D; display: block; cursor: pointer; }
+  .dcard .thumb { width: 100%; aspect-ratio: 1; object-fit: cover; background: var(--panel-2); display: block; cursor: pointer; }
   .dcard .dn { font-size: 13px; font-weight: 700; padding: 8px 10px 2px; }
   .dcard .da { display: flex; gap: 4px; padding: 4px 8px 8px; flex-wrap: wrap; }
   .ico { border: none; background: transparent; cursor: pointer; font-size: 13px; color: var(--muted); padding: 4px 6px; border-radius: 7px; }
-  .ico:hover { background: #fff; color: var(--text); }
+  .ico:hover { background: var(--panel); color: var(--text); }
   .center { text-align: center; padding: 40px 16px; }
   .center img { width: 56px; height: 56px; opacity: .9; }
   .hidden { display: none !important; }
+  /* product-ui-craft: visible focus + reduced-motion */
+  .btn:focus-visible, .tab:focus-visible, .ico:focus-visible, input.txt:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+  @media (prefers-reduced-motion: reduce) { .btn, .bar, .ico { transition: none; } }
   @media (max-width: 600px) { .stats { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
   <header>
-    <a class="brand" href="/"><img src="durian.svg" alt="" />qrdurian</a>
+    <a class="brand" href="/"><img src="durian.svg" alt="" />QR <span>Durian</span></a>
     <span class="grow"></span>
     <span class="who" id="who"></span>
     <a class="btn green sm" href="/">+ New QR</a>

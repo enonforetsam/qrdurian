@@ -1,0 +1,165 @@
+/* ============================================================================
+   qrdurian — shared design system  (ONE source of truth for the marketing +
+   app-shell pages). Linked by: 404.html, about.html, looks.html, dashboard.html.
+
+   The EDITOR (index.html) is the canonical token source and keeps its own inline
+   :root — these token blocks are kept byte-identical to it for the shared subset.
+   Guard:  python3 ~/.claude/skills/design-tokens-systems/scripts/tokens_diff.py \
+             index.html design-system.css --ignore-missing
+   (extras here — the scales — are expected; no shared token VALUE may differ.)
+
+   Discipline: design-tokens-systems + type-and-color. Marketing pages layer the
+   muller-brockmann-grid scaffold (below) on top.
+   ============================================================================ */
+
+/* ---- canonical tokens (mirror index.html :root) ---- */
+:root {
+  --bg: #f4f4f5;
+  --panel: #ffffff;
+  --panel-2: #fafafa;
+  --text: #18181b;
+  --muted: #71717a;
+  --border: #e4e4e7;
+  --border-2: #ededf0;
+  --accent: #2E7D32;   /* durian-leaf green */
+  --accent-ink: #ffffff; /* text/icons on accent */
+  --char: #2b2d31;        /* charcoal — the button colour */
+  --char-hover: #3a3d44;
+  --char-ink: #ffffff;
+  --ring: rgba(46,125,50,.28);
+  --shadow: 0 1px 2px rgba(0,0,0,.04), 0 12px 40px rgba(0,0,0,.08);
+  --radius: 18px;
+  --sat: env(safe-area-inset-top, 0px);
+
+  /* ---- scales (additive; design-tokens-systems) ---- */
+  --font-display: "Urbanist", system-ui, sans-serif;
+  --font-body: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Space Mono", ui-monospace, monospace;
+
+  --bl: 8px;                 /* baseline unit */
+  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 24px; --sp-6: 32px; --sp-7: 48px; --sp-8: 64px; --sp-9: 96px;
+
+  --r-sm: 10px; --r-md: 12px; --r-lg: 18px; --r-xl: 24px; --r-pill: 999px;
+
+  /* fluid modular type scale (perfect-fourth-ish), clamp(min @360 → max @1280) */
+  --fs-xs:  12px;
+  --fs-sm:  14px;
+  --fs-base:16px;
+  --fs-md:  clamp(17px, 1.2vw + 13px, 20px);
+  --fs-lg:  clamp(20px, 1.6vw + 14px, 26px);
+  --fs-xl:  clamp(26px, 3vw + 16px, 40px);
+  --fs-2xl: clamp(32px, 5vw + 16px, 60px);
+  --fs-3xl: clamp(40px, 8vw + 16px, 92px);
+}
+[data-theme="dark"] {
+  --bg: #09090b;
+  --panel: #18181b;
+  --panel-2: #1f1f23;
+  --text: #fafafa;
+  --muted: #a1a1aa;
+  --border: #27272a;
+  --border-2: #2a2a2e;
+  --accent: #9FE870;     /* bright green stays for dark backgrounds — visibility */
+  --accent-ink: #163300;
+  --char: #3a3d44;        /* lighter charcoal on dark chrome so buttons separate */
+  --char-hover: #4a4e56;
+  --char-ink: #ffffff;
+  --ring: rgba(159,232,112,.45);
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 20px 50px rgba(0,0,0,.5);
+}
+
+/* ---- base ---- */
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--fs-base); line-height: 1.6;
+  -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+}
+a { color: inherit; }
+img { display: block; max-width: 100%; }
+
+/* ---- brand (unifies the 4 drifting copies) ---- */
+.brand {
+  display: inline-flex; align-items: center; gap: 10px;
+  font-family: var(--font-display); font-weight: 800; font-size: 18px;
+  letter-spacing: -.02em; text-decoration: none; color: var(--text);
+}
+.brand img { width: 32px; height: 32px; object-fit: contain; }
+.brand span { color: var(--accent); }
+
+/* ---- button system (lifted from the editor; one set everywhere) ---- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  border: 1px solid var(--border); background: var(--panel); color: var(--text);
+  border-radius: var(--r-md); padding: 12px 18px;
+  font-family: var(--font-display); font-size: var(--fs-sm); font-weight: 700;
+  letter-spacing: -.01em; cursor: pointer; text-decoration: none;
+  transition: transform .15s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.btn:hover { transform: translateY(-1px); border-color: var(--muted); }
+.btn:active { transform: translateY(0); }
+.btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+.btn:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+.btn .i, .btn svg { width: 16px; height: 16px; flex: 0 0 auto; }
+.btn.primary { background: var(--char); color: var(--char-ink); border-color: transparent; box-shadow: 0 4px 14px rgba(0,0,0,.18); }
+.btn.primary:hover { background: var(--char-hover); box-shadow: 0 6px 20px rgba(0,0,0,.22); }
+.btn.accent { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.btn.accent:hover { opacity: .9; border-color: transparent; }
+.btn.ghost { background: transparent; color: var(--muted); }
+.btn.ghost:hover { color: var(--text); }
+
+@media (prefers-reduced-motion: reduce) {
+  .btn { transition: none; }
+  .btn:hover, .btn:active { transform: none; }
+}
+
+/* ============================================================================
+   MÜLLER-BROCKMANN GRID SCAFFOLD  (from muller-brockmann-grid skill, tuned to
+   qrdurian: green overlay instead of Swiss red; content + overlay read the SAME
+   variables and live in the SAME .wrap so columns match at every width).
+   Marketing pages add design-system.js for the toggle (G) + optical alignment.
+   ============================================================================ */
+:root {
+  --cols: 12;
+  --lh: 24px;                 /* leading = 3 × baseline */
+  --gutter: 24px;
+  --margin: 64px;
+  --pad: 96px;                /* spread top/bottom pad (12 × baseline) */
+  --maxw: 1200px;
+  --g-col: rgba(159,232,112,.085);   /* column field fill */
+  --g-edge: rgba(159,232,112,.42);   /* column edge / margin line */
+  --g-base: rgba(159,232,112,.30);   /* major baseline line (24px) */
+  --g-base-min: rgba(159,232,112,.10); /* minor baseline line (8px) */
+}
+.spread { position: relative; width: 100%; }
+.wrap { position: relative; max-width: var(--maxw); margin: 0 auto; padding: var(--pad) var(--margin); }
+.grid { display: grid; grid-template-columns: repeat(var(--cols), 1fr); column-gap: var(--gutter); row-gap: var(--lh); }
+.band { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; column-gap: var(--gutter); row-gap: var(--lh); align-items: start; }
+@supports not (grid-template-columns: subgrid) { .band { grid-template-columns: repeat(var(--cols), 1fr); } }
+
+/* the overlay — same content box → columns match exactly */
+.guides { position: absolute; inset: 0; pointer-events: none; z-index: 60; opacity: 0; transition: opacity .26s ease; }
+body.grid-on .guides { opacity: 1; }
+.guides .cols { position: absolute; top: 0; bottom: 0; left: var(--margin); right: var(--margin); display: grid; grid-template-columns: repeat(var(--cols), 1fr); column-gap: var(--gutter); }
+.guides .col { background: var(--g-col); box-shadow: inset 1px 0 0 var(--g-edge), inset -1px 0 0 var(--g-edge); position: relative; }
+.guides .col span { position: absolute; top: 32px; left: 0; right: 0; text-align: center; font-family: var(--font-mono); font-size: 10px; line-height: 1; color: var(--accent); }
+.guides .rows { position: absolute; left: var(--margin); right: var(--margin); top: var(--pad); bottom: 0;
+  background-image:
+    repeating-linear-gradient(to bottom, var(--g-base) 0 1px, transparent 1px var(--lh)),
+    repeating-linear-gradient(to bottom, var(--g-base-min) 0 1px, transparent 1px var(--bl)); }
+.guides .mline { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--g-edge); }
+.guides .mline.l { left: var(--margin); } .guides .mline.r { right: var(--margin); }
+
+/* the grid toggle (button + G key, wired in design-system.js) */
+.toggle { position: fixed; top: 16px; right: 16px; z-index: 200; display: inline-flex; align-items: center; gap: 10px;
+  background: var(--char); color: #fff; border: none; cursor: pointer; font-family: var(--font-mono);
+  font-size: 11px; letter-spacing: .14em; text-transform: uppercase; padding: 10px 13px; border-radius: var(--r-sm); }
+.toggle .dot { width: 8px; height: 8px; border-radius: 50%; background: #777; }
+body.grid-on .toggle { background: var(--accent); color: var(--accent-ink); }
+body.grid-on .toggle .dot { background: var(--accent-ink); }
+
+@media (max-width: 720px) {
+  :root { --margin: 24px; --pad: 56px; }
+}
