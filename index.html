@@ -99,8 +99,8 @@
     font-size: 13px;
     animation: fadeup .5s ease .8s both;
   }
-  .promo a { color: var(--text); text-decoration: none; }
-  .promo a b { font-family: "Urbanist", sans-serif; color: var(--accent); }
+  .promo a, .promo span { color: var(--text); text-decoration: none; }
+  .promo b { font-family: "Urbanist", sans-serif; color: var(--accent); }
   .promo button {
     border: none; background: var(--panel-2); color: var(--muted);
     width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-size: 11px;
@@ -319,10 +319,12 @@
   .logo-prev img { width: 100%; height: 100%; object-fit: contain; }
   .logo-actions { display: flex; gap: 8px; }
   .mini-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
     border: 1px solid transparent; background: var(--char); color: var(--char-ink);
     border-radius: 9px; padding: 8px 12px; font-size: 13px; font-weight: 600; cursor: pointer;
     transition: all .15s ease; font-family: inherit;
   }
+  .mini-btn i, .mini-btn svg { width: 15px; height: 15px; flex: 0 0 auto; }
   .mini-btn:hover { background: var(--char-hover); }
   .mini-btn.ghost { background: transparent; color: var(--muted); border-color: var(--border); }
   .mini-btn:disabled { opacity: .45; cursor: default; }
@@ -779,10 +781,8 @@
     <button class="shuffle-btn acct-m" id="accountBtnM" aria-label="Account" style="right:auto; left:18px;"><i data-lucide="user-round"></i></button>
   </header>
 
-  <div class="promo" id="tracePromo" hidden>
-    <a href="https://trace.qrdurian.com" target="_blank" rel="noopener">
-      🍈 <b>Penang durian grower?</b>&nbsp;Get origin-trace QR tags for your harvest →
-    </a>
+  <div class="promo" id="remixPromo" hidden>
+    <span>✨ <b>You're remixing a shared design</b>&nbsp;— tweak the colours &amp; words, then share your own.</span>
     <button id="promoClose" aria-label="Dismiss">✕</button>
   </div>
 
@@ -3147,17 +3147,8 @@
     }).catch(() => {});
   }
 
-  // trace program promo — temporarily disabled (flip to true to bring it back)
-  const SHOW_TRACE_PROMO = false;
-  if (SHOW_TRACE_PROMO) {
-    try {
-      if (!localStorage.getItem("tracePromoDismissed")) $("tracePromo").hidden = false;
-    } catch (e) { $("tracePromo").hidden = false; }
-  }
-  $("promoClose").addEventListener("click", () => {
-    $("tracePromo").hidden = true;
-    try { localStorage.setItem("tracePromoDismissed", "1"); } catch (e) {}
-  });
+  // remix CTA — shown only when the editor boots from a shared #d= link (set in Boot)
+  $("promoClose").addEventListener("click", () => { $("remixPromo").hidden = true; });
 
   // ================= Accounts / Pro =================
   const API = "https://trace.qrdurian.com";
@@ -3203,7 +3194,8 @@
       acctPop.innerHTML = `<h4>Sign in</h4>
         <div class="ap-sub">Track scans, edit live QRs, and more. We'll email you a one-tap link — no password.</div>
         <input type="email" id="apEmail" placeholder="you@email.com" autocomplete="email" />
-        <button class="btn primary" id="apSend" style="width:100%">Email me a link</button>`;
+        <button class="btn primary" id="apSend" style="width:100%">Email me a link</button>
+        <a class="mini-btn ghost" href="/looks" style="width:100%;margin-top:8px">✨ Browse 20 designs →</a>`;
     }
     const out = $("apOut"); if (out) out.onclick = () => { try { localStorage.removeItem("qrd_session"); } catch (e) {} account = { signedIn: false, email: "", pro: false }; paintAccount(); fillAcctPop(); };
     const up = $("apUp"); if (up) up.onclick = () => { acctPop.hidden = true; openProModal(); };
@@ -3384,8 +3376,12 @@
     (location.hash.startsWith("#d=") && (fromShare = decodeDesign(location.hash.slice(3)))) ||
     applyQueryParams() ||
     (() => { try { const a = localStorage.getItem("qrd_autosave"); return a && decodeDesign(a); } catch (e) { return false; } })();
-  // a shared link has been absorbed into state — clean it out of the address bar
-  if (fromShare) history.replaceState(null, "", location.pathname);
+  // a shared link has been absorbed into state — clean it out of the address bar,
+  // and invite the visitor to remix it (the viral loop: receive → tweak → re-share)
+  if (fromShare) {
+    history.replaceState(null, "", location.pathname);
+    $("remixPromo").hidden = false;
+  }
   if (booted) {
     $("content").value = state.data;
     $("caption").value = state.caption;

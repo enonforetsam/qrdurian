@@ -1,2 +1,5 @@
 .admin-key
 trace/outreach-list.md
+.wrangler/
+**/.wrangler/
+node_modules/
