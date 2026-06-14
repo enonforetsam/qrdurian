@@ -1806,36 +1806,21 @@
     $("shortenRow").hidden = !(/^https?:\/\//i.test(v) && v.length > 35 && !/^https?:\/\/tinyurl\.com\//i.test(v));
     paintTrackBtn();
   }
-  // Track scans is a Pro feature: free/signed-out users see a locked button that
-  // invites the upgrade; Pro users get the live, URL-aware action.
+  // Track scans is free for everyone (signed-in accounts keep 5; Pro unlimited).
+  // Always-visible button, actionable for a fresh URL.
   function paintTrackBtn() {
     const tb = $("trackBtn"); if (!tb) return;
     const v = $("content").value.trim();
     const isUrl = /^https?:\/\//i.test(v);
     const tracked = /qrdurian\.com\/r\/|tinyurl\.com\//i.test(v);
-    const pro = typeof isPro === "function" && isPro();
-    if (!pro) {
-      tb.innerHTML = "🔒 Track scans";
-      tb.classList.add("locked");
-      tb.disabled = false;
-      tb.title = "Track scans is a Pro feature — see who scans your codes";
-      $("trackRow").hidden = false;
-      $("trackRow").innerHTML = `🔒 <b>Track scans</b> is a Pro feature — turn any link into a short code that counts every scan and can be re-pointed later.`;
-    } else {
-      tb.innerHTML = `<i data-lucide="chart-line"></i> Track scans`;
-      if (window.lucide) lucide.createIcons();
-      tb.classList.remove("locked");
-      tb.disabled = !isUrl || tracked;
-      tb.title = !isUrl ? "Add a link first — only web links can be tracked"
-        : tracked ? "This is already a tracked short link" : "Get a short link that counts every scan";
-      $("trackRow").hidden = tracked;
-      $("trackRow").innerHTML = `📈 <b>Track scans</b> turns your link into a short code that counts every scan — and lets you change where it points later.`;
-    }
+    tb.classList.remove("locked");
+    tb.disabled = !isUrl || tracked;
+    tb.title = !isUrl ? "Add a link first — only web links can be tracked"
+      : tracked ? "This is already a tracked short link" : "Get a short link that counts every scan";
+    $("trackRow").hidden = tracked;
   }
   // trackable QRs: swap the link for our short redirect, hand back a private stats page
-  $("trackBtn").addEventListener("click", async (e) => {
-    // locked for non-Pro: open the Pro modal (it routes to sign-in if needed)
-    if (!isPro()) { e.stopPropagation(); openProModal(); return; }
+  $("trackBtn").addEventListener("click", async () => {
     const v = $("content").value.trim();
     if (!/^https?:\/\//i.test(v)) return;
     const b = $("trackBtn");
