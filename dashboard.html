@@ -121,7 +121,9 @@
   </div>
 
 <script>
-  const API = "https://trace.qrdurian.com";
+  // prod host → prod worker; staging/preview/local → staging worker (isolated D1)
+  const API = (location.hostname === "qrdurian.com" || location.hostname === "www.qrdurian.com")
+    ? "https://trace.qrdurian.com" : "https://trace-staging.qrdurian.com";
   const $ = (id) => document.getElementById(id);
   const sess = () => { try { return localStorage.getItem("qrd_session") || ""; } catch (e) { return ""; } };
   const AH = () => ({ Authorization: "Bearer " + sess() });

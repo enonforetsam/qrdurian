@@ -294,10 +294,10 @@ export default {
           .bind(id, dest, secret, Date.now(), owner || "", owner ? 1 : 0, ownerDomain).run();
         try { await insert(); }
         catch (e3) { await ensureLinkTables(); await insert(); }
-        const host = ownerDomain || "trace.qrdurian.com";
+        const host = ownerDomain || url.host;  // self-host (trace.qrdurian.com prod / trace-staging.qrdurian.com staging)
         return Response.json({
           short: `https://${host}/r/${id}`,
-          stats: `https://trace.qrdurian.com/l/${secret}`,
+          stats: `https://${url.host}/l/${secret}`,
           owned: !!owner,
         }, { headers: CNT_CORS });
       }
@@ -340,7 +340,7 @@ export default {
           <h1>Your QR stats</h1>
           <div class="hero ok"><div class="big">${link.scans}</div><p>total scans</p></div>
           <div class="card">
-            <div class="kv"><span>Short link</span><b><code>trace.qrdurian.com/r/${esc(link.id)}</code></b></div>
+            <div class="kv"><span>Short link</span><b><code>${esc(url.host)}/r/${esc(link.id)}</code></b></div>
             <div class="kv"><span>Opens</span><b style="word-break:break-all">${esc(link.url)}</b></div>
             <div class="kv"><span>Created</span><b>${new Date(link.created_at).toISOString().slice(0, 10)}</b></div>
           </div>
@@ -374,14 +374,14 @@ export default {
           await DB.prepare("CREATE TABLE IF NOT EXISTS designs (id TEXT PRIMARY KEY, payload TEXT NOT NULL, created_at INTEGER NOT NULL)").run();
           await insert();
         }
-        return Response.json({ short: `https://trace.qrdurian.com/d/${id}` }, { headers: CNT_CORS });
+        return Response.json({ short: `https://${url.host}/d/${id}` }, { headers: CNT_CORS });
       }
       const dMatch = p.match(/^\/d\/([a-z0-9]{4,12})$/i);
       if (dMatch) {
         let row = null;
         try { row = await DB.prepare("SELECT payload FROM designs WHERE id=?").bind(dMatch[1]).first(); } catch (e2) {}
         if (!row) return page("Not found", "<h1>Design not found</h1><p>This share link doesn't exist (or was mistyped). <a href='https://qrdurian.com'>Make your own →</a></p>", 404);
-        return Response.redirect(`${MAIN}/#d=${row.payload}`, 302);
+        return Response.redirect(`${env.SITE || MAIN}/#d=${row.payload}`, 302);
       }
 
       // ===================== Pro accounts (magic-link auth) =====================
@@ -416,7 +416,7 @@ export default {
         const token = crypto.randomUUID().replace(/-/g, "") + shortId(8);
         const ins = () => DB.prepare("INSERT INTO login_tokens (token, email, expires) VALUES (?,?,?)").bind(token, email, Date.now() + 15 * 60e3).run();
         try { await ins(); } catch (e3) { await ensureAccountTables(); await ins(); }
-        const link = `https://trace.qrdurian.com/api/auth/verify?token=${token}`;
+        const link = `https://${url.host}/api/auth/verify?token=${token}`;
         try {
           if (env.EMAIL) {
             await env.EMAIL.send({
@@ -447,7 +447,7 @@ export default {
         if (!acc) await DB.prepare("INSERT INTO accounts (email, created_at) VALUES (?,?)").bind(email, Date.now()).run();
         const session = await signSession(email, env.SESSION_SECRET || "dev-secret");
         // hand the session to the app's own origin so it lives in qrdurian.com localStorage
-        return Response.redirect(`${MAIN}/?s=${encodeURIComponent(session)}`, 302);
+        return Response.redirect(`${env.SITE || MAIN}/?s=${encodeURIComponent(session)}`, 302);
       }
 
       // GET /api/auth/me  (Authorization: Bearer <session>) → account state
@@ -499,7 +499,7 @@ export default {
           "ON CONFLICT(email) DO UPDATE SET pro=excluded.pro, plan=excluded.plan, period_end=excluded.period_end")
           .bind(email, pro, pro ? "Dev Pro" : "", pro ? Date.now() + 365 * 86400e3 : 0, Date.now()).run();
         const session = await signSession(email, env.SESSION_SECRET || "dev-secret");
-        return Response.redirect(`${MAIN}/?s=${encodeURIComponent(session)}`, 302);
+        return Response.redirect(`${env.SITE || MAIN}/?s=${encodeURIComponent(session)}`, 302);
       }
 
       // ===================== Pro: dashboard, dynamic QR, analytics, domain =====================

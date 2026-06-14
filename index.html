@@ -3151,7 +3151,9 @@
   $("promoClose").addEventListener("click", () => { $("remixPromo").hidden = true; });
 
   // ================= Accounts / Pro =================
-  const API = "https://trace.qrdurian.com";
+  // prod host → prod worker; staging/preview/local → staging worker (isolated D1)
+  const API = (location.hostname === "qrdurian.com" || location.hostname === "www.qrdurian.com")
+    ? "https://trace.qrdurian.com" : "https://trace-staging.qrdurian.com";
   // TODO(setup): paste the LemonSqueezy product checkout + customer-portal URLs
   const LS_CHECKOUT = "https://qrdurian.lemonsqueezy.com/buy/REPLACE-WITH-VARIANT";
   const LS_PORTAL = "https://app.lemonsqueezy.com/my-orders";
