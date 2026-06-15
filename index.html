@@ -132,6 +132,8 @@
     width: 100%; margin: 0 auto;
     padding: 8px 20px calc(100px + env(safe-area-inset-bottom));
   }
+  /* studio-only chrome — hidden below 1100px (the studio media query shows them) */
+  #studioPanel, #reopen { display: none; }
   @media (max-width: 880px) {
     /* clear the Dynamic Island, then a little extra so the logo isn't cramped */
     header { padding: calc(26px + var(--sat)) 18px 12px; }
@@ -677,64 +679,108 @@
       .fmt-chips { display: flex; gap: 2px; flex: 0 0 auto; }
       .bottom-nav { display: none; }
 
-      /* ---- LOOKS RAIL: the palettes run across the very bottom of the screen ---- */
-      .looks-rail {
-        display: block;
-        position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
-        background: var(--panel); border-top: 1px solid var(--border);
-        padding: 10px 18px 8px;
-        overflow-x: auto; scrollbar-width: none;
+      /* ===== KrackedMaps-style LEFT-SIDEBAR studio ===== */
+      main {
+        display: grid; grid-template-columns: 304px 1fr;
+        height: 100vh; min-height: 0; overflow: hidden; padding: 0; margin: 0; max-width: none;
+        align-items: stretch;
       }
-      .looks-rail::-webkit-scrollbar { display: none; }
-      .looks-rail .looks {
-        display: flex; flex-wrap: nowrap; gap: 10px; align-items: flex-start;
-        width: max-content; max-width: none; padding: 0; overflow: visible;
-        opacity: 1 !important; pointer-events: auto !important;
+      header, .bottom-nav, .edit-bar, .looks-rail { display: none !important; }
+      /* the mobile popover shells: their contents are reparented into the sidebar — hide the empty shells */
+      #controlsCard, .looks-dock, .sheet-backdrop { display: none !important; }
+      /* the export sheet is reparented into the dock — show it inline, strip its bottom-sheet chrome */
+      #slotExport #exportSheet {
+        display: block; position: static; inset: auto; transform: none !important;
+        opacity: 1 !important; visibility: visible !important; width: auto; max-width: none;
+        max-height: none; margin: 0; padding: 0; border: none; box-shadow: none; background: none; border-radius: 0;
+      }
+      #slotExport #exportClose, #slotExport .steps, #slotExport .sheet-foot, #slotExport #ftHint { display: none !important; }
+      #slotExport .lbl { margin-top: 0; }
+      #slotExport .export-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+      #slotExport .export-actions .btn { flex: 1; }
+      #slotExport #copyLinkBtn { width: 100%; margin-top: 8px; }
+      /* tool buttons relocated under Artboard */
+      #slotScene #fontSelect { width: 100%; margin-top: 10px; }
+      #slotScene #addTextBtn, #slotScene #addStickerBtn { margin-top: 8px; }
+      #slotScene #tbCapChip { margin-top: 8px; }
+
+      /* ---- the sidebar (ALWAYS dark — scoped token override, independent of the canvas auto-theme) ---- */
+      #studioPanel {
+        display: flex; flex-direction: column; grid-column: 1; min-height: 0; height: 100vh;
+        overflow: hidden; background: #0d0d10; border-right: 1px solid rgba(255,255,255,.07);
+        color: #e6e7ea; font-family: "Open Sans", system-ui, sans-serif;
+        --panel: #0d0d10; --panel-2: rgba(255,255,255,.05); --text: #e6e7ea; --muted: #8a8d95;
+        --border: rgba(255,255,255,.08); --border-2: rgba(255,255,255,.06);
+        --char: rgba(255,255,255,.08); --char-hover: rgba(255,255,255,.14); --char-ink: #fff;
+        --accent: #9FE870; --accent-ink: #0c1f00; --ring: rgba(159,232,112,.4);
+      }
+      /* dropdowns/pickers float on <body>, outside #studioPanel — give them the dark scope too (studio-only) */
+      #fmtList, #texList, #fontList, #colorPop, .mini-bar {
+        --panel: #16161a; --panel-2: rgba(255,255,255,.06); --text: #e6e7ea; --muted: #8a8d95;
+        --border: rgba(255,255,255,.11); --border-2: rgba(255,255,255,.07);
+        background: #16161a; color: #e6e7ea;
       }
 
-      /* ---- CANVAS ZONE: full width, above the bar + rail ---- */
-      main { padding: 16px 24px 180px; }
-      header { display: none; } /* the bar carries the brand now */
+      .sp-brand { display: flex; align-items: center; gap: 9px; padding: 13px 14px;
+        border-bottom: 1px solid rgba(255,255,255,.07); flex: 0 0 auto; }
+      .sp-mark { width: 22px; height: 22px; flex: 0 0 auto; }
+      .sp-mark img { width: 100%; height: 100%; display: block; }
+      .sp-word { font-family: "Urbanist", sans-serif; font-weight: 700; font-size: 14px; letter-spacing: -.01em; color: #e6e7ea; }
+      .sp-word b { color: var(--accent); font-weight: 800; }
+      .sp-grow { flex: 1; }
+      .sp-icon { width: 30px; height: 30px; border-radius: 8px; border: 1px solid transparent;
+        background: transparent; color: #8a8d95; display: grid; place-items: center; cursor: pointer;
+        transition: background .15s, color .15s, border-color .15s; }
+      .sp-icon:hover { background: rgba(255,255,255,.06); color: #e6e7ea; border-color: rgba(255,255,255,.08); }
+      .sp-icon svg { width: 15px; height: 15px; }
 
-      /* ---- THE BAR: one floating strip, riding just above the rail ---- */
-      .edit-bar {
-        display: flex; align-items: center; gap: 8px;
-        position: fixed; bottom: 104px; /* JS refines from the rail's real height */
-        left: 24px; right: 24px;
-        background: var(--panel); border: 1px solid var(--border);
-        border-radius: 16px; padding: 8px 14px;
-        box-shadow: 0 4px 20px rgba(0,0,0,.10), 0 1px 4px rgba(0,0,0,.06);
-        z-index: 70;
-      }
-      .eb-logo { width: 26px; height: 26px; flex: 0 0 auto; }
-      .eb-logo img { width: 100%; height: 100%; display: block; }
-      .eb-font { flex: 0 0 auto; width: auto; min-width: 120px; gap: 8px; }
-      .eb-sep { width: 1px; align-self: stretch; background: var(--border); margin: 0 4px; flex: 0 0 auto; }
-      .eb-flex { flex: 1 1 auto; }
+      #studioScroll { flex: 1; min-height: 0; overflow-y: auto; padding: 2px 12px 18px; }
+      #studioScroll::-webkit-scrollbar { width: 9px; }
+      #studioScroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 9px; border: 3px solid #0d0d10; }
+      .sp-sec { margin: 16px 2px 8px; font-family: "Urbanist", sans-serif; font-size: 10.5px;
+        letter-spacing: .14em; text-transform: uppercase; color: #5c5f66; font-weight: 700; }
+      .sp-slot { background: rgba(255,255,255,.025); border: 1px solid rgba(255,255,255,.06);
+        border-radius: 12px; padding: 12px; }
 
-      /* popovers drop from the stb-icon / stb-export buttons */
-      .card.controls, .export-sheet {
-        right: auto; bottom: auto; margin: 0;
-        width: 360px; max-width: calc(100vw - 32px);
-        max-height: min(72vh, 580px);
-        border-radius: 18px; padding: 22px 22px 18px;
-        border: 1px solid var(--border);
-        box-shadow: 0 8px 32px rgba(0,0,0,.12), 0 2px 8px rgba(0,0,0,.06);
-      }
-      .card.controls .panel { display: none !important; }
-      .card.controls .panel.active { display: block !important; }
-      /* the Design popover stacks Style + Artboard — titled, with a divider */
-      .card.controls .panel.active[data-panel="style"] .panel-title,
-      .card.controls .panel.active[data-panel="scene"] .panel-title {
-        display: block; font-family: "Urbanist", sans-serif; font-weight: 800;
-        font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
-        color: var(--muted); margin: 0 0 12px;
-      }
-      .card.controls .panel.active + .panel.active {
-        border-top: 1px solid var(--border-2); margin-top: 18px; padding-top: 16px;
-      }
-      /* backdrop dismisses the popover */
-      body.sheet-open .sheet-backdrop { pointer-events: auto; }
+      /* reparented panels sit inline in their slot — always visible, no popover, no card chrome */
+      #studioPanel .panel { display: block !important; padding: 0; margin: 0; }
+      #studioPanel .panel-title, #studioPanel .ct-tabs ~ .panel-title { display: none; }
+      #studioPanel .looks { display: grid; grid-template-columns: repeat(4, 1fr); gap: 9px;
+        overflow: visible; max-width: none; padding: 0; opacity: 1 !important; pointer-events: auto !important; }
+      #studioPanel .look { width: auto; }
+      #studioPanel .look-chip { width: 100%; height: auto; aspect-ratio: 1; }
+
+      .sp-code { font-family: "Space Mono", ui-monospace, monospace; font-size: 10.5px; line-height: 1.5;
+        color: #9aa0a8; background: #08080a; border: 1px solid rgba(255,255,255,.06); border-radius: 9px;
+        padding: 10px; max-height: 120px; overflow: auto; word-break: break-all; cursor: pointer; }
+      .sp-code:hover { color: #cfd3d9; }
+      .sp-code:empty::before { content: "Design a code, then Copy to get a share link."; color: #5c5f66; }
+
+      .sp-dock { flex: 0 0 auto; border-top: 1px solid rgba(255,255,255,.07); padding: 12px;
+        display: flex; flex-direction: column; gap: 10px; background: #0d0d10; }
+      .sp-sig { flex: 0 0 auto; padding: 10px 14px 13px; border-top: 1px solid rgba(255,255,255,.07);
+        font-size: 11px; color: #4a4d55; text-decoration: none; }
+      .sp-sig:hover { color: #8a8d95; }
+
+      /* ---- the canvas cell (right): blueprint grid + centered artboard ---- */
+      .preview { grid-column: 2; min-width: 0; height: 100vh; margin: 0; display: flex;
+        align-items: center; justify-content: center; padding: 30px; overflow: hidden;
+        background-image:
+          linear-gradient(rgba(255,255,255,.02) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,.02) 1px, transparent 1px);
+        background-size: 26px 26px; }
+      [data-theme="light"] .preview {
+        background-image:
+          linear-gradient(rgba(0,0,0,.04) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0,0,0,.04) 1px, transparent 1px); }
+
+      /* collapse the sidebar */
+      body.collapsed main { grid-template-columns: 1fr; }
+      body.collapsed #studioPanel { display: none; }
+      #reopen { display: none; }
+      body.collapsed #reopen { display: grid; place-items: center; position: fixed; top: 16px; left: 16px;
+        z-index: 90; width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--border);
+        background: var(--panel); color: var(--text); cursor: pointer; box-shadow: var(--shadow); }
       /* non-square artboards: dashed file-bounds frame */
       .artboard-wrap.framed { overflow: visible; }
       .artboard-wrap.framed #artboard {
@@ -761,6 +807,31 @@
   </div>
 
   <main>
+    <!-- STUDIO sidebar (≥1100px only): controls are reparented into the slots by placeStudio() -->
+    <aside id="studioPanel" aria-label="Studio controls">
+      <header class="sp-brand">
+        <span class="sp-mark"><img src="durian.svg" alt="qrdurian" /></span>
+        <span class="sp-word">qr<b>durian</b></span>
+        <span class="sp-grow"></span>
+        <button class="sp-icon" id="spShuffle" title="Random design" aria-label="Random design"><i data-lucide="shuffle"></i></button>
+        <button class="sp-icon" id="spCollapse" title="Hide panel" aria-label="Hide panel"><i data-lucide="panel-left-close"></i></button>
+      </header>
+      <div id="studioScroll">
+        <div class="sp-sec">Theme</div>
+        <div class="sp-slot" id="slotLooks"></div>
+        <div class="sp-sec">Content</div>
+        <div class="sp-slot" id="slotContent"></div>
+        <div class="sp-sec">Style</div>
+        <div class="sp-slot" id="slotStyle"></div>
+        <div class="sp-sec">Artboard</div>
+        <div class="sp-slot" id="slotScene"></div>
+        <div class="sp-sec">Share link</div>
+        <div class="sp-slot" style="padding:0;background:none;border:none"><div class="sp-code" id="spCode"></div></div>
+      </div>
+      <div class="sp-dock" id="slotExport"></div>
+      <a class="sp-sig" href="https://krackeddevs.com" target="_blank" rel="noopener">made by KrackedDevs · free &amp; open source</a>
+    </aside>
+    <button id="reopen" title="Show panel" aria-label="Show panel"><i data-lucide="panel-left-open"></i></button>
     <!-- LEFT: controls (desktop column / mobile bottom sheets) -->
     <section class="card controls" id="controlsCard">
       <button class="sheet-close corner" id="sheetClose">✕</button>
@@ -1516,8 +1587,7 @@
     // (studio always centers: the panel sits beside the canvas, never over it)
     let shift = 0;
     if (studio) {
-      // center in the zone between the top bar and the floating edit bar
-      shift = Math.max(0, (window.innerHeight - editBarReserve - Math.min(h, zoneH)) / 2 - 16);
+      shift = 0; // the .preview grid cell flex-centers the canvas; no manual offset
     } else if (!document.body.classList.contains("sheet-open")) {
       const headTotal = document.querySelector("header").offsetHeight + (window.innerWidth <= 880 ? 16 : 8);
       const navTop = window.innerHeight - ((window.innerWidth > 880 ? 32 : 14) + 80);
@@ -1707,6 +1777,7 @@
     clearTimeout(urlTimer);
     urlTimer = setTimeout(() => {
       try { localStorage.setItem("qrd_autosave", encodeDesign()); } catch (e) {}
+      try { if (typeof updateShareCode === "function") updateShareCode(); } catch (e) {}
     }, 300);
   }
 
@@ -2489,9 +2560,40 @@
 
   // ---- the looks gallery lives under the canvas on mobile, inside the
   // panel's Looks tab in studio — one DOM node, reparented on breakpoint change
+  // Studio reparent (name kept for existing call sites). At ≥1100px the looks gallery
+  // and the three control panels move into the left sidebar's slots; below 1100px each
+  // returns to its exact original spot (a permanent anchor comment marks the home index).
+  let STUDIO_NODES = null;
   function placeLooks() {
-    const host = isStudio() ? $("looksRail") : $("looksDock");
-    if (host && $("looksStrip").parentElement !== host) host.appendChild($("looksStrip"));
+    if (!STUDIO_NODES) {
+      const reg = (sel, slotId) => {
+        const node = typeof sel === "string" ? document.querySelector(sel) : sel;
+        if (!node || !node.parentElement) return null;
+        const anchor = document.createComment("studio:" + slotId);
+        node.parentElement.insertBefore(anchor, node); // stays in the mobile home at this index
+        return { node, anchor, slotId };
+      };
+      STUDIO_NODES = [
+        reg("#looksStrip", "slotLooks"),
+        reg("#contentPanel", "slotContent"),
+        reg('.panel[data-panel="style"]', "slotStyle"),
+        reg('.panel[data-panel="scene"]', "slotScene"),
+        reg("#addTextBtn", "slotScene"),
+        reg("#addStickerBtn", "slotScene"),
+        reg("#fontSelect", "slotScene"),
+        reg("#tbCapChip", "slotScene"),
+        reg("#exportSheet", "slotExport"),
+      ].filter(Boolean);
+    }
+    const studio = isStudio();
+    STUDIO_NODES.forEach(({ node, anchor, slotId }) => {
+      if (studio) {
+        const host = $(slotId);
+        if (host && node.parentElement !== host) host.appendChild(node);
+      } else if (node.previousSibling !== anchor) {
+        anchor.parentNode.insertBefore(node, anchor.nextSibling); // restore exact original spot
+      }
+    });
   }
   $("fmtSelect").addEventListener("click", (e) => {
     e.stopPropagation();
@@ -2647,6 +2749,18 @@
   }
   $("tbShuffle").addEventListener("click", doShuffle);
   $("shuffleBtn").addEventListener("click", doShuffle);
+  // studio sidebar chrome (≥1100px)
+  { const sps = $("spShuffle"); if (sps) sps.addEventListener("click", doShuffle); }
+  const toggleCollapse = () => { document.body.classList.toggle("collapsed"); requestAnimationFrame(drawPreview); };
+  { const c = $("spCollapse"), r = $("reopen"); if (c) c.addEventListener("click", toggleCollapse); if (r) r.addEventListener("click", toggleCollapse); }
+  // live share-link box in the sidebar — click to copy
+  { const sc = $("spCode"); if (sc) sc.addEventListener("click", async () => {
+      const url = location.origin + location.pathname + "#d=" + encodeDesign();
+      try { await navigator.clipboard.writeText(url); const t = sc.textContent; sc.textContent = "✓ Copied to clipboard"; setTimeout(() => updateShareCode(), 1100); } catch (e) {}
+    }); }
+  function updateShareCode() {
+    const sc = $("spCode"); if (sc) sc.textContent = location.origin + location.pathname + "#d=" + encodeDesign();
+  }
 
   // ---- Looks strip: mini design thumbnails, tap to wear the whole look
   // fixed module positions (x, y) inside the mini card — eye region kept clear
