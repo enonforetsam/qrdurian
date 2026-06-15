@@ -3151,12 +3151,24 @@
   $("promoClose").addEventListener("click", () => { $("remixPromo").hidden = true; });
 
   // ================= Accounts / Pro =================
-  // prod host → prod worker; staging/preview/local → staging worker (isolated D1)
-  const API = (location.hostname === "qrdurian.com" || location.hostname === "www.qrdurian.com")
-    ? "https://trace.qrdurian.com" : "https://trace-staging.qrdurian.com";
-  // TODO(setup): paste the LemonSqueezy product checkout + customer-portal URLs
-  const LS_CHECKOUT = "https://qrdurian.lemonsqueezy.com/buy/REPLACE-WITH-VARIANT";
-  const LS_PORTAL = "https://app.lemonsqueezy.com/my-orders";
+  // prod host → prod worker + LIVE checkout; staging/preview/local → staging worker + TEST checkout
+  const IS_PROD_HOST = location.hostname === "qrdurian.com" || location.hostname === "www.qrdurian.com";
+  const API = IS_PROD_HOST ? "https://trace.qrdurian.com" : "https://trace-staging.qrdurian.com";
+  // LemonSqueezy checkout links per variant. TEST mode on staging, LIVE on prod.
+  // (filled from the LS product variants — see trace/PRO-SETUP.md)
+  const LS = {
+    test: { monthly: "https://REPLACE.lemonsqueezy.com/buy/TEST-MONTHLY", lifetime: "https://REPLACE.lemonsqueezy.com/buy/TEST-LIFETIME" },
+    live: { monthly: "https://REPLACE.lemonsqueezy.com/buy/LIVE-MONTHLY", lifetime: "https://REPLACE.lemonsqueezy.com/buy/LIVE-LIFETIME" },
+  };
+  const CHECKOUT = IS_PROD_HOST ? LS.live : LS.test;          // {monthly, lifetime}
+  const LIFETIME_PRICE = "$49";                               // sync with the LS Lifetime variant
+  const LS_PORTAL = "https://app.lemonsqueezy.com/my-orders"; // LS customer portal
+  // open a variant's checkout with the signed-in email prefilled
+  const goCheckout = (url) => {
+    if (!account.signedIn) { openAcctPop($("accountBtn") || $("accountBtnM")); return; }
+    const u = url + (url.includes("?") ? "&" : "?") + "checkout[email]=" + encodeURIComponent(account.email);
+    window.open(u, "_blank", "noopener");
+  };
   let account = { signedIn: false, email: "", pro: false };
   const sess = () => { try { return localStorage.getItem("qrd_session") || ""; } catch (e) { return ""; } };
   const isPro = () => account.pro;
@@ -3238,7 +3250,9 @@
     <div class="pro-feat"><i data-lucide="chart-line"></i><div><b>Full scan analytics</b> — history, date ranges, CSV export.</div></div>
     <div class="pro-feat"><i data-lucide="globe"></i><div><b>Custom domain</b> — short links on your own brand.</div></div>
     <div class="pro-feat"><i data-lucide="sparkles"></i><div><b>No branding, bulk export &amp; higher limits.</b></div></div>
-    <button class="btn primary" id="proGo">Upgrade — $5/mo</button>
+    <button class="btn primary" id="proGoMonthly">Upgrade — $5/mo</button>
+    <button class="btn" id="proGoLifetime" style="margin-top:8px">Lifetime — ${LIFETIME_PRICE} once</button>
+    <div class="ap-sub" style="text-align:center;margin-top:8px">Monthly, cancel anytime · or pay once, yours forever.</div>
   </div>`;
   document.body.appendChild(proBack);
   function openProModal() {
@@ -3247,11 +3261,8 @@
   }
   proBack.addEventListener("click", (e) => { if (e.target === proBack) proBack.hidden = true; });
   $("proX").addEventListener("click", () => proBack.hidden = true);
-  $("proGo").addEventListener("click", () => {
-    if (!account.signedIn) { proBack.hidden = true; openAcctPop($("accountBtn") || $("accountBtnM")); return; }
-    const u = LS_CHECKOUT + (LS_CHECKOUT.includes("?") ? "&" : "?") + "checkout[email]=" + encodeURIComponent(account.email);
-    window.open(u, "_blank", "noopener");
-  });
+  $("proGoMonthly").addEventListener("click", () => { proBack.hidden = true; goCheckout(CHECKOUT.monthly); });
+  $("proGoLifetime").addEventListener("click", () => { proBack.hidden = true; goCheckout(CHECKOUT.lifetime); });
 
   // save the current design to the account (synced; shows in /dashboard → My Designs)
   async function saveToMyDesigns() {
