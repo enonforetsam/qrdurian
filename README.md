@@ -106,20 +106,13 @@ Render pipeline (PNG): `qr-code-styling` renders modules on transparency → `in
 → `drawScene()` composes background, texture pattern, white card, outline, ink QR, caption
 → `toBlob` download. Share uses the same pipeline via the Web Share API.
 
-## Backend — the trace worker (optional)
+## Zero backend
 
-The editor is fully usable with **zero backend** (a design is entirely described by its URL).
-A small Cloudflare Worker in [`trace/`](trace/) adds three optional, **anonymous, no-signup**
-conveniences, backed by D1:
-
-- **Track scans** — `POST /api/track {url}` returns a counting short link (`/r/<id>`) plus a
-  private stats page (`/l/<secret>`, a capability URL you bookmark). No account; anyone can use it.
-- **Shorten** — `POST /api/shorten` (a tidy short link for long destinations).
-- **Design short links** — `POST /api/design` → `/d/<id>` redirects into the editor (`/#d=…`).
-- Plus usage counters (`/api/count`, `/stats`).
-
-Deploy: `cd trace && npx wrangler deploy` (prod) — see the worker config in `trace/wrangler.toml`.
-There are no accounts, auth, billing, or private data; the worker stores only links + scan counts.
+There is no server. A design is **entirely described by its URL**, so the whole app is static
+files on a CDN — nothing to run, nothing to maintain, no database, no accounts, no tracking.
+Sharing works by encoding the design into the URL (`/#d=…`); opening that link rebuilds it in
+the editor. (Earlier versions had an optional tracking/shortener worker — removed 2026-06-16 to
+keep the project fully static and maintenance-free.)
 
 ## API & AI access
 
@@ -139,8 +132,7 @@ Full reference: **[API.md](API.md)**
 | `index.html` | The editor app (CSS + vanilla JS, no build) |
 | `about.html` · `looks.html` | About + FAQ · the 20-design gallery (SEO pages, on the shared grid) |
 | `design-system.css` · `design-system.js` | Shared tokens + the Müller-Brockmann editorial grid for the marketing pages |
-| `trace/` | The optional Cloudflare Worker (anonymous tracking / shorten / design links) + D1 schema |
-| `mcp/` · `llms.txt` · `API.md` | AI access: MCP server, AI primer, design-URL reference |
+| `mcp/` · `llms.txt` · `API.md` | AI access: MCP server (stateless URL builder), AI primer, design-URL reference |
 | `durian.svg` · `apple-touch-icon.png` · `icon-192.png` · `icon-512.png` | Brand mark / favicon / PWA icons |
 | `manifest.json` | PWA manifest |
 | `og.png` / `og.html` · `apple-icon.html` | Social preview image / generator sources |
@@ -149,9 +141,8 @@ Full reference: **[API.md](API.md)**
 
 ## Deploy
 
-- **Site:** push to `main` → GitHub → Cloudflare Pages serves **qrdurian.com**. No build, no CI.
+- **Site:** push to `main` → GitHub → Cloudflare Pages serves **qrdurian.com**. No build, no CI, no server.
   A `staging` branch auto-builds a preview at `staging.qrdurian.pages.dev` — work there, then merge to `main`.
-- **Worker (optional):** `cd trace && npx wrangler deploy` (staging: `--env staging` → `trace-staging.qrdurian.com`).
 - **Local dev:** `python3 -m http.server 8400` in the repo root, open `localhost:8400`.
 
 ## Contributing
