@@ -334,31 +334,6 @@
   .mini-btn.locked:hover { background: var(--accent); color: #fff; }
   a.mini-btn { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
 
-  /* account popover + Pro modal */
-  #accountBtn.is-pro, #accountBtnM.is-pro { color: var(--accent); }
-  .acct-pop {
-    position: fixed; z-index: 95; width: 280px;
-    background: var(--panel); border: 1px solid var(--border); border-radius: 16px;
-    padding: 16px; box-shadow: 0 10px 36px rgba(0,0,0,.16);
-  }
-  .acct-pop[hidden] { display: none; }
-  .acct-pop h4 { font-family: "Urbanist", sans-serif; font-size: 15px; margin: 0 0 8px; display: flex; align-items: center; gap: 8px; }
-  .acct-pop .ap-sub { font-size: 13px; color: var(--muted); word-break: break-word; margin-bottom: 12px; line-height: 1.45; }
-  .acct-pop input { width: 100%; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font: inherit; font-size: 14px; background: var(--panel-2); margin-bottom: 8px; outline: none; }
-  .acct-pop input:focus { border-color: var(--accent); }
-  .ap-row { display: flex; gap: 8px; }
-  .ap-row .mini-btn, .ap-row .btn { flex: 1; }
-  .pro-badge { background: var(--char); color: #fff; font-family: "Urbanist", sans-serif; font-weight: 800; font-size: 10px; letter-spacing: .08em; padding: 3px 7px; border-radius: 6px; }
-  .pro-back { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; padding: 20px; }
-  .pro-back[hidden] { display: none; }
-  .pro-modal { background: var(--panel); color: var(--text); border-radius: 22px; padding: 26px; max-width: 380px; width: 100%; box-shadow: 0 24px 64px rgba(0,0,0,.35); position: relative; }
-  .pro-modal h2 { font-family: "Urbanist", sans-serif; font-size: 23px; margin: 0; }
-  .pro-modal .price { font-family: "Urbanist", sans-serif; font-weight: 800; font-size: 15px; color: var(--accent); margin: 4px 0 16px; }
-  .pro-feat { display: flex; gap: 10px; align-items: flex-start; margin: 11px 0; font-size: 14px; line-height: 1.4; }
-  .pro-feat svg { width: 18px; height: 18px; color: var(--accent); flex: 0 0 auto; margin-top: 1px; }
-  .pro-modal .btn.primary { width: 100%; margin-top: 18px; padding: 14px; }
-  .pro-x { position: absolute; top: 14px; right: 14px; border: none; background: var(--panel-2); width: 30px; height: 30px; border-radius: 50%; cursor: pointer; color: var(--muted); font-size: 15px; }
-
   /* Content panel: two journeys, two tabs — New link / Existing QR */
   .ct-tabs { display: flex; gap: 3px; margin-bottom: 14px; }
   .ct-tab {
@@ -778,7 +753,6 @@
       <span class="mark"><img src="durian.svg" alt="qrdurian" /></span>
     </div>
     <button class="shuffle-btn" id="shuffleBtn" aria-label="Random design"><i data-lucide="refresh-cw"></i></button>
-    <button class="shuffle-btn acct-m" id="accountBtnM" aria-label="Account" style="right:auto; left:18px;"><i data-lucide="user-round"></i></button>
   </header>
 
   <div class="promo" id="remixPromo" hidden>
@@ -959,7 +933,6 @@
       <button class="chip-color compact" id="tbCapChip" aria-label="Text color"><span class="cdot" id="tbCapDot"></span></button>
       <span class="eb-flex"></span>
       <div class="fmt-chips" id="fmtChips" aria-label="Canvas size"></div>
-      <button class="stb-icon" id="accountBtn" aria-label="Account"><i data-lucide="user-round"></i></button>
       <button class="stb-export" data-nav="export" aria-label="Export"><i data-lucide="download"></i> Export</button>
     </div>
 
@@ -1806,8 +1779,8 @@
     $("shortenRow").hidden = !(/^https?:\/\//i.test(v) && v.length > 35 && !/^https?:\/\/tinyurl\.com\//i.test(v));
     paintTrackBtn();
   }
-  // Track scans is free for everyone (signed-in accounts keep 5; Pro unlimited).
-  // Always-visible button, actionable for a fresh URL.
+  // Track scans is free for everyone — no sign-in. Always-visible button,
+  // actionable for a fresh URL.
   function paintTrackBtn() {
     const tb = $("trackBtn"); if (!tb) return;
     const v = $("content").value.trim();
@@ -1828,20 +1801,19 @@
     flashHint("Setting up tracking…");
     try {
       const res = await fetch("https://trace.qrdurian.com/api/track", {
-        method: "POST", body: JSON.stringify({ url: v, token: sess() }), // signed-in → owned link
+        method: "POST", body: JSON.stringify({ url: v }), // anonymous — no sign-in
       });
       const j = await res.json();
-      if (j.error === "free_cap") { flashHint(`Free plan keeps ${j.cap} tracked QRs — upgrade for unlimited.`); openProModal(); b.disabled = false; return; }
       if (!j.short || !j.stats) throw new Error(j.error || "no link");
       $("content").value = j.short;
       $("content").dispatchEvent(new Event("input", { bubbles: true }));
       const done = $("trackDone");
-      done.innerHTML = j.owned
-        ? `Tracking on ✓ — saved to your account. Manage &amp; edit it in <b>My QRs</b> (account menu).`
-        : `Tracking on ✓ — your private stats page:<br>` +
-          `<a href="${j.stats}" target="_blank" rel="noopener" style="word-break:break-all">${j.stats}</a> ` +
-          `<button class="mini-btn" id="copyStatsBtn">Copy</button><br>` +
-          `<span style="color:var(--muted); font-weight:400;">Bookmark it — it's the only key.</span>`;
+      done.innerHTML =
+        `Tracking on ✓ — your short link counts every scan.<br>` +
+        `Stats page:<br>` +
+        `<a href="${j.stats}" target="_blank" rel="noopener" style="word-break:break-all">${j.stats}</a> ` +
+        `<button class="mini-btn" id="copyStatsBtn">Copy</button><br>` +
+        `<span style="color:var(--muted); font-weight:400;">Bookmark the stats page — it's the only key.</span>`;
       done.hidden = false;
       const csb = $("copyStatsBtn");
       if (csb) csb.addEventListener("click", async () => {
@@ -3150,238 +3122,13 @@
   // remix CTA — shown only when the editor boots from a shared #d= link (set in Boot)
   $("promoClose").addEventListener("click", () => { $("remixPromo").hidden = true; });
 
-  // ================= Accounts / Pro =================
-  // prod host → prod worker + LIVE checkout; staging/preview/local → staging worker + TEST checkout
+  // worker base: prod host → prod worker; staging/preview/local → staging worker.
+  // Still needed for anonymous tracking / shorten / design calls.
   const IS_PROD_HOST = location.hostname === "qrdurian.com" || location.hostname === "www.qrdurian.com";
   const API = IS_PROD_HOST ? "https://trace.qrdurian.com" : "https://trace-staging.qrdurian.com";
-  // LemonSqueezy checkout links per variant. TEST mode on staging, LIVE on prod.
-  // (filled from the LS product variants — see trace/PRO-SETUP.md)
-  const LS = {
-    test: { monthly: "https://REPLACE.lemonsqueezy.com/buy/TEST-MONTHLY", lifetime: "https://REPLACE.lemonsqueezy.com/buy/TEST-LIFETIME" },
-    live: { monthly: "https://REPLACE.lemonsqueezy.com/buy/LIVE-MONTHLY", lifetime: "https://REPLACE.lemonsqueezy.com/buy/LIVE-LIFETIME" },
-  };
-  const CHECKOUT = IS_PROD_HOST ? LS.live : LS.test;          // {monthly, lifetime}
-  const LIFETIME_PRICE = "$49";                               // sync with the LS Lifetime variant
-  const LS_PORTAL = "https://app.lemonsqueezy.com/my-orders"; // LS customer portal
-  // open a variant's checkout with the signed-in email prefilled
-  const goCheckout = (url) => {
-    if (!account.signedIn) { openAcctPop($("accountBtn") || $("accountBtnM")); return; }
-    const u = url + (url.includes("?") ? "&" : "?") + "checkout[email]=" + encodeURIComponent(account.email);
-    window.open(u, "_blank", "noopener");
-  };
-  let account = { signedIn: false, email: "", pro: false };
-  const sess = () => { try { return localStorage.getItem("qrd_session") || ""; } catch (e) { return ""; } };
-  const isPro = () => account.pro;
-
-  async function refreshAccount() {
-    const s = sess();
-    if (!s) { account = { signedIn: false, email: "", pro: false }; paintAccount(); return; }
-    try {
-      const r = await fetch(API + "/api/auth/me", { headers: { Authorization: "Bearer " + s } });
-      const j = await r.json();
-      if (j.signedIn) account = { signedIn: true, email: j.email, pro: !!j.pro };
-      else { account = { signedIn: false, email: "", pro: false }; localStorage.removeItem("qrd_session"); }
-    } catch (e) { /* offline — keep last known */ }
-    paintAccount();
-  }
-  function paintAccount() {
-    document.querySelectorAll("#accountBtn, #accountBtnM").forEach(b => b && b.classList.toggle("is-pro", account.pro));
-    paintTrackBtn(); // Pro status changed → relock/unlock the Track button
-  }
-
-  const acctPop = document.createElement("div");
-  acctPop.className = "acct-pop"; acctPop.hidden = true;
-  document.body.appendChild(acctPop);
-  function fillAcctPop() {
-    if (account.signedIn) {
-      acctPop.innerHTML = account.pro
-        ? `<h4>Account <span class="pro-badge">PRO</span></h4><div class="ap-sub">${account.email}</div>
-           <button class="btn primary" id="apSave" style="width:100%">Save to my designs</button>
-           <a class="mini-btn ghost" id="apDash" href="/dashboard" style="width:100%;margin-top:8px">Open dashboard →</a>
-           <div class="ap-row" style="margin-top:8px"><a class="mini-btn ghost" href="${LS_PORTAL}" target="_blank" rel="noopener">Manage billing</a><button class="mini-btn ghost" id="apOut">Sign out</button></div>`
-        : `<h4>Account</h4><div class="ap-sub">${account.email}</div>
-           <button class="btn primary" id="apSave" style="width:100%">Save to my designs</button>
-           <a class="mini-btn ghost" id="apDash" href="/dashboard" style="width:100%;margin-top:8px">Open dashboard →</a>
-           <button class="btn primary" id="apUp" style="width:100%;margin-top:8px">✨ Upgrade to Pro</button>
-           <button class="mini-btn ghost" id="apOut" style="width:100%;margin-top:8px">Sign out</button>`;
-    } else {
-      acctPop.innerHTML = `<h4>Sign in</h4>
-        <div class="ap-sub">Track scans, edit live QRs, and more. We'll email you a one-tap link — no password.</div>
-        <input type="email" id="apEmail" placeholder="you@email.com" autocomplete="email" />
-        <button class="btn primary" id="apSend" style="width:100%">Email me a link</button>
-        <a class="mini-btn ghost" href="/looks" style="width:100%;margin-top:8px">✨ Browse 20 designs →</a>`;
-    }
-    const out = $("apOut"); if (out) out.onclick = () => { try { localStorage.removeItem("qrd_session"); } catch (e) {} account = { signedIn: false, email: "", pro: false }; paintAccount(); fillAcctPop(); };
-    const up = $("apUp"); if (up) up.onclick = () => { acctPop.hidden = true; openProModal(); };
-    const sv = $("apSave"); if (sv) sv.onclick = () => { acctPop.hidden = true; saveToMyDesigns(); };
-    const send = $("apSend");
-    if (send) send.onclick = async () => {
-      const email = ($("apEmail").value || "").trim();
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { $("apEmail").focus(); return; }
-      send.disabled = true; send.textContent = "Sending…";
-      try {
-        await fetch(API + "/api/auth/request", { method: "POST", body: JSON.stringify({ email }) });
-        acctPop.innerHTML = `<h4>Check your inbox ✉️</h4><div class="ap-sub">We sent a sign-in link to <b>${email}</b>. Tap it (works once, expires in 15 min).</div>`;
-      } catch (e) { send.disabled = false; send.textContent = "Try again"; }
-    };
-  }
-  function openAcctPop(anchor) {
-    if (!acctPop.hidden) { acctPop.hidden = true; return; }
-    fillAcctPop();
-    acctPop.hidden = false;
-    const r = anchor.getBoundingClientRect();
-    const w = 280;
-    acctPop.style.left = Math.max(12, Math.min(r.left + r.width / 2 - w / 2, window.innerWidth - w - 12)) + "px";
-    // below the button if near the top (mobile header), else above (studio bar)
-    if (r.top < 120) { acctPop.style.top = (r.bottom + 8) + "px"; acctPop.style.bottom = "auto"; }
-    else { acctPop.style.bottom = (window.innerHeight - r.top + 8) + "px"; acctPop.style.top = "auto"; }
-  }
-  ["accountBtn", "accountBtnM"].forEach(id => { const el = $(id); if (el) el.addEventListener("click", (e) => { e.stopPropagation(); openAcctPop(el); }); });
-  document.addEventListener("click", (e) => { if (!acctPop.hidden && !acctPop.contains(e.target) && !e.target.closest("#accountBtn,#accountBtnM")) acctPop.hidden = true; });
-
-  // ---- Pro pricing modal
-  const proBack = document.createElement("div");
-  proBack.className = "pro-back"; proBack.hidden = true;
-  proBack.innerHTML = `<div class="pro-modal">
-    <button class="pro-x" id="proX">✕</button>
-    <h2>qrdurian Pro</h2>
-    <div class="price">$5/mo · cancel anytime</div>
-    <div class="pro-feat"><i data-lucide="repeat"></i><div><b>Dynamic QRs</b> — change where a printed code points, no reprint.</div></div>
-    <div class="pro-feat"><i data-lucide="chart-line"></i><div><b>Full scan analytics</b> — history, date ranges, CSV export.</div></div>
-    <div class="pro-feat"><i data-lucide="globe"></i><div><b>Custom domain</b> — short links on your own brand.</div></div>
-    <div class="pro-feat"><i data-lucide="sparkles"></i><div><b>No branding, bulk export &amp; higher limits.</b></div></div>
-    <button class="btn primary" id="proGoMonthly">Upgrade — $5/mo</button>
-    <button class="btn" id="proGoLifetime" style="margin-top:8px">Lifetime — ${LIFETIME_PRICE} once</button>
-    <div class="ap-sub" style="text-align:center;margin-top:8px">Monthly, cancel anytime · or pay once, yours forever.</div>
-  </div>`;
-  document.body.appendChild(proBack);
-  function openProModal() {
-    proBack.hidden = false;
-    if (window.lucide) lucide.createIcons();
-  }
-  proBack.addEventListener("click", (e) => { if (e.target === proBack) proBack.hidden = true; });
-  $("proX").addEventListener("click", () => proBack.hidden = true);
-  $("proGoMonthly").addEventListener("click", () => { proBack.hidden = true; goCheckout(CHECKOUT.monthly); });
-  $("proGoLifetime").addEventListener("click", () => { proBack.hidden = true; goCheckout(CHECKOUT.lifetime); });
-
-  // save the current design to the account (synced; shows in /dashboard → My Designs)
-  async function saveToMyDesigns() {
-    if (!account.signedIn) { openAcctPop($("accountBtn") || $("accountBtnM")); return; }
-    flashHint("Saving…");
-    let thumb = "";
-    try {
-      const full = await renderSceneCanvas();
-      const k = 180 / Math.max(full.width, full.height);
-      const tc = document.createElement("canvas");
-      tc.width = Math.round(full.width * k); tc.height = Math.round(full.height * k);
-      tc.getContext("2d").drawImage(full, 0, 0, tc.width, tc.height);
-      thumb = tc.toDataURL("image/jpeg", 0.72); // small enough for the D1 row
-      if (thumb.length > 38000) thumb = tc.toDataURL("image/jpeg", 0.5);
-    } catch (e) {}
-    const name = (state.caption && state.caption.trim()) ||
-      (/^https?:/i.test(state.data) ? state.data.replace(/^https?:\/\//, "").slice(0, 40) : "Untitled");
-    try {
-      const r = await fetch("https://trace.qrdurian.com/api/designs/save", {
-        method: "POST", headers: { Authorization: "Bearer " + sess() },
-        body: JSON.stringify({ name, payload: encodeDesign(), thumb }),
-      });
-      if (r.status === 402) { const j = await r.json(); flashHint(`Free plan keeps ${j.cap} designs — upgrade for more.`); openProModal(); return; }
-      const j = await r.json();
-      flashHint(j.ok ? "✓ Saved — see it in your dashboard." : "Couldn't save.");
-    } catch (e) { flashHint("Couldn't save — try again."); }
-  }
-
-  // ---- "My QRs" dashboard: owned tracked links, dynamic-QR editing, CSV, bulk, domain
-  const authFetch = (path, opts = {}) => fetch(API + path, { ...opts, headers: { ...(opts.headers || {}), Authorization: "Bearer " + sess() } });
-  const dashBack = document.createElement("div");
-  dashBack.className = "pro-back"; dashBack.hidden = true;
-  dashBack.innerHTML = `<div class="pro-modal" style="max-width:560px;max-height:84vh;overflow:auto">
-    <button class="pro-x" id="dashX">✕</button>
-    <h2>My QRs &amp; links</h2>
-    <div class="price" id="dashPlan"></div>
-    <div id="dashList" style="margin-top:8px"></div>
-    <details style="margin-top:16px"><summary style="cursor:pointer;font-weight:700;font-family:'Urbanist',sans-serif">Bulk create <span id="dashBulkPro" class="pro-badge" hidden>PRO</span></summary>
-      <div class="ap-sub" style="margin:8px 0">One link per line → tracked short links + a CSV.</div>
-      <textarea id="dashBulkIn" style="width:100%;min-height:80px;border:1px solid var(--border);border-radius:10px;padding:10px;font:inherit;background:var(--panel-2)"></textarea>
-      <button class="mini-btn" id="dashBulkGo" style="margin-top:8px">Create &amp; download CSV</button>
-      <div class="ap-sub" id="dashBulkOut" style="margin-top:8px"></div>
-    </details>
-    <details style="margin-top:12px"><summary style="cursor:pointer;font-weight:700;font-family:'Urbanist',sans-serif">Custom domain <span id="dashDomPro" class="pro-badge" hidden>PRO</span></summary>
-      <div class="ap-sub" style="margin:8px 0">Short links on your own domain, e.g. <code>go.kedai.my/r/abc</code>. (Also point it at our worker — see setup.)</div>
-      <div class="ap-row"><input type="text" id="dashDom" placeholder="go.kedai.my" style="border:1px solid var(--border);border-radius:10px;padding:9px 11px;font:inherit;background:var(--panel-2)"/><button class="mini-btn" id="dashDomGo">Save</button></div>
-    </details>
-  </div>`;
-  document.body.appendChild(dashBack);
-  $("dashX").addEventListener("click", () => dashBack.hidden = true);
-  dashBack.addEventListener("click", (e) => { if (e.target === dashBack) dashBack.hidden = true; });
-
-  async function openDashboard() {
-    dashBack.hidden = false;
-    $("dashPlan").textContent = account.pro ? "PRO — dynamic QRs, full analytics, unlimited" : "Free — upgrade to edit destinations & export";
-    [["dashBulkPro"], ["dashDomPro"]].forEach(([id]) => $(id).hidden = account.pro);
-    $("dashList").innerHTML = `<div class="ap-sub">Loading…</div>`;
-    if (window.lucide) lucide.createIcons();
-    let data = { links: [] };
-    try { data = await (await authFetch("/api/account/links")).json(); } catch (e) {}
-    const links = data.links || [];
-    if (!links.length) { $("dashList").innerHTML = `<div class="ap-sub">No tracked QRs yet. In the URL tab, paste a link and tap <b>Track scans</b> while signed in — it'll appear here.</div>`; return; }
-    $("dashList").innerHTML = links.map((l) => `
-      <div class="card" style="padding:12px;margin:8px 0">
-        <div class="kv" style="border:none;padding:2px 0"><span><b>${l.scans}</b> scans</span><b><code>${(l.domain || "trace.qrdurian.com")}/r/${l.id}</code></b></div>
-        <div class="ap-sub" style="margin:4px 0;word-break:break-all">→ <span data-dest="${l.secret}">${escapeHtml(l.url)}</span></div>
-        <div class="ap-row">
-          <button class="mini-btn" data-edit="${l.secret}">Edit destination</button>
-          <a class="mini-btn ghost" href="${API}/api/link/export?secret=${l.secret}&s=${encodeURIComponent(sess())}" target="_blank" rel="noopener">Export CSV</a>
-          <a class="mini-btn ghost" href="https://trace.qrdurian.com/l/${l.secret}" target="_blank" rel="noopener">Stats</a>
-        </div>
-      </div>`).join("");
-    dashBack.querySelectorAll("[data-edit]").forEach((btn) => btn.onclick = async () => {
-      if (!account.pro) { openProModal(); return; }
-      const secret = btn.dataset.edit;
-      const cur = dashBack.querySelector(`[data-dest="${secret}"]`).textContent;
-      const next = prompt("New destination for this printed QR:", cur);
-      if (!next || next === cur) return;
-      const r = await authFetch("/api/link/update", { method: "POST", body: JSON.stringify({ secret, url: next }) });
-      if (r.ok) openDashboard(); else if (r.status === 402) openProModal();
-    });
-  }
-  function escapeHtml(s) { return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
-  $("dashBulkGo").addEventListener("click", async () => {
-    if (!account.pro) { openProModal(); return; }
-    const lines = $("dashBulkIn").value.split("\n").map((s) => s.trim()).filter((s) => /^https?:\/\//i.test(s)).slice(0, 100);
-    if (!lines.length) return;
-    $("dashBulkOut").textContent = `Creating ${lines.length}…`;
-    const rows = [["destination", "short_link", "stats_link"]];
-    for (const url of lines) {
-      try { const j = await (await fetch(API + "/api/track", { method: "POST", body: JSON.stringify({ url, token: sess() }) })).json(); if (j.short) rows.push([url, j.short, j.stats]); } catch (e) {}
-    }
-    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-    a.download = "qrdurian-bulk-links.csv"; a.click();
-    $("dashBulkOut").textContent = `✓ ${rows.length - 1} links created — CSV downloaded.`;
-  });
-  $("dashDomGo").addEventListener("click", async () => {
-    if (!account.pro) { openProModal(); return; }
-    const r = await authFetch("/api/account/domain", { method: "POST", body: JSON.stringify({ domain: $("dashDom").value.trim() }) });
-    $("dashDom").nextSibling; const ok = r.ok;
-    $("dashDomGo").textContent = ok ? "✓ Saved" : "Error";
-    setTimeout(() => $("dashDomGo").textContent = "Save", 1500);
-  });
 
   // ================= Boot =================
   lucide.createIcons();
-  // magic-link handoff: the verify redirect lands at qrdurian.com/?s=<session>
-  try {
-    const sp = new URLSearchParams(location.search);
-    if (sp.get("s")) {
-      localStorage.setItem("qrd_session", sp.get("s"));
-      sp.delete("s");
-      const qs = sp.toString();
-      history.replaceState(null, "", location.pathname + (qs ? "?" + qs : "") + location.hash);
-    }
-  } catch (e) {}
-  refreshAccount();
   // hydrate from, in priority order: a shared #d= link, the query-param API,
   // or the local autosave (so a refresh restores your last session)
   let fromShare = false;

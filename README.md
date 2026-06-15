@@ -1,12 +1,12 @@
 # 🍈 qrdurian
 
-**Design beautiful, custom QR codes in seconds. Free, no signup.**
-Live at **[qrdurian.com](https://qrdurian.com)**
+**Design beautiful, custom QR codes in seconds. Free, no signup, open source.**
+Live at **[qrdurian.com](https://qrdurian.com)** · MIT licensed ([LICENSE](LICENSE)) · contributions welcome
 
 qrdurian is a single-file, mobile-first QR code designer. You land on a bright durian-yellow
 page with a live QR floating in the middle, walk through four steps — Content → Style →
 Artboard → Export — and leave with a print-ready PNG or vector SVG. Everything runs in the
-browser; nothing is uploaded anywhere.
+browser; nothing is uploaded anywhere. No account, no paywall — every feature is free.
 
 ---
 
@@ -75,8 +75,10 @@ Signature touches:
 
 ## Architecture
 
-Everything lives in **`index.html`** (~1,500 lines: CSS + vanilla JS, no build step).
-Only two runtime dependencies, both CDN: `qr-code-styling` (QR rendering) and `lucide` (icons).
+The app lives in **`index.html`** (CSS + vanilla JS, no build step). Marketing/SEO pages
+(`about.html`, `looks.html`, `404.html`) share `design-system.css` + `design-system.js`
+(tokens + a Müller-Brockmann editorial grid). Only two runtime dependencies, both CDN:
+`qr-code-styling` (QR rendering) and `lucide` (icons).
 
 Key invariants — **do not break these**:
 
@@ -104,6 +106,21 @@ Render pipeline (PNG): `qr-code-styling` renders modules on transparency → `in
 → `drawScene()` composes background, texture pattern, white card, outline, ink QR, caption
 → `toBlob` download. Share uses the same pipeline via the Web Share API.
 
+## Backend — the trace worker (optional)
+
+The editor is fully usable with **zero backend** (a design is entirely described by its URL).
+A small Cloudflare Worker in [`trace/`](trace/) adds three optional, **anonymous, no-signup**
+conveniences, backed by D1:
+
+- **Track scans** — `POST /api/track {url}` returns a counting short link (`/r/<id>`) plus a
+  private stats page (`/l/<secret>`, a capability URL you bookmark). No account; anyone can use it.
+- **Shorten** — `POST /api/shorten` (a tidy short link for long destinations).
+- **Design short links** — `POST /api/design` → `/d/<id>` redirects into the editor (`/#d=…`).
+- Plus usage counters (`/api/count`, `/stats`).
+
+Deploy: `cd trace && npx wrangler deploy` (prod) — see the worker config in `trace/wrangler.toml`.
+There are no accounts, auth, billing, or private data; the worker stores only links + scan counts.
+
 ## API & AI access
 
 A qrdurian design is fully described by its URL — which makes the URL the API:
@@ -119,26 +136,35 @@ Full reference: **[API.md](API.md)**
 
 | File | Purpose |
 |---|---|
-| `index.html` | The entire app |
-| `durian.svg` | Brand mark (rounded-spike durian with QR-face) — also the favicon |
-| `apple-touch-icon.png` | iOS home-screen icon |
+| `index.html` | The editor app (CSS + vanilla JS, no build) |
+| `about.html` · `looks.html` | About + FAQ · the 20-design gallery (SEO pages, on the shared grid) |
+| `design-system.css` · `design-system.js` | Shared tokens + the Müller-Brockmann editorial grid for the marketing pages |
+| `trace/` | The optional Cloudflare Worker (anonymous tracking / shorten / design links) + D1 schema |
+| `mcp/` · `llms.txt` · `API.md` | AI access: MCP server, AI primer, design-URL reference |
+| `durian.svg` · `apple-touch-icon.png` · `icon-192.png` · `icon-512.png` | Brand mark / favicon / PWA icons |
 | `manifest.json` | PWA manifest |
-| `og.png` / `og.html` | Social preview image / its generator source |
-| `apple-icon.html` | Touch-icon generator source |
-| `about.html` | About page (currently a shell — needs content) |
-| `404.html`, `robots.txt`, `sitemap.xml` | Hosting hygiene |
+| `og.png` / `og.html` · `apple-icon.html` | Social preview image / generator sources |
+| `404.html` · `robots.txt` · `sitemap.xml` | Hosting hygiene |
+| `LICENSE` | MIT |
 
 ## Deploy
 
-Push to `main` → GitHub → Cloudflare serves **qrdurian.com**. No build, no CI.
-Local dev: `python3 -m http.server 8400` in the repo root, open `localhost:8400`.
+- **Site:** push to `main` → GitHub → Cloudflare Pages serves **qrdurian.com**. No build, no CI.
+  A `staging` branch auto-builds a preview at `staging.qrdurian.pages.dev` — work there, then merge to `main`.
+- **Worker (optional):** `cd trace && npx wrangler deploy` (staging: `--env staging` → `trace-staging.qrdurian.com`).
+- **Local dev:** `python3 -m http.server 8400` in the repo root, open `localhost:8400`.
 
-## Known deferred items
+## Contributing
 
-- `about.html` is empty but listed in `sitemap.xml` — fill or unlist before SEO indexing.
-- PWA manifest declares a single SVG icon; a 512px PNG would improve install behavior.
-- Generator sources (`og.html`, `apple-icon.html`) are deployed publicly — harmless, untidy.
-- Assorted dead CSS from removed controls (audited, catalogued, cosmetic only).
+Issues and PRs welcome. There's no build step — open `index.html` (or run a static server) and
+edit. Please keep the [architecture invariants](#architecture) intact (one layout function,
+CSS/JS height pairing, textures defined twice, etc.) and keep the app dependency-light and
+no-signup. By contributing you agree your work is licensed under the project's MIT license.
+
+## License
+
+[MIT](LICENSE) © 2026 Danial Alias and qrdurian contributors. Free to use, modify, and
+self-host.
 
 ---
 

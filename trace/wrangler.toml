@@ -3,10 +3,7 @@ main = "worker.js"
 compatibility_date = "2026-06-01"
 routes = [{ pattern = "trace.qrdurian.com", custom_domain = true }]
 
-# magic-link sign-in emails (setup: `wrangler email sending enable qrdurian.com`)
-send_email = [{ name = "EMAIL" }]
-
-# secrets (set with `wrangler secret put`): SESSION_SECRET, LS_WEBHOOK_SECRET
+# free, no-signup: no secrets required. Optional var SITE (design-link redirect origin).
 
 [[d1_databases]]
 binding = "DB"
@@ -20,14 +17,12 @@ database_id = "92dfaa4b-7c50-4232-b715-9ea8a322d19a"
 
 # ---- STAGING env (isolated worker + its own D1) ----
 # Deploy: `wrangler deploy --env staging`  →  trace-staging.qrdurian.com
-# Named envs DON'T inherit bindings/routes/vars/send_email — re-declared here.
-# Secrets are per-env: `wrangler secret put SESSION_SECRET --env staging` (+ DEV_KEY).
+# Named envs DON'T inherit bindings/routes/vars — re-declared here.
 [env.staging]
 name = "qrdurian-trace-staging"
 main = "worker.js"
 compatibility_date = "2026-06-01"
 routes = [{ pattern = "trace-staging.qrdurian.com", custom_domain = true }]
-send_email = [{ name = "EMAIL" }]
 vars = { SITE = "https://staging.qrdurian.pages.dev" }
 
 [[env.staging.d1_databases]]
