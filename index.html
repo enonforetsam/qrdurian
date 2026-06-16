@@ -3180,6 +3180,9 @@
     if (bootLook) document.querySelectorAll("#looksStrip .look").forEach(b =>
       b.classList.toggle("active", b.dataset.theme === bootLook));
   }
+  // a fresh visit (no shared link / query / autosave) still shows the default
+  // link in the field, so the box always matches the QR on open
+  if (!booted) $("content").value = state.data;
   syncChips();
   syncFmtSelect();
   syncGalleryUI();
