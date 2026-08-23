@@ -3,3 +3,5 @@ trace/outreach-list.md
 .wrangler/
 **/.wrangler/
 node_modules/
+# local-only working notes ~ contains private outreach PII + admin key, never publish
+trace/
