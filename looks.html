@@ -31,6 +31,9 @@
 <style>
   /* page chrome on the 12-col grid (tokens only; no literal hex) */
   .topbar { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--sp-7); }
+  .topnav { display: flex; align-items: center; gap: var(--sp-5); }
+  .topnav > a:not(.btn) { color: var(--muted); text-decoration: none; font-size: var(--fs-sm); font-weight: 600; }
+  .topnav > a:not(.btn):hover { color: var(--accent); }
   .crumbs { grid-column: 1 / -1; font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--muted); letter-spacing: .04em; margin-bottom: var(--sp-3); }
   .crumbs a { color: var(--text); text-decoration: none; }
   .crumbs a:hover { color: var(--accent); }
@@ -101,7 +104,10 @@
       <div class="band">
         <div class="topbar">
           <a class="brand" href="/"><img src="/durian.svg" alt="qrdurian" /> QR <span>Durian</span></a>
-          <a class="btn accent" href="/">Try it free</a>
+          <nav class="topnav">
+            <a href="/templates">Templates</a>
+            <a class="btn accent" href="/">Try it free</a>
+          </nav>
         </div>
       </div>
 
@@ -132,7 +138,7 @@
 
       <div class="band">
         <footer class="foot">
-          <a href="/">QR Durian</a> · <a href="/about">About</a> · Free QR code designer · No signup required
+          <a href="/">QR Durian</a> · <a href="/templates">Templates</a> · <a href="/about">About</a> · Free QR code designer · No signup required
         </footer>
       </div>
 

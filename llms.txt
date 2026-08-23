@@ -1,13 +1,14 @@
 # qrdurian
 
-> Free QR code designer at https://qrdurian.com — makes beautiful, ink-styled, scannable QR
+> Free QR code designer at https://qrdurian.com ~ makes beautiful, ink-styled, scannable QR
 > codes. No signup, no server: a design is fully described by its URL, so you (an AI
 > assistant) can create finished designs for users just by constructing a link.
 
 ## How to create a QR design for a user
 
 Build a URL with query params and give it to the user. Opening it shows their QR live in
-the editor with download (PNG/SVG) and share built in.
+the editor with download (PNG/JPG/SVG), copy-to-clipboard and share built in. The editor
+also has undo/redo, a live scan check, free text + stickers, and up to 3 codes per artboard.
 
 Pattern:
 https://qrdurian.com/?data=<URL-encoded content>&look=<look>&caption=<text>
@@ -23,23 +24,47 @@ https://qrdurian.com/?data=<URL-encoded content>&look=<look>&caption=<text>
   (theme= is accepted as an alias.)
 - ink: press (clean), stamp (heavy ink), brush (dry streaks)
 - texture: none, durians, topo, dots, grid, stripes, waves, crosses, spikes, leaves, hex
-- caption: short label under the code, e.g. SCAN ME (URL-encode spaces) — overrides the look's
+- caption: short label under the code, e.g. SCAN ME (URL-encode spaces) ~ overrides the look's
+- format: square (2048px), wallpaper (phone lock screen), poster (A4), story (9:16),
+  plus print sheets ~ sheet (A4 of 12 stickers with cut guides), tent (A4 fold-in-half
+  table tent), counter (A5 counter card with crop marks)
+- embed=1: chrome-less artboard for iframes (just the design + a small credit badge)
 - Fine-grained overrides: fg, base, bg, outline, capcolor (6-digit hex, # optional);
   outlinew 0-10; margin 0-10; corner rounded|circle|square; dot rounded|dots|square;
   font urbanist|playfair display|caveat|bebas neue|space mono (caption typeface);
-  scenebg gradient|solid; format square|wallpaper|poster|story
+  scenebg gradient|solid
 
-Good defaults: pick the dressed look that matches the user's purpose — it comes with a
+There is also a compact hash format, https://qrdurian.com/#d=<base64url JSON>, which the
+editor's "Copy design link" produces. It carries everything above plus free text items,
+stickers, multi-code layouts and tiny logos ~ full key table at https://qrdurian.com/API.md.
+Prefer query params when composing links yourself; parse #d= links when a user pastes one.
+
+Good defaults: pick the dressed look that matches the user's purpose ~ it comes with a
 caption and logo already fitted. For shops in Southeast Asia, wa.me links and WIFI:
-payloads are the most useful contents.
+payloads are the most useful contents. For DuitNow payments, point the user at the
+editor's Pay Here flow (their bank app exports the QR; qrdurian restyles it).
 
 Examples:
 - Cafe Wi-Fi card: https://qrdurian.com/?data=WIFI:T:WPA;S:MyCafe;P:kopi123;;&look=wifi
 - WhatsApp ordering: https://qrdurian.com/?data=wa.me/60123456789&look=kopitiam&caption=ORDER%20HERE
 - Wedding RSVP: https://qrdurian.com/?data=https://example.com/rsvp&look=wedding
 - Portfolio link: https://qrdurian.com/?data=https://example.com&look=mono&ink=stamp
+- Table tent for a menu: https://qrdurian.com/?data=https://your-menu.example&look=makan&caption=SCAN%20FOR%20MENU&format=tent
+- Sticker sheet of payment codes: https://qrdurian.com/?data=https://your-payment-link.example&look=pay&format=sheet
 
-## Docs
+## MCP server (tool-based access)
 
-- Full parameter reference: https://github.com/enonforetsam/qrdurian/blob/main/API.md
-- MCP server for tool-based access: https://github.com/enonforetsam/qrdurian/tree/main/mcp
+A remote MCP server is live at https://mcp.qrdurian.com/mcp (no auth). Two tools:
+design_qr (friendly params -> design link) and list_looks (every curated look with a
+one-line description). Claude Code: claude mcp add --transport http qrdurian https://mcp.qrdurian.com/mcp
+
+## Docs & pages
+
+- Full parameter reference: https://qrdurian.com/API.md
+- Design gallery (all 20 looks): https://qrdurian.com/looks
+- Per-look pages: https://qrdurian.com/looks/<name> e.g. https://qrdurian.com/looks/wifi
+- Print-ready templates (10, deep-linked): https://qrdurian.com/templates
+- Use-case guides: https://qrdurian.com/wifi-qr-code · https://qrdurian.com/whatsapp-qr-code
+  · https://qrdurian.com/pay-here-qr-code · https://qrdurian.com/wedding-qr-code
+- About + FAQ: https://qrdurian.com/about
+- Source (MIT): https://github.com/enonforetsam/qrdurian

@@ -3,9 +3,11 @@
 Lets AI assistants (Claude, and anything else that speaks
 [MCP](https://modelcontextprotocol.io)) design QR codes on qrdurian.com natively.
 
-One tool — **`design_qr`** — takes friendly parameters (content, theme, ink, texture,
-caption…) and returns a link that opens the finished design in the editor. No rendering,
-no storage, no API keys: the link *is* the design.
+Two tools ~ **`design_qr`** takes friendly parameters (content, look, ink, texture,
+caption, font, margin, scene background…) and returns a link that opens the finished
+design in the editor; **`list_looks`** lists every curated look with a one-line
+description so the assistant can pick the right vibe. No rendering, no storage,
+no API keys: the link *is* the design.
 
 ## Deploy (Cloudflare Workers, free tier)
 
@@ -15,14 +17,29 @@ npx wrangler login      # once
 npx wrangler deploy
 ```
 
-You'll get `https://qrdurian-mcp.<account>.workers.dev`. Optionally attach
-`mcp.qrdurian.com` as a custom domain (uncomment the route in `wrangler.toml`).
+`wrangler.toml` routes the worker to **`mcp.qrdurian.com`** (Cloudflare provisions
+DNS + certificate on deploy since qrdurian.com is already on the account). The
+`https://qrdurian-mcp.<account>.workers.dev` URL works too.
 
 ## Connect
 
+The server URL is:
+
+```
+https://mcp.qrdurian.com/mcp
+```
+
+No auth, no API key ~ it only builds qrdurian.com links.
+
+**claude.ai (custom connector)**
+1. claude.ai → Settings → **Connectors** → **Add custom connector**
+2. Name: `qrdurian` · URL: `https://mcp.qrdurian.com/mcp`
+3. Leave OAuth fields empty (the server is open) and add.
+4. In a chat, enable the connector under the tools menu, then ask for a QR.
+
 **Claude Code**
 ```bash
-claude mcp add --transport http qrdurian https://qrdurian-mcp.<account>.workers.dev/mcp
+claude mcp add --transport http qrdurian https://mcp.qrdurian.com/mcp
 ```
 
 **Claude Desktop** (`claude_desktop_config.json`)
@@ -31,13 +48,13 @@ claude mcp add --transport http qrdurian https://qrdurian-mcp.<account>.workers.
   "mcpServers": {
     "qrdurian": {
       "command": "npx",
-      "args": ["mcp-remote", "https://qrdurian-mcp.<account>.workers.dev/mcp"]
+      "args": ["mcp-remote", "https://mcp.qrdurian.com/mcp"]
     }
   }
 }
 ```
 
-Then ask: *"Make me a QR for my café's Wi-Fi, matcha theme, caption FREE WIFI."*
+Then ask: *"Make me a QR for my café's Wi-Fi, matcha look, caption FREE WIFI."*
 
 ## Guardrails
 
@@ -53,6 +70,6 @@ Then ask: *"Make me a QR for my café's Wi-Fi, matcha theme, caption FREE WIFI."
 
 ## Notes
 
-- The theme table mirrors `THEMES` in `../index.html` — keep them in sync.
+- The looks table mirrors `LOOKS` in `../index.html` ~ keep them in sync (names + one-line descriptions).
 - Stateless JSON-RPC over HTTP (streamable-HTTP transport, no sessions, no SSE needed).
 - The full URL parameter schema lives in [`../API.md`](../API.md).

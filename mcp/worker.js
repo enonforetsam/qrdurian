@@ -14,16 +14,36 @@ const SITE = "https://qrdurian.com";
 // caption, even a center logo for the dressed looks)
 const LOOKS = [
   // palette looks
-  "durian", "matcha", "midnight", "ocean", "berry", "tangerine",
-  "mono", "lavender", "sky", "sunset", "mint", "paper",
+  { name: "durian",    desc: "Warm paper white, wavy texture, classic black ink ~ the house default" },
+  { name: "matcha",    desc: "Green-tea greens on a leafy texture, calm and fresh" },
+  { name: "midnight",  desc: "Neon green code on near-black, topo lines ~ dark mode" },
+  { name: "ocean",     desc: "Deep navy ink on sea blue with waves" },
+  { name: "berry",     desc: "Pink berry palette with a dotted texture" },
+  { name: "tangerine", desc: "Bold orange with stripes, high energy" },
+  { name: "mono",      desc: "Black on grey grid, heavy stamp ink ~ strict and graphic" },
+  { name: "lavender",  desc: "Violet ink on lilac with a hex texture" },
+  { name: "sky",       desc: "Light airy blue with tiny crosses" },
+  { name: "sunset",    desc: "Warm peach + violet, dry brush ink, spiky texture" },
+  { name: "mint",      desc: "Fresh mint greens with dots, clean and light" },
+  { name: "paper",     desc: "Warm off-white stationery feel, stamp ink on topo lines" },
   // dressed looks — arrive with a fitting caption + center logo
-  "kopitiam", "makan", "pay", "wifi", "wedding", "music", "receipt", "neon",
+  { name: "kopitiam", desc: "Coffee-shop amber, stamp ink, MENU caption + coffee-cup logo" },
+  { name: "makan",    desc: "Chili red, durian texture, MAKAN TIME caption + noodle logo, handwritten Caveat" },
+  { name: "pay",      desc: "Payment pink, square modules, PAY HERE caption + card logo" },
+  { name: "wifi",     desc: "Sky blue, round dots, FREE WI-FI caption + signal logo" },
+  { name: "wedding",  desc: "Soft cream + rose, SAVE THE DATE caption + ring logo, Playfair serif" },
+  { name: "music",    desc: "Indigo night with glowing accents, PLAY ME caption + note logo" },
+  { name: "receipt",  desc: "Monochrome ticket look, square modules, THANK YOU caption in Space Mono" },
+  { name: "neon",     desc: "Glowing green on black, brush ink, ENTER caption + bolt logo, Bebas Neue" },
 ];
+const LOOK_NAMES = LOOKS.map((l) => l.name);
 const TEXTURES = ["none", "durians", "topo", "dots", "grid", "stripes", "waves", "crosses", "spikes", "leaves", "hex"];
 const INKS = ["press", "stamp", "brush"];
 const FORMATS = ["square", "wallpaper", "poster", "story"];
 const CORNERS = ["rounded", "circle", "square"];
 const DOTS = ["rounded", "dots", "square"];
+const FONTS = ["urbanist", "playfair display", "caveat", "bebas neue", "space mono"]; // matched case-insensitively by the site
+const SCENEBGS = ["gradient", "solid"];
 
 const TOOL = {
   name: "design_qr",
@@ -39,7 +59,7 @@ const TOOL = {
     required: ["content"],
     properties: {
       content: { type: "string", maxLength: 2000, description: "What scanning the QR opens (URL, text, WIFI: payload, wa.me link…)" },
-      look: { type: "string", enum: LOOKS, description: "Complete curated design: palette + texture + ink + corners; dressed looks add caption + logo" },
+      look: { type: "string", enum: LOOK_NAMES, description: "Complete curated design: palette + texture + ink + corners; dressed looks add caption + logo" },
       ink: { type: "string", enum: INKS, description: "Ink rendering: press=clean, stamp=heavy, brush=dry streaks" },
       texture: { type: "string", enum: TEXTURES, description: "Repeating background pattern" },
       caption: { type: "string", maxLength: 80, description: "Short label under the code, e.g. SCAN ME (overrides the look's)" },
@@ -51,8 +71,20 @@ const TOOL = {
       bg: { type: "string", description: "Page/scene background color, hex" },
       outline_color: { type: "string", description: "QR outline ring color, hex" },
       outline_width: { type: "integer", minimum: 0, maximum: 10, description: "Outline thickness, 0 = none (default 7)" },
+      font: { type: "string", enum: FONTS, description: "Caption typeface (lazy-loaded on the site)" },
+      margin: { type: "integer", minimum: 0, maximum: 10, description: "Quiet-zone size around the code modules" },
+      scenebg: { type: "string", enum: SCENEBGS, description: "Background fill style: soft gradient or flat solid" },
     },
   },
+};
+
+const LIST_TOOL = {
+  name: "list_looks",
+  description:
+    "List every qrdurian look (curated design) with a one-line description of its vibe ~ " +
+    "use it to pick the right `look` for design_qr. Palette looks restyle the code; dressed " +
+    "looks also bring a fitting caption + center logo.",
+  inputSchema: { type: "object", properties: {} },
 };
 
 // ---------------- guardrails ----------------
@@ -87,7 +119,7 @@ function hex(v) {
 
 function lookOf(a) {
   const name = a.look || a.theme; // theme accepted as legacy alias
-  return LOOKS.includes(name) ? name : "durian";
+  return LOOK_NAMES.includes(name) ? name : "durian";
 }
 function designURL(a) {
   // query-param form (not the #d= hash): the site resolves the look name itself,
@@ -104,6 +136,9 @@ function designURL(a) {
   const h = (k, v) => { const c = hex(v); if (c) p.set(k, c.slice(1)); };
   h("fg", a.fg); h("base", a.base); h("bg", a.bg); h("outline", a.outline_color);
   if (Number.isInteger(a.outline_width)) p.set("outlinew", Math.max(0, Math.min(10, a.outline_width)));
+  if (typeof a.font === "string" && FONTS.includes(a.font.toLowerCase())) p.set("font", a.font.toLowerCase());
+  if (Number.isInteger(a.margin)) p.set("margin", Math.max(0, Math.min(10, a.margin)));
+  if (SCENEBGS.includes(a.scenebg)) p.set("scenebg", a.scenebg);
   return `${SITE}/?${p.toString()}`;
 }
 
@@ -115,6 +150,10 @@ function rpcError(id, code, message) {
 }
 
 async function handleRpc(msg) {
+  // guardrail: a batch may carry null / arrays / primitives — refuse, don't throw
+  if (typeof msg !== "object" || msg === null || Array.isArray(msg)) {
+    return rpcError(null, -32600, "Invalid Request");
+  }
   const { id, method, params } = msg;
   switch (method) {
     case "initialize":
@@ -123,24 +162,42 @@ async function handleRpc(msg) {
         capabilities: { tools: {} },
         serverInfo: { name: "qrdurian", version: "1.0.0" },
         instructions:
-          "Use design_qr to create QR code designs. The returned link opens the design on qrdurian.com " +
+          "Use design_qr to create QR code designs; list_looks shows every curated look with a one-line description. The returned link opens the design on qrdurian.com " +
           "where the user can tweak and download it. Pick a look matching the user's purpose or mood — " +
           "dressed looks (kopitiam, pay, wifi, wedding…) come with a fitting caption and logo.",
       });
     case "ping":
       return rpcResult(id, {});
     case "tools/list":
-      return rpcResult(id, { tools: [TOOL] });
+      return rpcResult(id, { tools: [TOOL, LIST_TOOL] });
     case "tools/call": {
+      if (params?.name === "list_looks") {
+        const lines = LOOKS.map((l) => `${l.name} ~ ${l.desc}`);
+        return rpcResult(id, {
+          content: [{
+            type: "text",
+            text:
+              "qrdurian looks (pass the name as `look` to design_qr):\n\n" +
+              "Palette looks:\n" + lines.slice(0, 12).join("\n") + "\n\n" +
+              "Dressed looks (caption + center logo included):\n" + lines.slice(12).join("\n"),
+          }],
+        });
+      }
       if (params?.name !== "design_qr") return rpcError(id, -32602, "Unknown tool: " + params?.name);
       const a = params.arguments || {};
       if (!a.content || typeof a.content !== "string") {
         return rpcResult(id, { content: [{ type: "text", text: "Error: `content` (what the QR opens) is required." }], isError: true });
       }
-      if (BLOCKED_SCHEMES.test(a.content)) {
+      // sanitize FIRST, then scheme-check — otherwise embedded control chars
+      // (jav\u0000ascript:) would slip past the regex and be re-joined by clean()
+      const content = clean(a.content, 2000);
+      if (!content) {
+        return rpcResult(id, { content: [{ type: "text", text: "Error: `content` (what the QR opens) is required." }], isError: true });
+      }
+      if (BLOCKED_SCHEMES.test(content)) {
         return rpcResult(id, { content: [{ type: "text", text: "Error: that content scheme is not allowed in QR codes (javascript:/data:/file: are blocked for safety)." }], isError: true });
       }
-      const url = designURL(a);
+      const url = designURL({ ...a, content });
       return rpcResult(id, {
         content: [{
           type: "text",

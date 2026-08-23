@@ -21,8 +21,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@500;600;700;800&family=Open+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/qr-code-styling@1.6.0-rc.1/lib/qr-code-styling.js"></script>
-<script src="https://unpkg.com/lucide@0.452.0"></script>
+<script src="https://unpkg.com/qr-code-styling@1.6.0-rc.1/lib/qr-code-styling.js" integrity="sha384-50pczvCB0no/P1Foou0eD0Bul/9JKfIgx04I0bMpay6npYYwWTUgQxlGS5T7yKmn" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/lucide@0.452.0" integrity="sha384-LSySZmn0vvhTQgRk/a4hpHC8UqzwD4/KwvbBryuft3BxzKIjaCd099VvkzXYA9dC" crossorigin="anonymous"></script>
 <style>
   :root {
     /* ---- clean white neumorphism — the chrome surface is FIXED (it does not
@@ -103,6 +103,12 @@
   .shuffle-btn:active { box-shadow: var(--n-inset-sm); }
   @media (prefers-reduced-motion: reduce) { .shuffle-btn { transition: none; } }
   .shuffle-btn svg { width: 19px; height: 19px; }
+  /* undo / redo twins ~ same neumorphic pill, parked left of the shuffle */
+  .hist-btn { right: 70px; }
+  .hist-btn.hist-undo { right: 122px; }
+  .shuffle-btn:disabled, .sp-icon:disabled, .stb-icon:disabled {
+    opacity: .35; cursor: default; pointer-events: none;
+  }
 
 
   /* trace program promo pill */
@@ -208,7 +214,33 @@
   .artboard-wrap {
     width: 100%; display: flex; justify-content: center;
     overflow: hidden;
+    position: relative; /* anchors the scan-check chip */
   }
+  /* Scan check — a quiet verdict chip in the artboard corner. Absolute, so it
+     never shifts layout; pointer-events off, so it never steals a drag. */
+  .scan-badge {
+    position: absolute; left: 10px; bottom: 10px; z-index: 6;
+    padding: 5px 11px; border-radius: 999px;
+    font-family: "Urbanist", sans-serif;
+    font-size: 10.5px; font-weight: 800; letter-spacing: .06em;
+    background: rgba(244,244,239,.92); color: #1E7A3C;
+    box-shadow: var(--n-raised-sm);
+    opacity: 0; transform: translateY(4px);
+    transition: opacity .25s ease, transform .25s ease;
+    pointer-events: none; white-space: nowrap;
+  }
+  .scan-badge.show { opacity: 1; transform: none; }
+  .scan-badge.warn { color: #8A5300; }
+  .sheet-tag { /* print-sheet formats: the preview shows one design, the page composes at export */
+    position: absolute; left: 10px; top: 10px; z-index: 6;
+    padding: 5px 11px; border-radius: 999px;
+    font-family: "Urbanist", sans-serif;
+    font-size: 10.5px; font-weight: 800; letter-spacing: .06em;
+    background: rgba(244,244,239,.92); color: #6B6B60;
+    box-shadow: var(--n-raised-sm);
+    pointer-events: none; white-space: nowrap;
+  }
+  #fileTypePresets .preset:disabled { opacity: .38; pointer-events: none; }
   .theme-head {
     width: 100%;
     margin: 0 0 8px;
@@ -438,6 +470,27 @@
   .ct-tab.active { background: var(--surface); color: var(--accent); box-shadow: var(--n-inset); }
   [data-ctab="link"] .ct-view[data-view="existing"] { display: none; }
   [data-ctab="existing"] .ct-view[data-view="link"] { display: none; }
+  /* content type chips: Link / Wi-Fi / WhatsApp / vCard / Event / Pay Here */
+  .type-chips { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 14px; }
+  .type-chip {
+    border: none; cursor: pointer; background: var(--surface); color: var(--muted);
+    font-family: "Urbanist", sans-serif; font-weight: 800; font-size: 11.5px;
+    padding: 8px 12px; border-radius: 999px; box-shadow: var(--n-raised-sm);
+    transition: box-shadow .15s, color .15s;
+  }
+  .type-chip:hover { color: var(--accent); }
+  .type-chip.active { color: var(--accent); box-shadow: var(--n-inset-sm); }
+  .type-form { display: grid; gap: 10px; margin-bottom: 16px; }
+  .type-form[hidden] { display: none; }
+  .type-form .row { gap: 10px; }
+  .type-form .row input { min-width: 0; }
+  .tf-note { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+  .type-form input[type="datetime-local"] {
+    width: 100%; background: var(--surface); border: none; border-radius: 13px;
+    padding: 12px 15px; color: var(--text); font-size: 13px; font-family: inherit;
+    box-shadow: var(--n-inset-sm); transition: box-shadow .15s ease;
+  }
+  .type-form input[type="datetime-local"]:focus { outline: none; box-shadow: var(--n-inset-sm), 0 0 0 3px var(--ring); }
   .ct-upload {
     width: 100%; display: flex; flex-direction: column; align-items: center; gap: 8px;
     border: 1.5px dashed var(--border-2); border-radius: 15px;
@@ -904,6 +957,32 @@
         outline-color: rgba(255, 255, 255, .35);
       }
     }
+
+  /* ---------- Embed (?embed=1): chrome-less artboard for iframes ---------- */
+  .embed-badge { display: none; }
+  body.embed header, body.embed .promo, body.embed #controlsCard,
+  body.embed .edit-bar, body.embed .export-sheet, body.embed .bottom-nav,
+  body.embed #studioPanel, body.embed #reopen { display: none !important; }
+  body.embed main {
+    display: flex !important; height: 100dvh; min-height: 100dvh; overflow: hidden;
+    margin: 0; padding: 0; align-items: center; justify-content: center; pointer-events: none;
+  }
+  body.embed .preview {
+    width: 100%; height: 100% !important; margin: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; transform: none !important; background: none;
+  }
+  body.embed .editor-section {
+    width: 100%; height: 100%; max-width: none; border: none; border-radius: 0;
+    background: transparent; padding: 18px; display: flex; align-items: center; justify-content: center;
+  }
+  body.embed .embed-badge {
+    display: block; position: fixed; right: 12px; bottom: 10px; z-index: 60;
+    font-family: "Urbanist", sans-serif; font-size: 12px; font-weight: 700;
+    color: var(--muted); text-decoration: none; opacity: .75; pointer-events: auto;
+  }
+  body.embed .embed-badge:hover { color: var(--accent); opacity: 1; }
+  /* the Artboard card's mobile text tools ~ the studio bar owns the originals */
+  @media (min-width: 1100px) { #mTextTools { display: none !important; } }
 </style>
 </head>
 <body>
@@ -911,6 +990,8 @@
     <div class="brand" aria-label="qrdurian">
       <span class="mark"><img src="durian.svg" alt="qrdurian" /></span>
     </div>
+    <button class="shuffle-btn hist-btn hist-undo" id="undoBtn" aria-label="Undo" disabled><i data-lucide="undo-2"></i></button>
+    <button class="shuffle-btn hist-btn" id="redoBtn" aria-label="Redo" disabled><i data-lucide="redo-2"></i></button>
     <button class="shuffle-btn" id="shuffleBtn" aria-label="Random design"><i data-lucide="refresh-cw"></i></button>
   </header>
 
@@ -926,6 +1007,8 @@
         <span class="sp-mark"><img src="durian.svg" alt="qrdurian" /></span>
         <span class="sp-word">qr<b>durian</b></span>
         <span class="sp-grow"></span>
+        <button class="sp-icon" id="spUndo" title="Undo" aria-label="Undo" disabled><i data-lucide="undo-2"></i></button>
+        <button class="sp-icon" id="spRedo" title="Redo" aria-label="Redo" disabled><i data-lucide="redo-2"></i></button>
         <button class="sp-icon" id="spShuffle" title="Random design" aria-label="Random design"><i data-lucide="shuffle"></i></button>
         <button class="sp-icon" id="spCollapse" title="Hide panel" aria-label="Hide panel"><i data-lucide="panel-left-close"></i></button>
       </header>
@@ -961,6 +1044,45 @@
       </div>
 
       <div class="ct-view" data-view="link">
+      <div class="type-chips" id="typeChips" aria-label="Content type">
+        <button class="type-chip active" data-type="link">Link</button>
+        <button class="type-chip" data-type="wifi">Wi-Fi</button>
+        <button class="type-chip" data-type="wa">WhatsApp</button>
+        <button class="type-chip" data-type="vcard">vCard</button>
+        <button class="type-chip" data-type="event">Event</button>
+        <button class="type-chip" data-type="pay">Pay Here</button>
+      </div>
+      <div class="type-form" id="tfWifi" hidden>
+        <input type="text" id="tfWifiSsid" placeholder="Network name (SSID)" autocomplete="off" />
+        <input type="text" id="tfWifiPass" placeholder="Password" autocomplete="off" />
+      </div>
+      <div class="type-form" id="tfWa" hidden>
+        <input type="text" id="tfWaPhone" placeholder="Phone with country code ~ 60123456789" autocomplete="off" />
+        <input type="text" id="tfWaMsg" placeholder="Pre-filled message (optional)" autocomplete="off" />
+      </div>
+      <div class="type-form" id="tfVcard" hidden>
+        <input type="text" id="tfVcName" placeholder="Full name" autocomplete="off" />
+        <div class="row">
+          <input type="text" id="tfVcTel" placeholder="Phone" autocomplete="off" />
+          <input type="text" id="tfVcEmail" placeholder="Email" autocomplete="off" />
+        </div>
+        <div class="row">
+          <input type="text" id="tfVcOrg" placeholder="Company (optional)" autocomplete="off" />
+          <input type="text" id="tfVcUrl" placeholder="Website (optional)" autocomplete="off" />
+        </div>
+      </div>
+      <div class="type-form" id="tfEvent" hidden>
+        <input type="text" id="tfEvTitle" placeholder="Event title" autocomplete="off" />
+        <div class="row">
+          <input type="datetime-local" id="tfEvStart" aria-label="Starts" />
+          <input type="datetime-local" id="tfEvEnd" aria-label="Ends" />
+        </div>
+        <input type="text" id="tfEvLoc" placeholder="Location (optional)" autocomplete="off" />
+      </div>
+      <div class="type-form" id="tfPay" hidden>
+        <div class="tf-note">Your bank app can export your DuitNow QR ~ save it, upload it here, and we restyle it.</div>
+        <button class="mini-btn" id="payGoBtn"><i data-lucide="scan-line"></i> Upload &amp; restyle my DuitNow QR</button>
+      </div>
       <div class="field">
         <label class="lbl" for="content">What should the code open?</label>
         <textarea id="content" placeholder="https://your-link.com" style="min-height:44px;"></textarea>
@@ -1069,6 +1191,11 @@
         <span class="clabel">Quick logo</span>
         <div class="emoji-row" id="emojiRow"></div>
       </div>
+      <div class="crow" id="mTextTools">
+        <span class="clabel">Add</span>
+        <button class="mini-btn" id="mAddTextBtn"><i data-lucide="plus"></i> Text</button>
+        <button class="mini-btn" id="mAddStickerBtn"><i data-lucide="sticker"></i> Sticker</button>
+      </div>
       </div>
 
       <div class="color-pop" id="colorPop" hidden>
@@ -1088,6 +1215,8 @@
       <div class="editor-section">
         <div class="artboard-wrap" id="artboardWrap">
           <canvas id="artboard"></canvas>
+          <div class="scan-badge" id="scanBadge" role="status" aria-live="polite"></div>
+          <div class="sheet-tag" id="sheetTag" hidden></div>
         </div>
       </div>
     </section>
@@ -1100,6 +1229,8 @@
       <button class="stb-icon" data-nav="content" aria-label="URL"><i data-lucide="link-2"></i></button>
       <button class="stb-icon" data-nav="style" aria-label="Design"><i data-lucide="sliders-horizontal"></i></button>
       <button class="stb-icon" id="tbShuffle" aria-label="Shuffle look"><i data-lucide="shuffle"></i></button>
+      <button class="stb-icon" id="tbUndo" aria-label="Undo" disabled><i data-lucide="undo-2"></i></button>
+      <button class="stb-icon" id="tbRedo" aria-label="Redo" disabled><i data-lucide="redo-2"></i></button>
       <span class="eb-sep"></span>
       <button class="mini-btn" id="addTextBtn"><i data-lucide="plus"></i> Text</button>
       <button class="mini-btn" id="addStickerBtn"><i data-lucide="sticker"></i> Sticker</button>
@@ -1144,6 +1275,7 @@
     <div class="hint" id="ftHint" style="margin-top:-4px;">Full design with ink texture and background.</div>
     <div class="export-actions">
       <button class="btn primary" id="downloadBtn"><i data-lucide="download"></i><span class="bl">Download<span class="sub">to Files</span></span></button>
+      <button class="btn" id="copyImgBtn"><i data-lucide="copy"></i><span class="bl">Copy<span class="sub">as image</span></span></button>
       <button class="btn" id="shareBtn"><i data-lucide="image-down"></i><span class="bl">Save to Photos<span class="sub">via share sheet</span></span></button>
     </div>
     <button class="textbtn" id="copyLinkBtn"><i data-lucide="link"></i> Copy design link</button>
@@ -1159,6 +1291,9 @@
     <button class="nav-item export" data-nav="export" aria-label="Export"><i data-lucide="download"></i></button>
   </nav>
 
+  <!-- embed mode only (?embed=1): quiet attribution in the corner -->
+  <a class="embed-badge" id="embedBadge" href="https://qrdurian.com" target="_blank" rel="noopener">Designed on qrdurian</a>
+
 <script>
   const $ = (id) => document.getElementById(id);
 
@@ -1167,7 +1302,14 @@
     wallpaper: { w: 1290, h: 2796, label: "1290 × 2796 px · phone lock screen" },
     poster:    { w: 2480, h: 3508, label: "2480 × 3508 px · A4 @ 300 DPI" },
     story:     { w: 1080, h: 1920, label: "1080 × 1920 px · 9:16 story" },
+    /* print sheets: the page is composed at export by sheetLayout() — the design
+       itself is authored at .cell dims (preview + scan checks use those) */
+    sheet:     { w: 2480, h: 3508, label: "2480 × 3508 px · A4 · 12 stickers", sheet: "stickers", cell: { w: 720,  h: 782  } },
+    tent:      { w: 3508, h: 2480, label: "3508 × 2480 px · A4 · fold-in-half", sheet: "tent",     cell: { w: 3508, h: 1240 } },
+    counter:   { w: 1748, h: 2480, label: "1748 × 2480 px · A5 · crop marks",  sheet: "counter",  cell: { w: 1748, h: 2480 } },
   };
+  // what the artboard shows: sheet formats preview their single-design cell
+  const designDims = (key = state.format) => FORMATS[key].cell || FORMATS[key];
 
   const state = {
     data: "https://qrdurian.com",
@@ -1678,8 +1820,8 @@
     // mobile/tablet: preview is format-independent — the QR stays put, aspect applies
     // only to the exported file. Studio: the canvas IS the artboard — it reshapes live
     // to the chosen format (sceneLayout keeps preview/export parity either way).
-    const studio = isStudio();
-    const fmt = studio ? FORMATS[state.format] : { w: 1, h: 1 };
+    const studio = isStudio() || document.body.classList.contains("embed"); // embed: the canvas IS the artboard at any width
+    const fmt = studio ? designDims() : { w: 1, h: 1 };
     const wrap = $("artboardWrap");
     const desktop = window.innerWidth > 880;
     const measuredWrapW = wrap.clientWidth || wrap.parentElement.clientWidth;
@@ -1772,6 +1914,7 @@
     drawScene(ctx, canvas.width, canvas.height, qrImgs, false, null, true);
     drawSelection();
     positionMiniBar(); // the mini toolbar follows its selection
+    scheduleScanCheck(); // every visual change funnels through here — debounced inside
   }
 
   // ---- click-to-select: caption, text items and (multi-code) QR cards get a
@@ -1921,11 +2064,16 @@
     format: { k: "z", ok: (v) => v in FORMATS },
     texture:{ k: "x", ok: (v) => v in TEXTURE_NAMES },
     inkMood:{ k: "i", ok: (v) => v in INK_MOODS },
+    /* center logo travels only when tiny (emoji/icon renders) ~ big uploads stay on-device */
+    logo:   { k: "l", ok: (v) => typeof v === "string" && v.startsWith("data:image/") && v.length <= 8192 },
   };
   function isHex(v) { return typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v); }
   function encodeDesign() {
     const o = {};
-    for (const [field, spec] of Object.entries(SHARE_FIELDS)) o[spec.k] = state[field];
+    for (const [field, spec] of Object.entries(SHARE_FIELDS)) {
+      if (field === "logo" && !spec.ok(state[field])) continue; // big or absent logo: session-only
+      o[spec.k] = state[field];
+    }
     // carry the takeover flags so an autosave restore keeps the user's intent
     o._c = { n: !!custom.caption, q: !!custom.capFont, l: !!custom.logo };
     return btoa(unescape(encodeURIComponent(JSON.stringify(o))))
@@ -1953,6 +2101,7 @@
   // on demand by "Copy design link".
   let urlTimer = null;
   function syncURL() {
+    histPush(); // every user-intent mutation lands here ~ snapshot before scheduling
     clearTimeout(urlTimer);
     urlTimer = setTimeout(() => {
       try { localStorage.setItem("qrd_autosave", encodeDesign()); } catch (e) {}
@@ -1960,10 +2109,88 @@
     }, 300);
   }
 
+  // ================= Undo / Redo =================
+  // snapshot history of the shareable design: the SHARE_FIELDS slice + custom
+  // flags, deep-copied via encodeDesign(). syncURL() pushes one per mutation
+  // (coalescing identical states); Cmd/Ctrl+Z walks back, Shift+Cmd/Ctrl+Z
+  // or Ctrl+Y walks forward. Capped at 50 entries.
+  const HIST_MAX = 50;
+  const histStack = [];
+  let histPos = -1, histLock = false;
+  function histPush() {
+    if (histLock) return; // a restore re-fires syncURL ~ don't record it
+    let snap; try { snap = encodeDesign(); } catch (e) { return; }
+    if (histStack[histPos] === snap) return; // coalesce identical states
+    histStack.length = histPos + 1; // a fresh edit clears the redo tail
+    histStack.push(snap);
+    if (histStack.length > HIST_MAX) histStack.shift();
+    histPos = histStack.length - 1;
+    histButtons();
+  }
+  function histButtons() {
+    const canU = histPos > 0, canR = histPos < histStack.length - 1;
+    [["undoBtn", canU], ["redoBtn", canR], ["spUndo", canU], ["spRedo", canR],
+     ["tbUndo", canU], ["tbRedo", canR]].forEach(([id, on]) => {
+      const b = $(id); if (b) b.disabled = !on;
+    });
+  }
+  function histApply(snap) {
+    histLock = true;
+    try {
+      decodeDesign(snap); // fields + custom flags back into state
+      sel = null; // restored arrays may no longer contain the old selection
+      // same re-init path boot uses after decode
+      $("content").value = state.data;
+      $("caption").value = state.caption;
+      $("margin").value = state.margin; $("marginVal").textContent = state.margin;
+      $("outlineW").value = state.outlineW; $("outlineWVal").textContent = state.outlineW;
+      document.querySelectorAll("#cornerPresets .preset").forEach(b =>
+        b.classList.toggle("active", b.dataset.corner === state.cornerType));
+      document.querySelectorAll("#inkPresets .preset").forEach(b =>
+        b.classList.toggle("active", b.dataset.ink === state.inkMood));
+      document.querySelectorAll("#bgStylePresets .preset").forEach(b =>
+        b.classList.toggle("active", b.dataset.scenebg === state.sceneBg));
+      $("texSelLabel").textContent = TEXTURE_NAMES[state.texture];
+      document.querySelectorAll("#texList .fmt-row").forEach(x =>
+        x.classList.toggle("active", x.dataset.tex === state.texture));
+      document.querySelectorAll("#fmtList .fmt-row").forEach(x =>
+        x.classList.toggle("active", x.dataset.fmt === state.format));
+      document.querySelectorAll("#fmtChips .fmt-chip").forEach(x =>
+        x.classList.toggle("active", x.dataset.fmt === state.format));
+      $("fontSelLabel").textContent = state.capFont;
+      syncChips();
+      syncFmtSelect();
+      syncSheetUI(); // undo can hop across sheet / non-sheet formats
+      syncQrBtn();
+      rebuildStickerSprites(); // snapshots carry sticker names only
+      update(true);
+      syncBarToSelection();
+    } finally { histLock = false; }
+    histButtons();
+  }
+  function histUndo() { if (histPos > 0) { histPos--; histApply(histStack[histPos]); } }
+  function histRedo() { if (histPos < histStack.length - 1) { histPos++; histApply(histStack[histPos]); } }
+  [["undoBtn", histUndo], ["redoBtn", histRedo], ["spUndo", histUndo], ["spRedo", histRedo],
+   ["tbUndo", histUndo], ["tbRedo", histRedo]].forEach(([id, fn]) => {
+    const b = $(id); if (b) b.addEventListener("click", fn);
+  });
+  document.addEventListener("keydown", (e) => {
+    if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
+    const k = (e.key || "").toLowerCase();
+    const redo = (k === "z" && e.shiftKey) || k === "y";
+    const undo = k === "z" && !e.shiftKey;
+    if (!undo && !redo) return;
+    const t = e.target; // never fire while the user is typing
+    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+    e.preventDefault();
+    if (redo) histRedo(); else histUndo();
+  });
+
   // readable query-param API — ?data=...&look=kopitiam&ink=stamp (see API.md)
   let bootLook = null; // look applied via URL — boot syncs the theme slider to it
   function applyQueryParams() {
     const q = new URLSearchParams(location.search);
+    if (q.get("embed") === "1") document.body.classList.add("embed"); // chrome-less render for iframes
     if (![...q.keys()].length) return false;
     let any = false;
     const hex = (v) => {
@@ -2040,6 +2267,65 @@
     update(true);
   });
 
+  // Content type chips: structured forms compose the standard payload into
+  // state.data live — the payload string stays the single source of truth.
+  const TYPE_FORMS = { wifi: "tfWifi", wa: "tfWa", vcard: "tfVcard", event: "tfEvent", pay: "tfPay" };
+  let contentType = "link";
+  const escWifi = (v) => v.replace(/([\\;,:"])/g, "\\$1");
+  const escVc = (v) => v.replace(/([\\;,])/g, "\\$1");
+  const icsStamp = (v) => { const d = v.replace(/[-:]/g, ""); return d.length === 13 ? d + "00" : d; };
+  function setContentType(name) {
+    contentType = name;
+    document.querySelectorAll("#typeChips .type-chip").forEach((b) => b.classList.toggle("active", b.dataset.type === name));
+    Object.entries(TYPE_FORMS).forEach(([k, id]) => { $(id).hidden = k !== name; });
+    composeType();
+  }
+  function composeType() {
+    let out = null;
+    if (contentType === "wifi") {
+      const s = $("tfWifiSsid").value.trim(), p = $("tfWifiPass").value;
+      if (s) out = "WIFI:T:" + (p ? "WPA" : "nopass") + ";S:" + escWifi(s) + ";" + (p ? "P:" + escWifi(p) + ";" : "") + ";";
+    } else if (contentType === "wa") {
+      const d = $("tfWaPhone").value.replace(/\D/g, ""), m = $("tfWaMsg").value.trim();
+      if (d) out = "https://wa.me/" + d + (m ? "?text=" + encodeURIComponent(m) : "");
+    } else if (contentType === "vcard") {
+      const n = $("tfVcName").value.trim(), tel = $("tfVcTel").value.trim(),
+        em = $("tfVcEmail").value.trim(), org = $("tfVcOrg").value.trim(), url = $("tfVcUrl").value.trim();
+      if (n || tel || em) {
+        const L = ["BEGIN:VCARD", "VERSION:3.0", "N:" + escVc(n) + ";;;;", "FN:" + escVc(n)];
+        if (tel) L.push("TEL:" + escVc(tel));
+        if (em) L.push("EMAIL:" + escVc(em));
+        if (org) L.push("ORG:" + escVc(org));
+        if (url) L.push("URL:" + url);
+        L.push("END:VCARD");
+        out = L.join("\n");
+      }
+    } else if (contentType === "event") {
+      const t = $("tfEvTitle").value.trim(), s = $("tfEvStart").value, e = $("tfEvEnd").value, loc = $("tfEvLoc").value.trim();
+      if (t && s) {
+        const L = ["BEGIN:VEVENT", "SUMMARY:" + escVc(t), "DTSTART:" + icsStamp(s)];
+        if (e) L.push("DTEND:" + icsStamp(e));
+        if (loc) L.push("LOCATION:" + escVc(loc));
+        L.push("END:VEVENT");
+        out = L.join("\n");
+      }
+    }
+    if (out === null || $("content").value === out) return;
+    $("content").value = out;
+    if (sel && sel.kind === "qr" && sel.i > 0) state.extra[sel.i - 1] = out;
+    else state.data = out;
+    update(true);
+  }
+  document.querySelectorAll("#typeChips .type-chip").forEach((b) =>
+    b.addEventListener("click", () => setContentType(b.dataset.type)));
+  document.querySelectorAll(".type-form input").forEach((el) => el.addEventListener("input", composeType));
+  // Pay Here (Malaysia): the bank app already makes the QR — we make it pretty.
+  $("payGoBtn").addEventListener("click", () => {
+    const pay = LOOKS.find((l) => l.name === "pay");
+    if (pay) applyLook(pay);
+    setContentTab("existing");
+  });
+
   // beautify an existing QR: photo/screenshot in → content out, restyled here.
   // jsQR loads lazily — nobody pays for the decoder until they use it.
   let jsQRLoad = null;
@@ -2048,12 +2334,86 @@
     if (!jsQRLoad) jsQRLoad = new Promise((res, rej) => {
       const s = document.createElement("script");
       s.src = "https://unpkg.com/jsqr@1.4.0/dist/jsQR.js";
+      s.integrity = "sha384-b5Ya4Bq3qCyz39m2ISh+4DxjAIljdeFwK/BsXLuj9gugaNwAcj/ia15fxNZL9Nlx";
+      s.crossOrigin = "anonymous";
       s.onload = res;
       s.onerror = () => { jsQRLoad = null; rej(new Error("jsQR failed to load")); };
       document.head.appendChild(s);
     });
     return jsQRLoad;
   }
+
+  // ============ Scan check: does the ACTUAL rendered artwork decode? ============
+  // Renders the current scene offscreen (real format, real texture, real ink)
+  // and runs jsQR over code #1's card. Armed lazily — first interaction or
+  // first idle — so nobody pays the decoder download on landing.
+  let scanTimer = null, scanToken = 0, scanArmed = false, scanBusy = false, scanAgain = false;
+  function armScanCheck() {
+    if (scanArmed) return;
+    scanArmed = true;
+    scheduleScanCheck();
+  }
+  function scheduleScanCheck() {
+    if (!scanArmed || document.hidden) return;
+    clearTimeout(scanTimer);
+    scanTimer = setTimeout(runScanCheck, 600); // slider drags settle before we decode
+  }
+  async function runScanCheck() {
+    if (document.hidden) return;
+    if (scanBusy) { scanAgain = true; return; } // one decode at a time — rerun after
+    scanBusy = true;
+    const t = ++scanToken;
+    try {
+      await loadJsQR();
+      if (t !== scanToken || !qrImgs[0]) return;
+      // small enough to decode fast, large enough that code #1 stays readable
+      const fmt = designDims(); // sheet formats: judge the design cell, not the page
+      const k = Math.min(1, Math.max(512 / Math.max(fmt.w, fmt.h), 240 / sceneLayout(fmt.w, fmt.h).qs));
+      const W = Math.max(1, Math.round(fmt.w * k));
+      const H = Math.max(1, Math.round(fmt.h * k));
+      const c = document.createElement("canvas");
+      c.width = W; c.height = H;
+      const cx = c.getContext("2d", { willReadFrequently: true });
+      const texImg = state.texture !== "none" ? textureTileCanvas(state.texture) : null;
+      drawScene(cx, W, H, qrImgs, true, texImg);
+      if (t !== scanToken) return;
+      // judge code #1 only: crop its card (pad = quiet zone) plus breathing room
+      const L = sceneLayout(W, H);
+      const m = Math.round(L.cardSize * 0.08) + 4;
+      const rx = Math.max(0, Math.round(L.cards[0].x) - m);
+      const ry = Math.max(0, Math.round(L.cards[0].y) - m);
+      const rw = Math.min(W - rx, Math.round(L.cardSize) + 2 * m);
+      const rh = Math.min(H - ry, Math.round(L.cardSize) + 2 * m);
+      let hit = null;
+      if (rw > 8 && rh > 8) {
+        const d = cx.getImageData(rx, ry, rw, rh);
+        hit = jsQR(d.data, d.width, d.height);
+      }
+      if (!hit && codes().length === 1) { // crop missed? give the full scene one shot
+        const d = cx.getImageData(0, 0, W, H);
+        hit = jsQR(d.data, d.width, d.height);
+      }
+      if (t !== scanToken) return;
+      setScanBadge(!!hit && hit.data === codes()[0], codes().length > 1);
+    } catch (e) {
+      /* decoder unavailable or render hiccup — leave the badge as it was */
+    } finally {
+      scanBusy = false;
+      if (scanAgain) { scanAgain = false; scheduleScanCheck(); }
+    }
+  }
+  function setScanBadge(ok, multi) {
+    const b = $("scanBadge");
+    b.textContent = ok ? (multi ? "✓ Code 1 scans" : "✓ Scans") : "⚠ May not scan ~ raise contrast";
+    b.classList.toggle("warn", !ok);
+    b.classList.add("show");
+  }
+  ["pointerdown", "keydown"].forEach((ev) =>
+    window.addEventListener(ev, armScanCheck, { once: true, capture: true, passive: true }));
+  if (window.requestIdleCallback) requestIdleCallback(armScanCheck, { timeout: 4000 });
+  else setTimeout(armScanCheck, 2500);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) scheduleScanCheck(); });
+
   let beautifyTimer = null;
   function beautifyStatus(msg) {
     const h = $("beautifyStatus");
@@ -2145,14 +2505,26 @@
   // emoji center logos — one tap, instant personality
   const EMOJIS = ["🍜", "☕", "🍰", "🛍️", "💈", "🌸", "🎵", "❤️", "🐱", "⚽"];
   function emojiLogo(e) {
-    const c = document.createElement("canvas");
-    c.width = c.height = 256;
-    const x = c.getContext("2d");
-    x.font = "190px -apple-system, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
-    x.textAlign = "center";
-    x.textBaseline = "middle";
-    x.fillText(e, 128, 142);
-    return c.toDataURL("image/png");
+    const draw = (px) => {
+      const c = document.createElement("canvas");
+      c.width = c.height = px;
+      const x = c.getContext("2d");
+      x.font = Math.round(px * 0.742) + "px -apple-system, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+      x.textAlign = "center";
+      x.textBaseline = "middle";
+      x.fillText(e, px / 2, Math.round(px * 0.555));
+      return c;
+    };
+    // emoji png at 256px is ~74KB ~ far over the 8KB share cap. webp squeezes
+    // the same glyph under it, so emoji logos survive refresh + share links.
+    // Safari can't ENCODE webp ~ it falls back to the crisp png (session-only).
+    const big = draw(256);
+    let d = big.toDataURL("image/webp", 0.8);
+    if (!d.startsWith("data:image/webp") || d.length > 8192) {
+      const small = draw(176).toDataURL("image/webp", 0.8);
+      d = small.startsWith("data:image/webp") && small.length <= 8192 ? small : big.toDataURL("image/png");
+    }
+    return d;
   }
   EMOJIS.forEach((e) => {
     const b = document.createElement("button");
@@ -2339,6 +2711,7 @@
       img.src = dataUrl;
     });
   }
+  let bigLogoHinted = false; // warn once ~ big uploads never travel in the share hash
   $("logoBtn").addEventListener("click", () => $("logoInput").click());
   $("logoInput").addEventListener("change", (e) => {
     const file = e.target.files[0]; if (!file) return;
@@ -2350,6 +2723,10 @@
         state.logo = ev.target.result; // unreadable as image? use as-is
       }
       custom.logo = true;
+      if (state.logo && state.logo.length > 8192 && !bigLogoHinted) {
+        bigLogoHinted = true;
+        flashHint("Big logos stay on this device ~ re-add after sharing");
+      }
       $("logoPrev").innerHTML = `<img src="${state.logo}" alt="logo" />`;
       update(true);
     };
@@ -2362,7 +2739,8 @@
   });
 
   // format selection — chosen at export time via dropdown, preview reshapes live
-  const FORMAT_NAMES = { square: "Square", wallpaper: "Phone wallpaper", poster: "Poster A4", story: "Story 9:16" };
+  const FORMAT_NAMES = { square: "Square", wallpaper: "Phone wallpaper", poster: "Poster A4", story: "Story 9:16",
+    sheet: "Sticker sheet", tent: "Table tent", counter: "Counter card" };
   function syncFmtSelect() {
     $("fmtSelLabel").textContent = `${FORMAT_NAMES[state.format]} · ${FORMATS[state.format].label.split(" · ")[0]}`;
   }
@@ -2373,12 +2751,14 @@
     syncFmtSelect();
     $("fmtList").hidden = true;
     $("fmtSelect").classList.remove("open");
+    syncSheetUI(); // sheet formats: PNG/JPG only + a tag on the preview
     drawPreview(); // studio reshapes the canvas live; elsewhere a cheap same-size redraw
     syncURL();
   }
   // studio aspect chips — choose the artboard right in the editor bar
+  // (print sheets stay out of the chip row: pick them from the format dropdown)
   const CHIP_LABELS = { square: "Square", wallpaper: "Phone", poster: "A4", story: "Story" };
-  Object.keys(FORMATS).forEach((k) => {
+  Object.keys(FORMATS).filter((k) => !FORMATS[k].sheet).forEach((k) => {
     const b = document.createElement("button");
     b.className = "fmt-chip" + (k === state.format ? " active" : "");
     b.dataset.fmt = k;
@@ -2572,6 +2952,19 @@
     stickerPop.style.left = Math.max(12, Math.min(r.left, window.innerWidth - 332)) + "px";
     stickerPop.style.top = "auto";
     stickerPop.style.bottom = (window.innerHeight - $("editBar").getBoundingClientRect().top + 10) + "px";
+  });
+  // mobile text tools ~ compact twins in the Artboard card reach the same
+  // handlers; CSS hides them at >=1100px where the studio bar owns the originals
+  $("mAddTextBtn").addEventListener("click", () => $("addTextBtn").click());
+  $("mAddStickerBtn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (!stickerPop.hidden) { stickerPop.hidden = true; return; }
+    commitTextEdit();
+    stickerPop.hidden = false;
+    const r = $("mAddStickerBtn").getBoundingClientRect();
+    stickerPop.style.left = Math.max(12, Math.min(r.left, window.innerWidth - 332)) + "px";
+    stickerPop.style.top = "auto";
+    stickerPop.style.bottom = (window.innerHeight - r.top + 10) + "px";
   });
   document.addEventListener("click", (e) => {
     if (!stickerPop.hidden && !stickerPop.contains(e.target)) stickerPop.hidden = true;
@@ -2970,17 +3363,66 @@
     });
   }
 
-  async function renderSceneCanvas() {
-    const fmt = FORMATS[state.format];
-    const realQs = sceneLayout(fmt.w, fmt.h).qs;
+  async function renderDesignCanvas(w, h) {
+    const realQs = sceneLayout(w, h).qs;
     const hiSize = Math.min(4096, Math.max(1024, Math.round(realQs)));
     const hiRes = await Promise.all(codes().map(async (d) =>
       inkify(await qrImageAt(hiSize, true, d), hiSize)));
     const texImg = state.texture !== "none" ? textureTileCanvas(state.texture) : null;
     const c = document.createElement("canvas");
-    c.width = fmt.w; c.height = fmt.h;
-    drawScene(c.getContext("2d"), fmt.w, fmt.h, hiRes, true, texImg);
+    c.width = w; c.height = h;
+    drawScene(c.getContext("2d"), w, h, hiRes, true, texImg);
     return c;
+  }
+  // ---- print sheets: a layout layer OVER the scene pipeline. The design renders
+  // once at FORMATS[kind].cell dims via drawScene, then gets composed onto the page.
+  async function sheetLayout(kind) {
+    const fmt = FORMATS[kind], W = fmt.w, H = fmt.h;
+    const out = document.createElement("canvas");
+    out.width = W; out.height = H;
+    const g = out.getContext("2d");
+    g.fillStyle = "#ffffff"; g.fillRect(0, 0, W, H);
+    if (fmt.sheet === "stickers") {
+      // 3×4 tiles; dashed cut guides sit in the gutters, just outside each tile
+      const cols = 3, rows = 4, m = 100, gap = 60, cw = fmt.cell.w, ch = fmt.cell.h;
+      const tile = await renderDesignCanvas(cw, ch);
+      g.strokeStyle = "#c9c9c2"; g.lineWidth = 2; g.setLineDash([14, 10]);
+      for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+        const x = m + c * (cw + gap), y = m + r * (ch + gap);
+        g.drawImage(tile, x, y);
+        g.strokeRect(x - 14, y - 14, cw + 28, ch + 28);
+      }
+      g.setLineDash([]);
+    } else if (fmt.sheet === "tent") {
+      // fold at the horizontal middle: top panel upside-down, bottom upright
+      const fold = H / 2;
+      const panel = await renderDesignCanvas(fmt.cell.w, fmt.cell.h);
+      g.drawImage(panel, 0, fold);
+      g.save(); g.translate(W / 2, fold / 2); g.rotate(Math.PI);
+      g.drawImage(panel, -W / 2, -fold / 2); g.restore();
+      g.strokeStyle = "#b9b9b0"; g.lineWidth = 2; g.setLineDash([26, 18]);
+      g.beginPath(); g.moveTo(0, fold); g.lineTo(W, fold); g.stroke();
+      g.setLineDash([]);
+    } else {
+      // counter card: the design full-bleed + 3 mm crop marks (35 px @ 300 dpi)
+      g.drawImage(await renderDesignCanvas(W, H), 0, 0);
+      const t = 35, len = 46;
+      const mark = (x1, y1, x2, y2) => {
+        g.strokeStyle = "rgba(255,255,255,.9)"; g.lineWidth = 7;
+        g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke();
+        g.strokeStyle = "#18181b"; g.lineWidth = 3;
+        g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke();
+      };
+      mark(t, 0, t, len);           mark(0, t, len, t);               // top-left
+      mark(W - t, 0, W - t, len);   mark(W, t, W - len, t);           // top-right
+      mark(t, H, t, H - len);       mark(0, H - t, len, H - t);       // bottom-left
+      mark(W - t, H, W - t, H - len); mark(W, H - t, W - len, H - t); // bottom-right
+    }
+    return out;
+  }
+  async function renderSceneCanvas() {
+    const fmt = FORMATS[state.format];
+    return fmt.sheet ? sheetLayout(state.format) : renderDesignCanvas(fmt.w, fmt.h);
   }
   async function exportSceneImage(ext) {
     const mime = ext === "jpg" ? "image/jpeg" : "image/png";
@@ -2997,15 +3439,130 @@
       alert("Sharing isn't supported in this browser — use Download instead.");
     }
   }
-  function exportSvg() {
-    return new QRCodeStyling({ ...currentOpts(1024), type: "svg" }).download({ name: "qrdurian-vector", extension: "svg" });
+  // ---- full-design vector export: the whole artboard as one SVG ----
+  // background (solid or gradient), texture as an SVG <pattern> (the tiles are
+  // already vector), rounded cards + outlines, clean module geometry per code
+  // (no ink raster), caption + free text with their Google Fonts @imported,
+  // stickers (emoji as <text>, icons as their Lucide paths) — all laid out by
+  // the same sceneLayout math the canvas exports use.
+  const escXml = (v) => String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const svgFontStack = (f) => `'${f}', Urbanist, 'Open Sans', -apple-system, Arial, sans-serif`;
+  const GF_URLS = { Urbanist: "Urbanist:wght@400;700" }; // on-page face still needs an @import inside a standalone SVG
+  let svgMeasure = null;
+  function svgTextW(text, font, ls) {
+    if (!svgMeasure) svgMeasure = document.createElement("canvas").getContext("2d");
+    svgMeasure.font = font;
+    try { svgMeasure.letterSpacing = ls + "px"; } catch (e) {}
+    return svgMeasure.measureText(text).width;
+  }
+  // one clean-module vector per code — same renderer as everywhere, svg type
+  async function codeSvgInner(data, i) {
+    const q = new QRCodeStyling({ ...currentOpts(1024, true, data), type: "svg" });
+    let src = "";
+    try {
+      const blob = await q.getRawData("svg");
+      if (blob) src = await blob.text();
+    } catch (e) { /* older lib path below */ }
+    if (!src) {
+      const host = document.createElement("div");
+      q.append(host);
+      try { await (q._svgDrawingPromise || q._canvasDrawingPromise); } catch (e) {}
+      const el = host.querySelector("svg");
+      src = el ? new XMLSerializer().serializeToString(el) : "";
+    }
+    src = src.replace(/<\?xml[\s\S]*?\?>/, "");
+    // embedded copies must not share def ids — suffix each code's ids + refs
+    src = src.replace(/id="([^"]*)"/g, `id="$1-c${i}"`)
+             .replace(/url\(['"]?#([^'")]+?)['"]?\)/g, `url(#$1-c${i})`)
+             .replace(/(xlink:href|href)="#([^"]*)"/g, `$1="#$2-c${i}"`);
+    const m = src.match(/<svg[^>]*>([\s\S]*)<\/svg>\s*$/);
+    return m ? m[1] : "";
+  }
+  async function exportSvg() {
+    const fmt = FORMATS[state.format];
+    const W = fmt.w, H = fmt.h;
+    const { u, qs, pad, cardSize, capGap, cap, cards, gy, groupH } = sceneLayout(W, H);
+
+    // real faces first — text measurement + the @import block both need them
+    const fams = new Set();
+    if (cap) fams.add(state.capFont);
+    state.texts.forEach((it) => fams.add(it.f));
+    await Promise.all([...fams].map(ensureFont));
+    const inners = await Promise.all(codes().map(codeSvgInner));
+
+    const out = [];
+    out.push(`<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`);
+    const imports = [...fams].map((f) => (FONT_DEFS[f] && FONT_DEFS[f].gf) || GF_URLS[f]).filter(Boolean)
+      .map((gf) => `@import url('https://fonts.googleapis.com/css2?family=${gf}&amp;display=swap');`).join("");
+    if (imports) out.push(`<style>${imports}</style>`);
+
+    out.push("<defs>");
+    if (state.sceneBg !== "solid") {
+      out.push(`<linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${shade(state.bg, 14)}"/><stop offset="1" stop-color="${shade(state.bg, -14)}"/></linearGradient>`);
+    }
+    let texRect = "";
+    if (state.texture !== "none") {
+      const tsvg = textureSVG(state.texture); // every texture tile is vector — reuse its geometry
+      const tm = tsvg && tsvg.match(/width="(\d+)"[^>]*>([\s\S]*)<\/svg>\s*$/);
+      if (tm) {
+        const scale = Math.min(W, H) / 440; // match the on-screen texture density
+        out.push(`<pattern id="tex" width="${tm[1]}" height="${tm[1]}" patternUnits="userSpaceOnUse" patternTransform="scale(${scale})">${tm[2]}</pattern>`);
+        texRect = `<rect width="${W}" height="${H}" fill="url(#tex)"/>`;
+      }
+    }
+    cards.forEach((c, i) =>
+      out.push(`<clipPath id="qrclip-${i}"><rect x="${c.x + pad}" y="${c.y + pad}" width="${qs}" height="${qs}" rx="${qs * 0.05}"/></clipPath>`));
+    out.push("</defs>");
+
+    out.push(`<rect width="${W}" height="${H}" fill="${state.sceneBg === "solid" ? state.bg : "url(#bgGrad)"}"/>`);
+    if (texRect) out.push(texRect);
+
+    const r = cardSize * 0.16;
+    cards.forEach((c, i) => {
+      out.push(`<rect x="${c.x}" y="${c.y}" width="${cardSize}" height="${cardSize}" rx="${r}" fill="${cardColor()}"/>`);
+      if (state.outlineW > 0) {
+        const lw = cardSize * 0.0045 * state.outlineW;
+        out.push(`<rect x="${c.x + lw / 2}" y="${c.y + lw / 2}" width="${cardSize - lw}" height="${cardSize - lw}" rx="${Math.max(2, r - lw / 2)}" fill="none" stroke="${state.outline}" stroke-width="${lw}"/>`);
+      }
+      out.push(`<g clip-path="url(#qrclip-${i})"><svg x="${c.x + pad}" y="${c.y + pad}" width="${qs}" height="${qs}" viewBox="0 0 1024 1024">${inners[i] || inners[0]}</svg></g>`);
+    });
+
+    const ls = u * 0.008;
+    if (cap) {
+      let fs = Math.round(u * 0.042);
+      const fontFor = (px) => `700 ${px}px "${state.capFont}", Urbanist, 'Open Sans', -apple-system, Arial, sans-serif`;
+      const tw = svgTextW(cap, fontFor(fs), ls);
+      if (tw > W * 0.92) fs = Math.max(9, Math.floor(fs * (W * 0.92) / tw));
+      out.push(`<text x="${W / 2}" y="${gy + groupH + capGap}" text-anchor="middle" fill="${state.capColor}" font-weight="700" font-size="${fs}" letter-spacing="${ls}" font-family="${escXml(svgFontStack(state.capFont))}">${escXml(cap)}</text>`);
+    }
+    state.texts.forEach((it) => {
+      const fs = Math.max(9, Math.round(u * it.s));
+      out.push(`<text x="${it.x * W}" y="${it.y * H}" text-anchor="middle" fill="${it.c}" font-weight="700" font-size="${fs}" letter-spacing="${ls}" font-family="${escXml(svgFontStack(it.f))}">${escXml(it.t)}</text>`);
+    });
+    state.stickers.forEach((st) => {
+      const sz = u * st.s, scx = st.x * W, scy = st.y * H;
+      if (st.t === "emoji") {
+        out.push(`<text x="${scx}" y="${scy + sz * 0.06}" text-anchor="middle" dominant-baseline="central" font-size="${sz}" font-family="-apple-system, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif">${escXml(st.k)}</text>`);
+      } else {
+        const svg = stickerSvg(st.k); // the Lucide inline paths, tinted like the canvas sprite
+        if (svg) out.push(`<g transform="translate(${scx - sz / 2} ${scy - sz / 2}) scale(${sz / 24})" fill="none" stroke="${st.c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${svg.innerHTML}</g>`);
+      }
+    });
+    out.push("</svg>");
+
+    const blob = new Blob([out.join("\n")], { type: "image/svg+xml" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `qrdurian-${state.format}.svg`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   }
   // file type → one final Download button
   let fileType = "png";
   const FT_HINTS = {
     png: "Full design with ink texture and background. Best quality.",
     jpg: "Full design, smaller file — handy for WhatsApp and email.",
-    svg: "Clean vector code only — scales to any size, no ink texture.",
+    svg: "Full design as vector ~ scales to any size. Ink becomes clean modules.",
   };
   $("fileTypePresets").querySelectorAll(".preset").forEach((b) => {
     b.addEventListener("click", () => {
@@ -3016,12 +3573,47 @@
       syncGalleryUI();
     });
   });
+  // print sheets are raster page compositions — vector export stays off for them
+  const SHEET_TAGS = { stickers: "A4 sheet ~ tiled 3×4 at export", tent: "A4 tent ~ folded pair at export", counter: "A5 card ~ crop marks at export" };
+  function syncSheetUI() {
+    const sheet = FORMATS[state.format].sheet;
+    $("fileTypePresets").querySelector('[data-ft="svg"]').disabled = !!sheet;
+    if (sheet && fileType === "svg") $("fileTypePresets").querySelector('[data-ft="png"]').click();
+    $("ftHint").textContent = sheet ? "Print sheets export as PNG or JPG ~ SVG is off here." : FT_HINTS[fileType];
+    const tag = $("sheetTag");
+    tag.hidden = !sheet;
+    if (sheet) tag.textContent = SHEET_TAGS[sheet];
+  }
   $("downloadBtn").addEventListener("click", () =>
     busy($("downloadBtn"), async () => {
       await (fileType === "svg" ? exportSvg() : exportSceneImage(fileType));
     })
   );
   $("shareBtn").addEventListener("click", () => busy($("shareBtn"), shareScene));
+
+  // Copy: the rendered PNG straight to the clipboard ~ paste into chats and docs
+  const canCopyImage = !!(navigator.clipboard && navigator.clipboard.write && window.ClipboardItem);
+  $("copyImgBtn").addEventListener("click", async () => {
+    const b = $("copyImgBtn");
+    if (!canCopyImage) {
+      const h = $("ftHint"), savedHint = h.textContent;
+      h.textContent = "Copying images isn't supported in this browser ~ use Download instead.";
+      setTimeout(() => { h.textContent = savedHint; }, 2600);
+      return;
+    }
+    let copied = false;
+    await busy(b, async () => {
+      // Safari wants the ClipboardItem made inside the gesture — hand it a promise
+      const png = renderSceneCanvas().then((c) => new Promise((res) => c.toBlob(res, "image/png")));
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": png })]);
+      copied = true;
+    });
+    if (copied) {
+      const saved = b.innerHTML;
+      b.textContent = "✓ Copied";
+      setTimeout(() => { b.innerHTML = saved; }, 1500);
+    }
+  });
 
   // phones: the share sheet is the only web path into the photo gallery — say so
   let canShareFiles = false;
@@ -3380,6 +3972,7 @@
   if (!booted) $("content").value = state.data;
   syncChips();
   syncFmtSelect();
+  syncSheetUI(); // a restored design may boot straight into a print-sheet format
   syncGalleryUI();
   syncQrBtn(); // a shared multi-code design may already be at the 3-code cap
   placeLooks(); // controls into the studio sidebar, or back to mobile sheets
@@ -3390,9 +3983,10 @@
   const bootFonts = [state.capFont, ...state.texts.map((it) => it.f)].filter((f) => f !== "Urbanist");
   if (bootFonts.length) Promise.all(bootFonts.map(ensureFont)).then(() => drawPreview());
   rebuildStickerSprites(); // shared designs carry sticker names only — sprites build here
-  if (!isStudio()) openSheet("content"); // mobile/tablet land with the Content card; studio lands clean
+  if (!isStudio() && !document.body.classList.contains("embed")) openSheet("content"); // mobile/tablet land with the Content card; studio + embed land clean
   drawPreview();
   queueQr();
+  histPush(); // seed undo history with the boot state ~ the first undo returns here
 </script>
 </body>
 </html>

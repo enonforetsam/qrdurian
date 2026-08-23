@@ -80,6 +80,10 @@
 
   .topbar { grid-column: 1 / -1; display: flex; align-items: center;
     justify-content: space-between; margin-bottom: var(--sp-6); }
+  .topnav { display: flex; align-items: center; gap: var(--sp-5); }
+  .topnav > a:not(.btn) { color: var(--muted); text-decoration: none;
+    font-size: var(--fs-sm); font-weight: 600; }
+  .topnav > a:not(.btn):hover { color: var(--accent); }
 
   /* H1 — optically aligned via .h-display (design-system.js) */
   .h-display { grid-column: 1 / 10; font-family: var(--font-display);
@@ -161,7 +165,10 @@
       <div class="band">
         <div class="topbar">
           <a class="brand" href="/"><img src="/durian.svg" alt="qrdurian" /> QR <span>Durian</span></a>
-          <a class="btn accent" href="/">Try it free</a>
+          <nav class="topnav">
+            <a href="/templates">Templates</a>
+            <a class="btn accent" href="/">Try it free</a>
+          </nav>
         </div>
       </div>
 
@@ -220,7 +227,7 @@
 
       <div class="band section-gap">
         <div class="foot">
-          <a href="/">QR Durian</a> · <a href="/looks">Designs</a> · Free QR code designer · No signup required
+          <a href="/">QR Durian</a> · <a href="/looks">Designs</a> · <a href="/templates">Templates</a> · Free QR code designer · No signup required
         </div>
       </div>
 
