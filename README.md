@@ -3,8 +3,8 @@
 **Design beautiful, custom QR codes in seconds. Free, no signup, open source.**
 Live at **[qrdurian.com](https://qrdurian.com)** · MIT licensed ([LICENSE](LICENSE)) · contributions welcome
 
-qrdurian is a single-file, mobile-first QR code designer. You land on a bright durian-yellow
-page with a live QR floating in the middle, walk through four steps — Content → Style →
+qrdurian is a single-file, mobile-first QR code designer. You land on a clean warm-white
+studio with a live QR floating in the middle, walk through four steps — Content → Style →
 Artboard → Export — and leave with a print-ready PNG or vector SVG. Everything runs in the
 browser; nothing is uploaded anywhere. No account, no paywall — every feature is free.
 
@@ -24,25 +24,27 @@ Signature touches:
 - **Ink engine** — QR modules are rendered as realistic ink: fiber-wicking jitter, ragged
   "goo" edges, coffee-ring rim pooling, paper grain. Every Generate press produces a subtly
   unique impression. (SVG export stays clean vector by design.)
-- **Looks gallery** — the strip under the artboard holds 20 complete named designs
+- **Theme slider** — a compact horizontal picker holds 20 complete named designs
   (12 palette looks + 8 "dressed" looks like Kopitiam ☕ MENU, Wi-Fi, Pay Here, Wedding 💍)
   with labeled, style-true thumbnails. Tap to wear the whole look: palette, texture, ink,
   corners, module shape — and caption + center logo, *unless* the user has set their own
   (smart takeover: one custom caption/logo edit and looks become visuals-only).
-  On desktop (≥900×700) the strip opens into a wrapped two-row gallery, all looks visible.
+  The picker stays out of the artboard so the canvas remains the editing surface.
 - **Shuffle** (top-right ↻) — rolls one of the 20 looks at random; every roll scannable.
 - **Textures** — 10 repeating patterns (durians, topography, dots, grid, stripes, waves,
   crosses, spikes, leaves, hexagons). Waves is the landing default.
 - **Logos** — uploaded center logos are auto-rounded (18% radius) to match the design
   language; error correction bumps to H automatically.
-- **The page is the canvas** — the design's background *is* the page background; the chrome
-  flips light/dark from its luminance. The exported file reproduces it 1:1.
-- **Studio layout** (≥1100px) — full Canva anatomy: a vertical icon rail (Content / Looks /
-  Style / Artboard / Export) plus a full-height design panel fill the left side; the whole
+- **Soft neumorphic studio** — the editor chrome sits on a fixed warm-white surface, with
+  raised and pressed controls. A dedicated editor section frames the artboard; the design
+  background lives inside the artboard preview, so the exported file
+  reproduces the artboard 1:1 without recoloring the UI around it.
+- **Studio layout** (≥1100px) — full Canva anatomy: Content / Style / Artboard / Export
+  controls fill the left side; the whole
   right side is the editor — a horizontal bar (caption text, font, color, artboard size
   chips) over the live canvas. The canvas reshapes to the chosen format; non-square gets a
-  dashed file-bounds frame. The looks gallery lives in the panel's Looks tab (one DOM node,
-  reparented across the 1100px breakpoint).
+  dashed file-bounds frame. Themes live in the Style section as a horizontal slider on
+  mobile/tablet and in studio.
 - **Caption fonts** — five curated faces (Urbanist, Playfair Display, Caveat, Bebas Neue,
   Space Mono), lazy-loaded from Google Fonts on first use; dressed looks pick their own
   (Wedding→Playfair, Receipt→Space Mono, Neon→Bebas, Makan→Caveat). `font=` query param,
@@ -56,20 +58,19 @@ Signature touches:
 - **Multi-code artboards** — "Add another QR" (Content card) puts up to 3 codes on one
   design, sharing the style; `sceneLayout` rows them on wide artboards, stacks on tall
   (hash key `e`). Click a card to point the Content field at that code, ✕/Delete removes
-  it (the last code stays).
+  it (the last code stays), and drag selected QR cards directly on the canvas to place them.
 - **Studio panel density** — Content / QR style / Artboard stack in the full-height panel
-  with section titles; rail icons smooth-scroll to their section. Looks swaps the whole
-  panel view (`body.looks-tab`).
+  with section titles. Theme thumbnails stay inside QR style as a horizontal slider.
 
 ## Design system
 
-- **Palette**: durian yellow `#FFE14D` (default bg) · leaf green `#2E7D32` (accents) ·
-  forest `#163300` / bright `#9FE870` (brand mark, dark-mode accents) · black `#101113`
-  reserved exclusively for download actions.
+- **Palette**: warm white `#F4F4EF` (chrome surface and default artboard) · graphite
+  `#3A3D40` (accents) · near-black `#1C1D20`
+  reserved for generate/download actions.
 - **Type**: Urbanist (display: brand, labels, buttons) + Open Sans (body) — Google Fonts.
 - **Icons**: [Lucide](https://lucide.dev), pinned at `0.452.0` via unpkg.
-- **Surfaces**: borderless white cards on color, floating white pill nav with circular
-  buttons (Wise-inspired), no drop shadows — flat with one intentional outline: the QR's own.
+- **Surfaces**: clean borderless neumorphic cards, raised circular icon controls, and subtle
+  inset active states tuned from one shared chrome material.
 - **Motion**: Web Animations API spring bounces for the cards (scale-from-center, no
   vertical travel), QR shake + ink melt on Generate, `prefers-reduced-motion` respected.
 
@@ -88,12 +89,12 @@ Key invariants — **do not break these**:
 2. **CSS/JS height pairing.** The cards' CSS `max-height` (`min(46vh, 420px)`, and the
    `max-height: 500px` landscape override) must match `sheetH` in `fitPreview()` — that's
    what guarantees an open card never covers the QR or its caption.
-3. **The QR never moves while editing.** Mobile/tablet: it centers on the page when no card
+3. **The QR never moves while editing.** Mobile/tablet: it centers in the artboard zone when no card
    is open, docks to a fixed upper position when one opens, and ignores export-size changes
    (format applies to the file only). Studio (≥1100px, Canva-style): the design card docks
    as a left panel, the canvas centers in the remaining zone regardless of panel state, and
-   the canvas DOES reshape to the chosen format (aspect chips above it; non-square formats
-   get a dashed file-bounds frame since the page bg bleeds past the artboard edge).
+   the canvas DOES reshape to the chosen format (the sidebar's Size picker drives it;
+   non-square formats get a dashed file-bounds frame).
    `isStudio()` in JS must match the studio CSS media query (`min-width: 1100px`).
 4. **Textures are defined twice on purpose.** `textureSVG()` (CSS tiles for the page) and
    `TEX_TILES` (canvas-native `Path2D` for exports) mirror each other — SVG images taint the

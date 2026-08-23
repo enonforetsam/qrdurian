@@ -17,7 +17,7 @@
 <link rel="icon" type="image/svg+xml" href="durian.svg" />
 <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 <link rel="manifest" href="manifest.json" />
-<meta name="theme-color" content="#163300" />
+<meta name="theme-color" content="#F4F4EF" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@500;600;700;800&family=Open+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -25,38 +25,42 @@
 <script src="https://unpkg.com/lucide@0.452.0"></script>
 <style>
   :root {
-    --bg: #f4f4f5;
-    --panel: #ffffff;
-    --panel-2: #fafafa;
-    --text: #18181b;
-    --muted: #71717a;
-    --border: #e4e4e7;
-    --border-2: #ededf0;
-    --accent: #2E7D32;   /* durian-leaf green */
-    --accent-ink: #ffffff; /* text/icons on accent */
-    --char: #2b2d31;        /* charcoal — the button colour */
-    --char-hover: #3a3d44;
+    /* ---- clean white neumorphism — the chrome surface is FIXED (it does not
+       flip with the canvas); every panel & control is extruded from / pressed
+       into this one neutral field. Contrast-verified AA (type-and-color). ---- */
+    --surface: #F4F4EF;          /* warm white — every chrome panel & control */
+    --nl: #FFFFFF;               /* neumorphic highlight (top-left, light) */
+    --nd: #D7D9D2;               /* neumorphic shadow  (bottom-right, soft) */
+
+    --bg: var(--surface);
+    --panel: var(--surface);
+    --panel-2: var(--surface);   /* inset controls share the surface colour */
+    --text: #202124;             /* ink — 14:1 on surface */
+    --muted: #62645F;            /* secondary ink — 5.4:1 */
+    --border: transparent;       /* neumorphism speaks in shadow, not borders */
+    --border-2: rgba(32,33,36,.12);
+    --accent: #3A3D40;           /* graphite accent — clean, neutral */
+    --accent-ink: #ffffff;       /* text/icons on accent */
+    --char: #1C1D20;             /* near-black — the Download colour, 16.9:1 */
+    --char-hover: #2b2d31;
     --char-ink: #ffffff;
-    --ring: rgba(46,125,50,.28);
-    --shadow: 0 1px 2px rgba(0,0,0,.04), 0 12px 40px rgba(0,0,0,.08);
-    --radius: 18px;
+    --ring: rgba(58,61,64,.30);
+    --radius: 22px;
     --sat: env(safe-area-inset-top, 0px);
+
+    /* ---- restrained neumorphic edge recipes ---- */
+    --n-raised:    0 1px 0 rgba(255,255,255,.80), 0 8px 20px rgba(32,33,36,.10);
+    --n-raised-sm: 0 1px 0 rgba(255,255,255,.76), 0 3px 8px rgba(32,33,36,.08);
+    --n-inset:     inset 0 1px 4px rgba(32,33,36,.12), inset 0 -1px 0 rgba(255,255,255,.68);
+    --n-inset-sm:  inset 0 1px 3px rgba(32,33,36,.10), inset 0 -1px 0 rgba(255,255,255,.62);
+    --n-line: rgba(32,33,36,.10);
+    --n-float: 0 1px 0 rgba(255,255,255,.78), 0 14px 28px rgba(32,33,36,.12);
+    --shadow: var(--n-raised);
   }
+  /* The chrome stays white regardless of the design background. Only
+     canvas-area helpers still read data-theme. */
   [data-theme="dark"] {
-    --bg: #09090b;
-    --panel: #18181b;
-    --panel-2: #1f1f23;
-    --text: #fafafa;
-    --muted: #a1a1aa;
-    --border: #27272a;
-    --border-2: #2a2a2e;
-    --accent: #9FE870;     /* bright green stays for dark backgrounds — visibility */
-    --accent-ink: #163300;
-    --char: #3a3d44;        /* lighter charcoal on dark chrome so buttons separate */
-    --char-hover: #4a4e56;
-    --char-ink: #ffffff;
-    --ring: rgba(159,232,112,.45);
-    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 20px 50px rgba(0,0,0,.5);
+    --border-2: rgba(32,33,36,.12);
   }
 
   * { box-sizing: border-box; }
@@ -72,6 +76,14 @@
     min-height: 100%;
     transition: background .3s ease, color .3s ease;
   }
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(255,255,255,.52), rgba(215,217,210,.22));
+    mix-blend-mode: soft-light;
+  }
 
   header {
     display: flex; align-items: center; justify-content: center;
@@ -81,12 +93,15 @@
   }
   .shuffle-btn {
     position: absolute; right: 18px; top: 50%; transform: translateY(-50%);
-    width: 42px; height: 42px; border-radius: 50%; border: none;
-    background: var(--panel); color: var(--accent);
+    width: 44px; height: 44px; border-radius: 50%; border: none;
+    background: var(--surface); color: var(--accent);
     display: grid; place-items: center; cursor: pointer;
-    transition: background .2s ease;
+    box-shadow: var(--n-raised-sm);
+    transition: box-shadow .2s ease, color .2s ease;
   }
-  .shuffle-btn:hover { background: var(--panel-2); }
+  .shuffle-btn:hover { color: var(--text); }
+  .shuffle-btn:active { box-shadow: var(--n-inset-sm); }
+  @media (prefers-reduced-motion: reduce) { .shuffle-btn { transition: none; } }
   .shuffle-btn svg { width: 19px; height: 19px; }
 
 
@@ -94,25 +109,27 @@
   .promo {
     display: flex; align-items: center; gap: 4px;
     margin: -6px auto 10px; width: fit-content; max-width: calc(100% - 28px);
-    background: var(--panel); border-radius: 999px;
-    padding: 8px 8px 8px 16px;
+    background: var(--surface); border-radius: 999px;
+    padding: 9px 9px 9px 17px;
     font-size: 13px;
+    box-shadow: var(--n-float);
     animation: fadeup .5s ease .8s both;
   }
   .promo a, .promo span { color: var(--text); text-decoration: none; }
   .promo b { font-family: "Urbanist", sans-serif; color: var(--accent); }
   .promo button {
-    border: none; background: var(--panel-2); color: var(--muted);
+    border: none; background: var(--surface); color: var(--muted);
     width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-size: 11px;
-    flex: 0 0 auto;
+    flex: 0 0 auto; box-shadow: var(--n-raised-sm);
   }
+  .promo button:active { box-shadow: var(--n-inset-sm); }
   .promo[hidden] { display: none; }
   /* display face: Urbanist for brand, titles, labels, buttons */
   .brand, .sheet-title, .lbl, .clabel, .btn, .chip-color, .mini-btn,
   .fmt-row .fname, .preset .ptxt, .divider {
     font-family: "Urbanist", "Open Sans", system-ui, sans-serif;
   }
-  .brand { display: flex; align-items: center; gap: 12px; font-weight: 750; font-size: 19px; letter-spacing: -.01em; }
+  .brand { display: flex; align-items: center; gap: 12px; font-weight: 750; font-size: 19px; letter-spacing: 0; }
   .brand .mark { width: 40px; height: 40px; display: grid; place-items: center; }
   .brand .mark svg, .brand .mark img { width: 100%; height: 100%; object-fit: contain; display: block; }
   .brand .dim { color: var(--muted); font-weight: 500; }
@@ -137,16 +154,36 @@
   @media (max-width: 880px) {
     /* clear the Dynamic Island, then a little extra so the logo isn't cramped */
     header { padding: calc(26px + var(--sat)) 18px 12px; }
-    main { padding-top: 16px; }
-    .card.controls, .export-sheet { padding: 16px 18px; } /* outranks the base .card rule */
+    main { padding: 12px 12px calc(92px + env(safe-area-inset-bottom)); }
+    .card.controls, .export-sheet { padding: 14px 14px; } /* outranks the base .card rule */
+    .editor-section {
+      width: 100%;
+      border-radius: 22px;
+      padding: 12px 10px 8px;
+      background: rgba(255,255,255,.5);
+    }
+    .looks {
+      gap: 8px;
+      padding-bottom: 8px;
+    }
+    .look { width: 68px; }
+    .look-chip {
+      width: 58px;
+      height: 58px;
+      border-radius: 15px;
+    }
+    .look-name {
+      max-width: 64px;
+      font-size: 8.5px;
+    }
   }
   .card.controls::-webkit-scrollbar, .export-sheet::-webkit-scrollbar { display: none; }
 
   .card {
-    background: var(--panel);
-    border: 1px solid var(--border);
+    background: var(--surface);
+    border: none;
     border-radius: var(--radius);
-    box-shadow: var(--shadow);
+    box-shadow: var(--n-float);
     padding: 26px;
   }
 
@@ -156,34 +193,61 @@
     width: 100%;
     transition: transform .45s cubic-bezier(.22, 1, .36, 1);
     will-change: transform;
+    position: relative;
   }
-
+  .editor-section {
+    width: min(100%, 760px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border: 1px solid var(--n-line);
+    border-radius: 28px;
+    background: rgba(255,255,255,.38);
+    padding: 18px 14px 10px;
+  }
   .artboard-wrap {
     width: 100%; display: flex; justify-content: center;
     overflow: hidden;
   }
-  /* Looks strip — browse beauty, tap to wear it */
+  .theme-head {
+    width: 100%;
+    margin: 0 0 8px;
+    font-family: "Urbanist", sans-serif;
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  /* Theme slider — browse beauty without taking over the editor canvas */
   .looks {
-    display: flex; gap: 10px; align-items: center;
-    max-width: 100%; overflow-x: auto; padding: 16px 14px 6px;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 10px;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 2px 2px 10px;
     scrollbar-width: none;
-    opacity: 1; transition: opacity .3s ease;
+    -webkit-overflow-scrolling: touch;
   }
   .looks::-webkit-scrollbar { display: none; }
-  body.sheet-open .looks { opacity: 0; pointer-events: none; }
   .look {
-    flex: 0 0 auto; width: 62px;
+    flex: 0 0 auto;
+    width: 72px;
     display: flex; flex-direction: column; align-items: center; gap: 4px;
     padding: 0; border: none; background: none; cursor: pointer;
     transition: transform .15s ease;
   }
   .look:active { transform: scale(.9); }
   .look-chip {
-    display: block; width: 56px; height: 56px;
-    border-radius: 16px; border: 2.5px solid transparent; overflow: hidden;
-    transition: border-color .2s ease;
+    display: block; width: 64px; height: 64px;
+    border-radius: 16px; border: none; overflow: hidden;
+    box-shadow: var(--n-raised-sm);
+    transition: box-shadow .2s ease, transform .15s ease;
   }
-  .look.active .look-chip { border-color: var(--accent); }
+  .look.active .look-chip { box-shadow: var(--n-inset), 0 0 0 2px var(--accent); }
   .look canvas { width: 100%; height: 100%; display: block; }
   .look-name {
     font-family: "Urbanist", sans-serif; font-weight: 800; font-size: 9px;
@@ -191,18 +255,20 @@
     opacity: .72; white-space: nowrap; max-width: 62px;
     overflow: hidden; text-overflow: ellipsis;
   }
-  /* desktop / big aspect ratios: the strip opens into a full gallery — every look
-     visible at once, no scrolling. (fitPreview reads the strip's real height.) */
+  .look.active .look-name { color: var(--accent); opacity: 1; }
+  /* desktop / big aspect ratios: keep the slider compact but roomier. */
   @media (min-width: 900px) and (min-height: 700px) {
     .looks {
-      flex-wrap: wrap; justify-content: center; row-gap: 12px;
-      max-width: 880px; margin: 0 auto; overflow-x: visible;
+      gap: 12px;
     }
-    .look { width: 72px; }
-    .look-chip { width: 64px; height: 64px; border-radius: 18px; }
+    .look { width: 76px; }
+    .look-chip { width: 68px; height: 68px; border-radius: 18px; }
     .look-name { font-size: 9.5px; max-width: 72px; }
   }
-  #artboard { transition: width .25s ease, height .25s ease, margin-top .25s ease; }
+  #artboard {
+    touch-action: none;
+    transition: width .25s ease, height .25s ease, margin-top .25s ease;
+  }
   body:not(.sheet-open) #artboard { cursor: pointer; }
   @keyframes qrshake {
     0%, 100% { transform: translate(0,0) rotate(0) scale(1); }
@@ -214,19 +280,29 @@
   #artboard.shaking { animation: qrshake .55s ease both; }
 
   .btn {
-    flex: 1; border: 1px solid var(--border); background: var(--panel);
-    color: var(--text); border-radius: 12px; padding: 12px 14px;
-    font-size: 14px; font-weight: 600; cursor: pointer; letter-spacing: -.01em;
-    transition: all .15s ease; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    flex: 1; border: none; background: var(--surface);
+    color: var(--text); border-radius: 13px; padding: 13px 14px;
+    font-size: 14px; font-weight: 700; cursor: pointer; letter-spacing: 0;
+    box-shadow: var(--n-raised-sm);
+    transition: box-shadow .15s ease, color .15s ease, background .15s ease;
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
     font-family: inherit;
   }
-  .btn:hover { transform: translateY(-1px); border-color: var(--muted); }
-  .btn:active { transform: translateY(0); }
-  .btn:disabled { opacity: .55; cursor: wait; transform: none; }
+  .btn:hover { color: var(--accent); }
+  .btn:active { box-shadow: var(--n-inset-sm); color: var(--text); }
+  .btn:disabled { opacity: .55; cursor: wait; box-shadow: var(--n-inset-sm); }
   .btn[hidden] { display: none; }
-  .btn.primary { background: var(--char); color: var(--char-ink); border-color: transparent; box-shadow: 0 4px 14px rgba(0,0,0,.18); }
-  .btn.primary:hover { background: var(--char-hover); box-shadow: 0 6px 20px rgba(0,0,0,.22); }
+  .btn:focus-visible { outline: none; box-shadow: var(--n-raised-sm), 0 0 0 3px var(--ring); }
+  /* primary = the dark Generate / Download key: a raised near-black control */
+  .btn.primary { background: var(--char); color: var(--char-ink);
+    box-shadow: 0 1px 0 rgba(255,255,255,.08), 0 8px 16px rgba(32,33,36,.18); }
+  .btn.primary:hover { background: var(--char-hover); color: #fff; }
+  .btn.primary:active { box-shadow: inset 0 2px 5px rgba(0,0,0,.40); }
+  .btn.accent { background: var(--accent); color: var(--accent-ink);
+    box-shadow: 0 1px 0 rgba(255,255,255,.10), 0 8px 16px rgba(32,33,36,.14); }
+  .btn.accent:hover { color: #fff; }
   .btn svg { width: 16px; height: 16px; }
+  @media (prefers-reduced-motion: reduce) { .btn { transition: color .15s ease; } }
 
   /* ---------- Controls ---------- */
   .field { margin-bottom: 22px; }
@@ -239,18 +315,20 @@
     margin: 26px 0 22px; color: var(--muted);
     font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
   }
-  .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+  .divider::before, .divider::after { content: ""; flex: 1; height: 2px; border-radius: 999px; background: var(--nd); }
 
   textarea, input[type="text"] {
     width: 100%; resize: vertical; min-height: 52px;
-    background: var(--panel-2); border: 1px solid var(--border);
-    border-radius: 12px; padding: 13px 15px;
+    background: var(--surface); border: none;
+    border-radius: 13px; padding: 14px 16px;
     color: var(--text); font-size: 15px; font-family: inherit; line-height: 1.45;
-    transition: border-color .15s ease, box-shadow .15s ease;
+    box-shadow: var(--n-inset-sm);
+    transition: box-shadow .15s ease;
   }
-  input[type="text"] { min-height: auto; padding: 11px 14px; font-size: 14px; }
+  input[type="text"] { min-height: auto; padding: 12px 15px; font-size: 14px; }
+  textarea::placeholder, input[type="text"]::placeholder { color: var(--muted); opacity: .75; }
   textarea:focus, input[type="text"]:focus {
-    outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px var(--ring);
+    outline: none; box-shadow: var(--n-inset-sm), 0 0 0 3px var(--ring);
   }
 
   .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
@@ -258,106 +336,117 @@
   /* segmented presets */
   .presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
   .preset {
-    border: 1px solid var(--border); background: var(--panel-2);
-    border-radius: 11px; padding: 10px 4px 8px; cursor: pointer; text-align: center;
-    transition: all .15s ease; font-family: inherit;
+    border: none; background: var(--surface);
+    border-radius: 12px; padding: 10px 4px 8px; cursor: pointer; text-align: center;
+    box-shadow: var(--n-raised-sm);
+    transition: box-shadow .15s ease, color .15s ease; font-family: inherit;
   }
-  .preset:hover { border-color: var(--muted); }
-  .preset.active { border-color: transparent; background: var(--char); }
-  .preset.active .swatch path, .preset.active .swatch rect, .preset.active .swatch circle { fill: var(--char-ink); }
-  .preset.active .ptxt { color: var(--char-ink); }
+  .preset:hover { color: var(--accent); }
+  .preset.active { background: var(--surface); box-shadow: var(--n-inset); }
+  .preset.active .swatch path, .preset.active .swatch rect, .preset.active .swatch circle { fill: var(--accent); }
+  .preset.active .ptxt { color: var(--accent); }
   .preset .swatch { width: 30px; height: 30px; margin: 0 auto 6px; }
   .preset .swatch path, .preset .swatch rect, .preset .swatch circle { fill: var(--text); }
   .preset .swatch [fill="none"] { fill: none !important; } /* keep outline-style icons hollow */
-  .preset.active { color: var(--accent-ink); } /* currentColor strokes flip with the fill */
-  .preset .ptxt { font-size: 11px; font-weight: 600; color: var(--muted); }
+  .preset.active { color: var(--accent); } /* currentColor strokes flip with the fill */
+  .preset .ptxt { font-size: 11px; font-weight: 700; color: var(--muted); }
   .preset.txt { padding: 11px 4px; }
   .preset.txt .ptxt { font-size: 12.5px; }
 
   /* color picker pill */
   .color-pill {
     display: flex; align-items: center; gap: 11px;
-    background: var(--panel-2); border: 1px solid var(--border);
-    border-radius: 12px; padding: 9px 12px;
+    background: var(--surface); border: none;
+    border-radius: 13px; padding: 10px 13px; box-shadow: var(--n-inset-sm);
   }
   .color-pill input[type="color"] {
     -webkit-appearance: none; appearance: none; border: none;
     width: 30px; height: 30px; border-radius: 8px; background: none; cursor: pointer; padding: 0;
   }
   .color-pill input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
-  .color-pill input[type="color"]::-webkit-color-swatch { border: 1px solid var(--border); border-radius: 8px; }
+  .color-pill input[type="color"]::-webkit-color-swatch { border: 1px solid var(--border-2); border-radius: 8px; }
   .color-pill .hex { font-size: 13px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
 
   /* swatch row */
   .swatches { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
-  .dot { width: 24px; height: 24px; border-radius: 7px; cursor: pointer; border: 1px solid var(--border-2);
+  .dot { width: 24px; height: 24px; border-radius: 8px; cursor: pointer; border: none;
+    box-shadow: var(--n-raised-sm);
     transition: transform .12s ease; }
   .dot:hover { transform: scale(1.12); }
 
-  /* slider */
+  /* slider — inset groove, raised graphite thumb */
   input[type="range"] {
-    -webkit-appearance: none; appearance: none; width: 100%; height: 6px;
-    background: var(--border); border-radius: 999px; outline: none;
+    -webkit-appearance: none; appearance: none; width: 100%; height: 12px;
+    background: var(--surface); border-radius: 999px; outline: none;
+    box-shadow: var(--n-inset-sm);
   }
   input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none; appearance: none; width: 20px; height: 20px;
+    -webkit-appearance: none; appearance: none; width: 22px; height: 22px;
     border-radius: 50%; background: var(--accent); cursor: pointer;
-    border: 3px solid var(--panel); box-shadow: 0 1px 6px rgba(0,0,0,.18);
+    border: none; margin-top: -5px; box-shadow: var(--n-raised-sm);
   }
+  input[type="range"]::-moz-range-thumb {
+    width: 22px; height: 22px; border-radius: 50%; background: var(--accent);
+    cursor: pointer; border: none; box-shadow: var(--n-raised-sm);
+  }
+  input[type="range"]:focus-visible { box-shadow: var(--n-inset-sm), 0 0 0 3px var(--ring); }
   .slider-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 9px; }
   .slider-head .val { font-size: 13px; font-weight: 650; color: var(--text); font-variant-numeric: tabular-nums; }
 
   /* logo upload */
   .logo-zone {
     display: flex; align-items: center; gap: 13px;
-    border: 1px dashed var(--border); border-radius: 12px; padding: 12px;
-    background: var(--panel-2);
+    border: none; border-radius: 13px; padding: 13px;
+    background: var(--surface); box-shadow: var(--n-inset-sm);
   }
   .logo-prev {
-    width: 46px; height: 46px; border-radius: 10px; flex-shrink: 0;
-    background: var(--panel); border: 1px solid var(--border);
+    width: 46px; height: 46px; border-radius: 11px; flex-shrink: 0;
+    background: var(--surface); border: none; box-shadow: var(--n-inset-sm);
     display: grid; place-items: center; overflow: hidden; color: var(--muted); font-size: 11px;
   }
   .logo-prev img { width: 100%; height: 100%; object-fit: contain; }
   .logo-actions { display: flex; gap: 8px; }
   .mini-btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-    border: 1px solid transparent; background: var(--char); color: var(--char-ink);
-    border-radius: 9px; padding: 8px 12px; font-size: 13px; font-weight: 600; cursor: pointer;
-    transition: all .15s ease; font-family: inherit;
+    border: none; background: var(--surface); color: var(--text);
+    border-radius: 10px; padding: 9px 13px; font-size: 13px; font-weight: 700; cursor: pointer;
+    box-shadow: var(--n-raised-sm);
+    transition: box-shadow .15s ease, color .15s ease; font-family: inherit;
   }
   .mini-btn i, .mini-btn svg { width: 15px; height: 15px; flex: 0 0 auto; }
-  .mini-btn:hover { background: var(--char-hover); }
-  .mini-btn.ghost { background: transparent; color: var(--muted); border-color: var(--border); }
-  .mini-btn:disabled { opacity: .45; cursor: default; }
-  .mini-btn:disabled:hover { border-color: var(--border); }
-  /* Pro-locked action: outlined + lock, invites the upgrade */
-  .mini-btn.locked { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
-  .mini-btn.locked:hover { background: var(--accent); color: #fff; }
+  .mini-btn:hover { color: var(--accent); }
+  .mini-btn:active { box-shadow: var(--n-inset-sm); }
+  .mini-btn.ghost { background: var(--surface); color: var(--muted); box-shadow: var(--n-raised-sm); }
+  .mini-btn:disabled { opacity: .5; cursor: default; box-shadow: var(--n-inset-sm); color: var(--muted); }
+  .mini-btn:disabled:hover { color: var(--muted); }
+  /* Pro-locked action: raised graphite text + lock, invites the upgrade */
+  .mini-btn.locked { background: var(--surface); color: var(--accent); box-shadow: var(--n-raised-sm); }
+  .mini-btn.locked:hover { color: var(--accent); box-shadow: var(--n-inset-sm); }
   a.mini-btn { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
 
   /* Content panel: two journeys, two tabs — New link / Existing QR */
-  .ct-tabs { display: flex; gap: 3px; margin-bottom: 14px; }
+  .ct-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
   .ct-tab {
     flex: 1; border: none; cursor: pointer;
-    background: var(--panel-2); color: var(--muted);
-    font-family: "Urbanist", sans-serif; font-weight: 700; font-size: 11.5px;
-    padding: 8px 0; border-radius: 9px;
-    transition: background .15s, color .15s;
+    background: var(--surface); color: var(--muted);
+    font-family: "Urbanist", sans-serif; font-weight: 800; font-size: 11.5px;
+    padding: 9px 0; border-radius: 10px;
+    box-shadow: var(--n-raised-sm);
+    transition: box-shadow .15s, color .15s;
   }
-  .ct-tab:first-child { border-radius: 9px 3px 3px 9px; }
-  .ct-tab:last-child { border-radius: 3px 9px 9px 3px; }
-  .ct-tab.active { background: var(--char); color: var(--char-ink); }
+  .ct-tab:hover { color: var(--accent); }
+  .ct-tab.active { background: var(--surface); color: var(--accent); box-shadow: var(--n-inset); }
   [data-ctab="link"] .ct-view[data-view="existing"] { display: none; }
   [data-ctab="existing"] .ct-view[data-view="link"] { display: none; }
   .ct-upload {
     width: 100%; display: flex; flex-direction: column; align-items: center; gap: 8px;
-    border: 1.5px dashed var(--border); border-radius: 14px;
-    background: var(--panel-2); color: var(--text); cursor: pointer;
+    border: 1.5px dashed var(--border-2); border-radius: 15px;
+    background: var(--surface); color: var(--text); cursor: pointer;
     padding: 26px 18px; text-align: center; font-family: inherit;
-    transition: border-color .15s, background .15s;
+    box-shadow: var(--n-inset-sm);
+    transition: border-color .15s, box-shadow .15s;
   }
-  .ct-upload:hover { border-color: var(--accent); background: var(--panel); }
+  .ct-upload:hover { border-color: var(--accent); }
   .ct-upload svg { width: 26px; height: 26px; color: var(--accent); }
   .ct-upload-title { font-family: "Urbanist", sans-serif; font-weight: 700; font-size: 14px; }
   .ct-upload .hint { margin-top: 0; }
@@ -385,23 +474,25 @@
   .color-chips .chip-color { flex: 1; justify-content: center; padding: 8px 6px; white-space: nowrap; }
   .chip-color {
     display: inline-flex; align-items: center; gap: 7px;
-    border: 1px solid var(--border); background: var(--panel-2); color: var(--text);
-    border-radius: 999px; padding: 7px 12px; font-size: 12.5px; font-weight: 600;
-    cursor: pointer; font-family: inherit; transition: all .15s ease;
+    border: none; background: var(--surface); color: var(--text);
+    border-radius: 999px; padding: 8px 13px; font-size: 12.5px; font-weight: 700;
+    cursor: pointer; font-family: inherit; box-shadow: var(--n-raised-sm);
+    transition: box-shadow .15s ease, color .15s ease;
   }
-  .chip-color:hover { border-color: var(--muted); }
-  .chip-color.compact { padding: 7px 9px; }
-  .cdot { width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--border-2); }
+  .chip-color:hover { color: var(--accent); }
+  .chip-color:active { box-shadow: var(--n-inset-sm); }
+  .chip-color.compact { padding: 8px 10px; }
+  .cdot { width: 16px; height: 16px; border-radius: 50%; box-shadow: var(--n-inset-sm); }
 
   .color-pop {
-    background: var(--panel-2); border: 1px solid var(--border);
-    border-radius: 12px; padding: 11px 12px;
+    background: var(--surface); border: none;
+    border-radius: 13px; padding: 12px 13px; box-shadow: var(--n-inset);
     margin: -4px 0 13px;
     display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
   }
   .color-pop[hidden] { display: none; }
   .color-pop .swatches { margin-top: 0; }
-  .chip-color.editing { border-color: var(--accent); }
+  .chip-color.editing { box-shadow: var(--n-inset-sm), 0 0 0 2px var(--accent); color: var(--accent); }
   .vhid { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 
   @keyframes fadeup { from { opacity: 0; transform: translateY(5px); } }
@@ -417,52 +508,58 @@
   .emoji-row { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
   .emoji-row::-webkit-scrollbar { display: none; }
   .emoji-btn {
-    width: 31px; height: 31px; flex: 0 0 auto;
-    border: none; background: var(--panel-2); border-radius: 9px;
+    width: 33px; height: 33px; flex: 0 0 auto;
+    border: none; background: var(--surface); border-radius: 10px;
     font-size: 17px; line-height: 1; padding: 0; cursor: pointer;
-    transition: transform .12s ease;
+    box-shadow: var(--n-raised-sm);
+    transition: box-shadow .12s ease;
   }
-  .emoji-btn:active { transform: scale(.85); }
+  .emoji-btn:active { box-shadow: var(--n-inset-sm); }
   .emoji-btn svg { width: 17px; height: 17px; color: var(--text); }
 
   .logo-mini { display: flex; align-items: center; gap: 8px; }
   .logo-mini .logo-prev { width: 36px; height: 36px; border-radius: 9px; }
 
   /* ---------- Bottom nav + sheets (all screens) ---------- */
-  .export-sheet { background: var(--panel); border: 1px solid var(--border); padding: 18px; }
+  .export-sheet { background: var(--surface); border: none; padding: 18px; }
   .fmt-row {
     width: 100%; display: flex; align-items: center; justify-content: space-between;
-    border: 1px solid var(--border); background: var(--panel-2); color: var(--text);
-    border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; cursor: pointer;
-    font-family: inherit; text-align: left; transition: all .15s ease;
+    border: none; background: var(--surface); color: var(--text);
+    border-radius: 13px; padding: 13px 15px; margin-bottom: 9px; cursor: pointer;
+    box-shadow: var(--n-raised-sm);
+    font-family: inherit; text-align: left; transition: box-shadow .15s ease, color .15s ease;
   }
+  .fmt-row:hover { color: var(--accent); }
   .select {
     width: 100%; display: flex; align-items: center; justify-content: space-between;
-    border: 1px solid var(--border); background: var(--panel-2); color: var(--text);
-    border-radius: 12px; padding: 12px 14px; font-size: 14px; font-weight: 600;
+    border: none; background: var(--surface); color: var(--text);
+    border-radius: 13px; padding: 13px 15px; font-size: 14px; font-weight: 700;
     font-family: "Urbanist", "Open Sans", system-ui, sans-serif;
-    cursor: pointer; transition: border-color .15s ease;
+    cursor: pointer; box-shadow: var(--n-raised-sm);
+    transition: box-shadow .15s ease, color .15s ease;
   }
-  .select:hover { border-color: var(--muted); }
+  .select:hover { color: var(--accent); }
+  .select.open { box-shadow: var(--n-inset-sm); }
   .select svg { width: 16px; height: 16px; transition: transform .2s ease; }
   .select.open svg { transform: rotate(180deg); }
   /* floating dropdowns — overlay the page, never change the card's height */
   #fmtList, #texList, #fontList {
     position: fixed; z-index: 80;
-    background: var(--panel); border: 1px solid var(--border);
-    border-radius: 14px; padding: 8px;
+    background: var(--surface); border: none;
+    border-radius: 16px; padding: 10px;
+    box-shadow: var(--n-float);
     max-height: 250px; overflow-y: auto;
   }
-  #fmtList .fmt-row, #texList .fmt-row, #fontList .fmt-row { margin-bottom: 6px; }
+  #fmtList .fmt-row, #texList .fmt-row, #fontList .fmt-row { margin-bottom: 8px; }
   #fmtList .fmt-row:last-child, #texList .fmt-row:last-child, #fontList .fmt-row:last-child { margin-bottom: 0; }
   .fmt-row .fcol { display: flex; flex-direction: column; gap: 2px; }
-  .fmt-row .fname { font-size: 14px; font-weight: 650; }
+  .fmt-row .fname { font-size: 14px; font-weight: 700; }
   .fmt-row .fdims { font-size: 11.5px; color: var(--muted); }
-  .fmt-row .tick { opacity: .18; font-size: 15px; }
-  .fmt-row.active { border-color: var(--accent); }
+  .fmt-row .tick { opacity: .25; font-size: 15px; }
+  .fmt-row.active { box-shadow: var(--n-inset); color: var(--accent); }
   .fmt-row.active .tick { opacity: 1; color: var(--accent); }
   .export-actions { display: flex; gap: 8px; margin-top: 14px; }
-  .export-actions .btn.primary { background: var(--char); color: var(--char-ink); box-shadow: 0 4px 14px rgba(0,0,0,.22); }
+  .export-actions .btn.primary { background: var(--char); color: var(--char-ink); box-shadow: 0 1px 0 rgba(255,255,255,.08), 0 8px 16px rgba(32,33,36,.18); }
   .export-actions .btn { padding: 9px 10px; line-height: 1.15; }
   .btn .bl { display: flex; flex-direction: column; align-items: flex-start; text-align: left; }
   .btn .sub { font-size: 10px; font-weight: 600; opacity: .6; letter-spacing: 0; }
@@ -474,37 +571,30 @@
   .textbtn svg { width: 13px; height: 13px; }
   .textbtn:hover { color: var(--text); }
 
-    /* Wise-style floating pill nav */
+    /* floating pill nav */
     .bottom-nav {
       position: fixed; left: 50%; transform: translateX(-50%);
       bottom: calc(14px + env(safe-area-inset-bottom));
       z-index: 60;
       display: flex; gap: 6px;
-      background: #ffffff;
+      background: var(--surface);
       backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
       border: none;
       border-radius: 999px; padding: 7px;
-    }
-    [data-theme="dark"] .bottom-nav {
-      background: rgba(24,24,27,.82);
+      box-shadow: var(--n-float);
     }
     .nav-item {
       width: 48px; height: 48px; border-radius: 50%;
       display: grid; place-items: center;
-      border: none; background: transparent; color: var(--accent);
-      cursor: pointer; transition: all .18s ease;
+      border: none; background: var(--surface); color: var(--accent);
+      cursor: pointer; box-shadow: var(--n-raised-sm);
+      transition: box-shadow .18s ease, color .18s ease, background .18s ease;
     }
     .nav-item svg { width: 21px; height: 21px; }
-    .nav-item:active { transform: scale(.92); }
-    .nav-item.active { background: var(--char); color: var(--char-ink); }
-    .nav-item.export { background: var(--char); color: var(--char-ink); } /* charcoal = download, everywhere */
-
-    /* invisible click-catcher — QR stays bright while editing */
-    .sheet-backdrop {
-      display: block; position: fixed; inset: 0; z-index: 40;
-      background: transparent; pointer-events: none;
-    }
-    body.sheet-open .sheet-backdrop { pointer-events: auto; }
+    .nav-item:hover { color: var(--text); }
+    .nav-item:active { box-shadow: var(--n-inset-sm); }
+    .nav-item.active { background: var(--char); color: var(--char-ink); box-shadow: inset 0 2px 5px rgba(0,0,0,.36); }
+    .nav-item.export { background: var(--char); color: var(--char-ink); box-shadow: 0 1px 0 rgba(255,255,255,.08), 0 6px 12px rgba(32,33,36,.16); } /* charcoal = download, everywhere */
 
     .card.controls, .export-sheet {
       display: block;
@@ -525,7 +615,7 @@
         transform .26s cubic-bezier(.4, 0, .7, 1),
         opacity .22s cubic-bezier(.4, 0, .7, 1),
         visibility 0s linear .26s;
-      box-shadow: none; /* flat, hairline border only */
+      box-shadow: var(--n-float);
     }
     .card.controls.visible, .export-sheet.visible {
       transform: scale(1);
@@ -568,12 +658,15 @@
     .sheet-foot .sheet-close { width: 36px; height: 36px; }
     .sheet-foot .sheet-close svg { width: 17px; height: 17px; }
     .sheet-close {
-      border: none; background: var(--panel-2); color: var(--muted);
+      border: none; background: var(--surface); color: var(--muted);
       width: 30px; height: 30px; border-radius: 999px; cursor: pointer; font-size: 13px;
       font-family: inherit; display: grid; place-items: center;
+      box-shadow: var(--n-raised-sm);
     }
     .sheet-close svg { width: 15px; height: 15px; }
-    .sheet-close:disabled { opacity: .3; cursor: default; }
+    .sheet-close:hover { color: var(--accent); }
+    .sheet-close:active { box-shadow: var(--n-inset-sm); }
+    .sheet-close:disabled { opacity: .45; cursor: default; box-shadow: var(--n-inset-sm); color: var(--muted); }
 
     /* larger screens: lift the nav off the edge, sheets follow; cards need less height */
     @media (min-width: 881px) {
@@ -588,7 +681,7 @@
       .card.controls, .export-sheet { max-height: 62vh; bottom: 70px; }
     }
 
-    /* ===== Studio (≥1100px): fontpair anatomy — top bar, looks sidebar,
+      /* ===== Studio (≥1100px): fontpair anatomy — top bar, theme slider,
        canvas center, floating edit bar, popovers from the top-bar buttons ===== */
     .panel-title { display: none; }
     .fmt-chips { display: none; gap: 2px; align-items: center; }
@@ -599,46 +692,48 @@
       transition: background .18s ease, color .18s ease;
     }
     .fmt-chip.active { background: var(--char); color: var(--char-ink); }
-    .looks-dock { width: 100%; display: flex; justify-content: center; }
-
     /* sticker picker — floats above the bar */
     .sticker-pop {
       position: fixed; z-index: 80;
-      background: var(--panel); border: 1px solid var(--border);
+      background: var(--surface); border: none;
       border-radius: 16px; padding: 12px;
       width: 308px;
-      box-shadow: 0 8px 32px rgba(0,0,0,.12), 0 2px 8px rgba(0,0,0,.06);
+      box-shadow: var(--n-float);
     }
     .sticker-pop .sp-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
     .sticker-pop .sp-btn {
       width: 40px; height: 40px; border-radius: 10px; border: none;
-      background: transparent; color: var(--text); cursor: pointer;
+      background: var(--surface); color: var(--text); cursor: pointer;
       display: grid; place-items: center; font-size: 19px;
-      transition: background .12s;
+      box-shadow: var(--n-raised-sm);
+      transition: box-shadow .12s, color .12s;
     }
-    .sticker-pop .sp-btn:hover { background: var(--panel-2); }
+    .sticker-pop .sp-btn:hover { color: var(--accent); }
+    .sticker-pop .sp-btn:active { box-shadow: var(--n-inset-sm); }
     .sticker-pop .sp-btn svg { width: 19px; height: 19px; }
-    .sticker-pop .sp-divider { height: 1px; background: var(--border-2); margin: 10px 2px; }
+    .sticker-pop .sp-divider { height: 2px; border-radius: 999px; background: var(--nd); margin: 12px 2px; }
 
     /* mini toolbar — rides beside the selected item: font, color, size */
     .mini-bar {
       position: fixed; z-index: 85;
       display: flex; align-items: center; gap: 2px;
-      background: var(--panel); border: 1px solid var(--border);
+      background: var(--surface); border: none;
       border-radius: 12px; padding: 4px 5px;
-      box-shadow: 0 4px 16px rgba(0,0,0,.14), 0 1px 4px rgba(0,0,0,.06);
+      box-shadow: var(--n-float);
     }
     .mini-bar[hidden] { display: none; }
     .mb-btn {
       min-width: 30px; height: 30px; border-radius: 9px; border: none;
-      background: transparent; color: var(--text); cursor: pointer;
+      background: var(--surface); color: var(--text); cursor: pointer;
       display: grid; place-items: center; padding: 0 7px;
       font-family: "Urbanist", sans-serif; font-weight: 800; font-size: 14px;
-      transition: background .12s;
+      box-shadow: var(--n-raised-sm);
+      transition: box-shadow .12s, color .12s;
     }
-    .mb-btn:hover { background: var(--panel-2); }
-    .mb-btn .cdot { width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--border); display: block; }
-    .mb-sep { width: 1px; align-self: stretch; background: var(--border-2); margin: 3px 2px; }
+    .mb-btn:hover { color: var(--accent); }
+    .mb-btn:active { box-shadow: var(--n-inset-sm); }
+    .mb-btn .cdot { width: 16px; height: 16px; border-radius: 50%; box-shadow: var(--n-inset-sm); display: block; }
+    .mb-sep { width: 2px; align-self: stretch; border-radius: 999px; background: var(--nd); margin: 3px 4px; }
 
     /* inline text editor — floats exactly over the text on the canvas */
     .canvas-edit {
@@ -650,7 +745,6 @@
     }
 
     /* all studio-only elements hidden by default */
-    .looks-rail { display: none; }
     .edit-bar { display: none; }
 
     @media (min-width: 1100px) {
@@ -684,9 +778,9 @@
         height: 100vh; min-height: 0; overflow: hidden; padding: 0; margin: 0; max-width: none;
         align-items: stretch;
       }
-      header, .bottom-nav, .edit-bar, .looks-rail { display: none !important; }
+      header, .bottom-nav, .edit-bar { display: none !important; }
       /* the mobile popover shells: their contents are reparented into the sidebar — hide the empty shells */
-      #controlsCard, .looks-dock, .sheet-backdrop { display: none !important; }
+      #controlsCard { display: none !important; }
       /* the export sheet is reparented into the dock — show it inline, strip its bottom-sheet chrome */
       #slotExport #exportSheet {
         display: block; position: static; inset: auto; transform: none !important;
@@ -695,59 +789,58 @@
       }
       #slotExport #exportClose, #slotExport .steps, #slotExport .sheet-foot, #slotExport #ftHint { display: none !important; }
       #slotExport .lbl { margin-top: 0; }
-      #slotExport .export-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
-      #slotExport .export-actions .btn { flex: 1; }
+      #slotExport .export-actions { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 10px; }
       #slotExport #copyLinkBtn { width: 100%; margin-top: 8px; }
+      /* sidebar declutter: the select says its own size; sub-captions and the
+         share-sheet path are phone affordances — Download covers it on desktop */
+      #slotExport .lbl { display: none; }
+      #slotExport .btn .sub { display: none; }
+      #slotExport #shareBtn { display: none !important; }
       /* tool buttons relocated under Artboard */
       #slotScene #fontSelect { width: 100%; margin-top: 10px; }
       #slotScene #addTextBtn, #slotScene #addStickerBtn { margin-top: 8px; }
       #slotScene #tbCapChip { margin-top: 8px; }
 
-      /* ---- the sidebar (ALWAYS dark — scoped token override, independent of the canvas auto-theme) ---- */
+      /* ---- the sidebar: same white material as the rest of the chrome ---- */
       #studioPanel {
         display: flex; flex-direction: column; grid-column: 1; min-height: 0; height: 100vh;
-        overflow: hidden; background: #0d0d10; border-right: 1px solid rgba(255,255,255,.07);
-        color: #e6e7ea; font-family: "Open Sans", system-ui, sans-serif;
-        --panel: #0d0d10; --panel-2: rgba(255,255,255,.05); --text: #e6e7ea; --muted: #8a8d95;
-        --border: rgba(255,255,255,.08); --border-2: rgba(255,255,255,.06);
-        --char: rgba(255,255,255,.08); --char-hover: rgba(255,255,255,.14); --char-ink: #fff;
-        --accent: #9FE870; --accent-ink: #0c1f00; --ring: rgba(159,232,112,.4);
+        overflow: hidden; background: var(--surface); border-right: none;
+        color: var(--text); font-family: "Open Sans", system-ui, sans-serif;
+        box-shadow: 1px 0 0 var(--n-line);
       }
-      /* dropdowns/pickers float on <body>, outside #studioPanel — give them the dark scope too (studio-only) */
+      /* dropdowns/pickers float on <body>, outside #studioPanel — keep them on the same material */
       #fmtList, #texList, #fontList, #colorPop, .mini-bar {
-        --panel: #16161a; --panel-2: rgba(255,255,255,.06); --text: #e6e7ea; --muted: #8a8d95;
-        --border: rgba(255,255,255,.11); --border-2: rgba(255,255,255,.07);
-        background: #16161a; color: #e6e7ea;
+        background: var(--surface); color: var(--text);
       }
 
       .sp-brand { display: flex; align-items: center; gap: 9px; padding: 13px 14px;
-        border-bottom: 1px solid rgba(255,255,255,.07); flex: 0 0 auto; }
+        border-bottom: 1px solid var(--n-line); flex: 0 0 auto; }
       .sp-mark { width: 22px; height: 22px; flex: 0 0 auto; }
       .sp-mark img { width: 100%; height: 100%; display: block; }
-      .sp-word { font-family: "Urbanist", sans-serif; font-weight: 700; font-size: 14px; letter-spacing: -.01em; color: #e6e7ea; }
+      .sp-word { font-family: "Urbanist", sans-serif; font-weight: 700; font-size: 14px; letter-spacing: 0; color: var(--text); }
       .sp-word b { color: var(--accent); font-weight: 800; }
       .sp-grow { flex: 1; }
-      .sp-icon { width: 30px; height: 30px; border-radius: 8px; border: 1px solid transparent;
-        background: transparent; color: #8a8d95; display: grid; place-items: center; cursor: pointer;
-        transition: background .15s, color .15s, border-color .15s; }
-      .sp-icon:hover { background: rgba(255,255,255,.06); color: #e6e7ea; border-color: rgba(255,255,255,.08); }
+      .sp-icon { width: 32px; height: 32px; border-radius: 10px; border: none;
+        background: var(--surface); color: var(--muted); display: grid; place-items: center; cursor: pointer;
+        box-shadow: var(--n-raised-sm); transition: box-shadow .15s, color .15s; }
+      .sp-icon:hover { color: var(--accent); }
+      .sp-icon:active { box-shadow: var(--n-inset-sm); }
       .sp-icon svg { width: 15px; height: 15px; }
 
       #studioScroll { flex: 1; min-height: 0; overflow-y: auto; padding: 2px 12px 18px; }
       #studioScroll::-webkit-scrollbar { width: 9px; }
-      #studioScroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 9px; border: 3px solid #0d0d10; }
+      #studioScroll::-webkit-scrollbar-thumb { background: var(--nd); border-radius: 9px; border: 3px solid var(--surface); }
       /* section header = a minimise toggle (click to collapse the slot below) */
       .sp-sec { display: flex; align-items: center; justify-content: space-between; gap: 8px;
         width: 100%; margin: 16px 2px 8px; padding: 0; background: none; border: none; cursor: pointer;
-        font-family: "Urbanist", sans-serif; font-size: 10.5px; letter-spacing: .14em;
-        text-transform: uppercase; color: #5c5f66; font-weight: 700; transition: color .15s; }
-      .sp-sec:hover { color: #8a8d95; }
+        font-family: "Urbanist", sans-serif; font-size: 10.5px; letter-spacing: .12em;
+        text-transform: uppercase; color: var(--muted); font-weight: 800; transition: color .15s; }
+      .sp-sec:hover { color: var(--accent); }
       .sp-sec-chev { width: 14px; height: 14px; flex: 0 0 auto; opacity: .6; transition: transform .2s ease; }
       .sp-sec.collapsed .sp-sec-chev { transform: rotate(-90deg); }
       .sp-sec.collapsed + .sp-slot { display: none; }
-      .sp-slot { background: rgba(255,255,255,.025); border: 1px solid rgba(255,255,255,.06);
-        border-radius: 12px; padding: 12px; }
-
+      .sp-slot { background: var(--surface); border: none;
+        border-radius: 16px; padding: 12px; box-shadow: var(--n-inset-sm); }
       /* consistent button height across the sidebar's action controls */
       #studioPanel .btn, #studioPanel .mini-btn, #studioPanel .select,
       #studioPanel .ct-tab, #studioPanel .chip-color, #slotExport .btn, #slotExport .select {
@@ -759,42 +852,48 @@
       /* reparented panels sit inline in their slot — always visible, no popover, no card chrome */
       #studioPanel .panel { display: block !important; padding: 0; margin: 0; }
       #studioPanel .panel-title, #studioPanel .ct-tabs ~ .panel-title { display: none; }
-      #studioPanel .looks { display: grid; grid-template-columns: repeat(4, 1fr); gap: 9px;
-        overflow: visible; max-width: none; padding: 0; opacity: 1 !important; pointer-events: auto !important; }
-      #studioPanel .look { width: auto; }
-      #studioPanel .look-chip { width: 100%; height: auto; aspect-ratio: 1; }
-
       .sp-code { font-family: "Space Mono", ui-monospace, monospace; font-size: 10.5px; line-height: 1.5;
-        color: #9aa0a8; background: #08080a; border: 1px solid rgba(255,255,255,.06); border-radius: 9px;
+        color: var(--muted); background: var(--surface); border: none; border-radius: 12px;
+        box-shadow: var(--n-inset-sm);
         padding: 10px; max-height: 120px; overflow: auto; word-break: break-all; cursor: pointer; }
-      .sp-code:hover { color: #cfd3d9; }
-      .sp-code:empty::before { content: "Design a code, then Copy to get a share link."; color: #5c5f66; }
+      .sp-code:hover { color: var(--text); }
+      .sp-code:empty::before { content: "Design a code, then Copy to get a share link."; color: var(--muted); }
 
-      .sp-dock { flex: 0 0 auto; border-top: 1px solid rgba(255,255,255,.07); padding: 12px;
-        display: flex; flex-direction: column; gap: 10px; background: #0d0d10; }
-      .sp-sig { flex: 0 0 auto; padding: 10px 14px 13px; border-top: 1px solid rgba(255,255,255,.07);
-        font-size: 11px; color: #4a4d55; text-decoration: none; }
-      .sp-sig:hover { color: #8a8d95; }
+      .sp-dock { flex: 0 0 auto; border-top: 1px solid var(--n-line); padding: 12px;
+        display: flex; flex-direction: column; gap: 10px; background: var(--surface);
+        box-shadow: 0 -1px 0 var(--n-line); }
+      .sp-sig { flex: 0 0 auto; padding: 10px 14px 13px; border-top: 1px solid var(--n-line);
+        font-size: 11px; color: var(--muted); text-decoration: none; }
+      .sp-sig:hover { color: var(--text); }
 
-      /* ---- the canvas cell (right): blueprint grid + centered artboard ---- */
+      /* ---- the canvas cell (right): quiet material + centered artboard ---- */
       .preview { grid-column: 2; min-width: 0; height: 100vh; margin: 0; display: flex;
-        align-items: center; justify-content: center; padding: 30px; overflow: hidden;
+        align-items: center; justify-content: center; padding: 0; overflow: hidden;
         background-image:
-          linear-gradient(rgba(255,255,255,.02) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(255,255,255,.02) 1px, transparent 1px);
+          linear-gradient(rgba(32,33,36,.035) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(32,33,36,.035) 1px, transparent 1px);
         background-size: 26px 26px; }
+      .preview .editor-section {
+        width: 100%;
+        height: 100%;
+        border: none;
+        border-radius: 0;
+        background: transparent;
+        padding: 30px;
+        justify-content: center;
+      }
       [data-theme="light"] .preview {
         background-image:
-          linear-gradient(rgba(0,0,0,.04) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(0,0,0,.04) 1px, transparent 1px); }
+          linear-gradient(rgba(32,33,36,.035) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(32,33,36,.035) 1px, transparent 1px); }
 
       /* collapse the sidebar */
       body.collapsed main { grid-template-columns: 1fr; }
       body.collapsed #studioPanel { display: none; }
       #reopen { display: none; }
       body.collapsed #reopen { display: grid; place-items: center; position: fixed; top: 16px; left: 16px;
-        z-index: 90; width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--border);
-        background: var(--panel); color: var(--text); cursor: pointer; box-shadow: var(--shadow); }
+        z-index: 90; width: 38px; height: 38px; border-radius: 12px; border: none;
+        background: var(--surface); color: var(--text); cursor: pointer; box-shadow: var(--n-float); }
       /* non-square artboards: dashed file-bounds frame */
       .artboard-wrap.framed { overflow: visible; }
       .artboard-wrap.framed #artboard {
@@ -831,8 +930,6 @@
         <button class="sp-icon" id="spCollapse" title="Hide panel" aria-label="Hide panel"><i data-lucide="panel-left-close"></i></button>
       </header>
       <div id="studioScroll">
-        <button class="sp-sec" type="button" data-sec="theme">Theme<i data-lucide="chevron-down" class="sp-sec-chev"></i></button>
-        <div class="sp-slot" id="slotLooks"></div>
         <button class="sp-sec" type="button" data-sec="content">Content<i data-lucide="chevron-down" class="sp-sec-chev"></i></button>
         <div class="sp-slot" id="slotContent"></div>
         <button class="sp-sec" type="button" data-sec="style">Style<i data-lucide="chevron-down" class="sp-sec-chev"></i></button>
@@ -891,6 +988,8 @@
 
       <div class="panel" data-panel="style">
       <div class="panel-title">QR style</div>
+      <div class="theme-head">Themes</div>
+      <div class="looks" id="looksStrip" aria-label="Theme slider" role="listbox"></div>
       <div class="crow">
         <span class="clabel">Ink</span>
         <div class="mini-presets" id="inkPresets">
@@ -955,7 +1054,7 @@
       <div class="crow">
         <span class="clabel">Caption</span>
         <button class="chip-color compact" id="capChip" aria-label="Caption color"><span class="cdot" id="capDot"></span></button>
-        <input type="text" id="caption" placeholder="None" value="SCAN ME" style="flex:1; max-width:190px;" />
+        <input type="text" id="caption" placeholder="None" value="SCAN ME" maxlength="80" style="flex:1; max-width:190px;" />
       </div>
       <div class="crow">
         <span class="clabel">Logo</span>
@@ -985,12 +1084,11 @@
     </section>
 
     <!-- Artboard -->
-    <section class="preview">
-      <div class="artboard-wrap" id="artboardWrap">
-        <canvas id="artboard"></canvas>
-      </div>
-      <div class="looks-dock" id="looksDock">
-        <div class="looks" id="looksStrip" aria-label="Theme gallery"></div>
+    <section class="preview" aria-label="Editor">
+      <div class="editor-section">
+        <div class="artboard-wrap" id="artboardWrap">
+          <canvas id="artboard"></canvas>
+        </div>
       </div>
     </section>
 
@@ -1015,13 +1113,10 @@
       <button class="stb-export" data-nav="export" aria-label="Export"><i data-lucide="download"></i> Export</button>
     </div>
 
-    <!-- Studio looks rail: the palettes glide across the bottom, under the bar -->
-    <div class="looks-rail" id="looksRail"></div>
     <!-- shared color input — outside the studio-only bar so it works on mobile too -->
     <input type="color" id="tbCapInput" class="vhid" />
   </main>
 
-  <div class="sheet-backdrop" id="sheetBackdrop"></div>
 
   <div class="export-sheet" id="exportSheet">
     <button class="sheet-close corner" id="exportClose">✕</button>
@@ -1080,7 +1175,7 @@
     cornerType: "extra-rounded",
     fg: "#18181b",
     base: "#ffffff", /* the card under the QR */
-    bg: "#FFE14D",   /* page / scene background — bright durian yellow */
+    bg: "#F4F4EF",   /* page / scene background — warm white */
     outline: "#18181b",
     outlineW: 7,     /* 0 = no outline */
     capColor: "#18181b",
@@ -1097,6 +1192,7 @@
     texts: [], /* free text items: { t, x, y, s, f, c } — x/y relative, s size vs u */
     stickers: [], /* icon/emoji stickers: { t: "icon"|"emoji", k, x, y, s, c } */
     extra: [], /* up to 2 more QR contents — a multi-code artboard shares one style */
+    qrPos: [], /* optional QR card centers: [{ x, y }] relative to the artboard */
   };
   const codes = () => [state.data, ...state.extra];
 
@@ -1112,7 +1208,7 @@
     Object.defineProperty(st, "img", { value: img, writable: true, configurable: true });
   }
 
-  const swatchSet = ["#FFE14D","#163300","#18181b","#ffffff","#9FE870","#ef4444","#6366f1","#ec4899","#0ea5e9","#f97316"];
+  const swatchSet = ["#F4F4EF","#ffffff","#18181b","#3A3D40","#FFE14D","#ef4444","#6366f1","#ec4899","#0ea5e9","#f97316"];
 
   // caption fonts — curated display faces, lazy-loaded from Google Fonts on first use
   const FONT_DEFS = {
@@ -1165,7 +1261,7 @@
     return img;
   }
 
-  let qrImgs = [null], qrToken = 0, qrTimer = null, firstInk = true;
+  let qrImgs = [null], qrToken = 0, qrTimer = null, firstInk = true, qrOverflow = false;
   function queueQr() {
     clearTimeout(qrTimer);
     qrTimer = setTimeout(async () => {
@@ -1173,11 +1269,19 @@
       try {
         const imgs = await Promise.all(codes().map((d) => qrImageAt(1024, true, d)));
         if (t === qrToken) {
+          qrOverflow = false;
           qrImgs = imgs.map((img) => inkify(img, 1024));
           drawPreview();
           if (firstInk) { firstInk = false; animateGenerate(900); } // the QR is born, not loaded
         }
-      } catch (e) { /* invalid data mid-typing — keep last good image */ }
+      } catch (e) {
+        // mid-typing garbage keeps the last good image silently, but a real
+        // capacity overflow must not masquerade as success
+        if (t === qrToken && /overflow/i.test(String(e))) {
+          qrOverflow = true;
+          flashHint("Too much data for one QR — shorten the content.");
+        }
+      }
     }, 120);
   }
 
@@ -1213,18 +1317,18 @@
     stripes: "Stripes", waves: "Waves", crosses: "Crosses", spikes: "Spikes", leaves: "Leaves", hex: "Hexagons",
   };
   function textureSVG(key) {
-    const ink = bgLum() < 140 ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.08)";
+    const ink = bgLum() < 140 ? "rgba(255,255,255,0.12)" : "rgba(32,33,36,0.055)";
     const T = {
-      durians: [96, `<g fill="none" stroke="${ink}" stroke-width="2.4" stroke-linejoin="round"><path transform="translate(8,8) scale(.5)" d="${STAR}"/><path transform="translate(56,56) scale(.5)" d="${STAR}"/></g>`],
-      topo: [88, `<g fill="none" stroke="${ink}" stroke-width="1.4"><path d="M44 16 C60 16 70 28 68 42 C66 56 54 64 42 62 C28 60 18 50 20 38 C22 26 30 16 44 16 Z"/><path d="M44 26 C54 26 60 33 59 42 C58 51 50 56 42 54 C33 52 28 46 29 38 C30 30 36 26 44 26 Z"/><path d="M44 35 C49 35 52 38 51.5 42 C51 46 47 48 43 47 C39 46 37 43 37.5 40 C38 37 40 35 44 35 Z"/></g>`],
-      dots: [22, `<g fill="${ink}"><circle cx="5.5" cy="5.5" r="1.8"/><circle cx="16.5" cy="16.5" r="1.8"/></g>`],
-      grid: [22, `<path d="M22 .5H.5V22" fill="none" stroke="${ink}" stroke-width="1"/>`],
-      stripes: [22, `<path d="M-5 5L5 -5M0 22L22 0M17 27L27 17" fill="none" stroke="${ink}" stroke-width="1.6"/>`],
-      waves: [26, `<path d="M0 7 Q6.5 0 13 7 T26 7" fill="none" stroke="${ink}" stroke-width="1.6" transform="translate(0,3)"/><path d="M0 7 Q6.5 0 13 7 T26 7" fill="none" stroke="${ink}" stroke-width="1.6" transform="translate(0,16)"/>`],
-      crosses: [28, `<g stroke="${ink}" stroke-width="1.8" stroke-linecap="round" fill="none"><path d="M7 3.5v7M3.5 7h7"/><path d="M21 17.5v7M17.5 21h7"/></g>`],
-      spikes: [26, `<g fill="none" stroke="${ink}" stroke-width="1.5" stroke-linejoin="round"><path d="M7 4l4.5 8H2.5Z"/><path d="M19 14l4.5 8h-9Z"/></g>`],
-      leaves: [30, `<g fill="none" stroke="${ink}" stroke-width="1.5"><path d="M4 13 C4 7 10 4 16 4 C16 10 10 13 4 13Z"/><path d="M16 26 C16 20 21 17 27 17 C27 23 22 26 16 26Z"/></g>`],
-      hex: [32, `<path d="M16 3L27 9.5V22.5L16 29L5 22.5V9.5Z" fill="none" stroke="${ink}" stroke-width="1.4"/>`],
+      durians: [104, `<g fill="none" stroke="${ink}" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"><path d="M25 18 C31 12 41 13 46 20 C53 30 49 44 37 50 C25 56 13 49 11 36 C9 27 15 20 25 18Z"/><path d="M28 25 C33 21 40 23 42 30 C44 37 39 44 31 44 C23 44 18 37 20 30 C21 27 24 25 28 25Z"/><path d="M35 16 C38 12 43 10 48 11M18 24 C15 22 12 20 9 17M18 45 C15 48 12 50 8 51"/><path d="M75 65 C81 59 91 60 96 67 C103 77 99 91 87 97 C75 103 63 96 61 83 C59 74 65 67 75 65Z"/><path d="M78 72 C83 68 90 70 92 77 C94 84 89 91 81 91 C73 91 68 84 70 77 C71 74 74 72 78 72Z"/></g>`],
+      topo: [112, `<g fill="none" stroke="${ink}" stroke-width="1.15" stroke-linecap="round"><path d="M18 38 C28 16 58 12 78 25 C99 39 99 70 79 85 C58 101 27 93 17 70 C12 58 12 48 18 38Z"/><path d="M31 42 C39 28 59 25 73 34 C87 43 88 63 75 74 C61 86 41 80 33 65 C29 57 28 49 31 42Z"/><path d="M44 47 C50 39 62 38 70 45 C78 52 77 63 69 69 C60 75 49 72 44 63 C41 57 41 52 44 47Z"/><path d="M88 3 C102 12 111 26 110 43"/><path d="M2 94 C18 102 34 107 53 105"/></g>`],
+      dots: [42, `<g fill="${ink}"><circle cx="10" cy="10" r="1.35"/><circle cx="31" cy="13" r="1.05"/><circle cx="19" cy="29" r="1.2"/><circle cx="38" cy="35" r=".85"/></g>`],
+      grid: [44, `<g fill="none" stroke="${ink}" stroke-width=".85" stroke-linecap="round"><path d="M0 22H44M22 0V44"/><path d="M44 11H33C27 11 22 16 22 22S17 33 11 33H0"/><path d="M11 0V11C11 17 16 22 22 22S33 27 33 33V44"/></g>`],
+      stripes: [54, `<g fill="none" stroke="${ink}" stroke-width="1.7" stroke-linecap="round"><path d="M-8 42 C8 24 25 16 60 8"/><path d="M-5 58 C14 39 33 31 62 25"/><path d="M-10 20 C10 7 25 2 45 -2"/></g>`],
+      waves: [64, `<g fill="none" stroke="${ink}" stroke-width="1.45" stroke-linecap="round"><path d="M-4 18 C8 8 20 8 32 18S56 28 68 18"/><path d="M-4 38 C8 28 20 28 32 38S56 48 68 38"/><path d="M-4 58 C8 48 20 48 32 58S56 68 68 58"/></g>`],
+      crosses: [48, `<g stroke="${ink}" stroke-width="1.35" stroke-linecap="round" fill="none"><path d="M12 7v10M7 12h10"/><path d="M35 28v8M31 32h8"/><path d="M23 39l4 4M27 39l-4 4"/></g>`],
+      spikes: [52, `<g fill="none" stroke="${ink}" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M12 34 C16 24 22 20 31 18 C26 25 23 31 24 41 C20 36 17 34 12 34Z"/><path d="M40 7 C43 14 43 20 39 27 C36 20 32 16 26 13 C32 13 36 11 40 7Z"/></g>`],
+      leaves: [56, `<g fill="none" stroke="${ink}" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"><path d="M9 31 C14 16 27 10 43 13 C38 29 25 37 9 31Z"/><path d="M14 29 C23 25 31 21 39 15"/><path d="M36 48 C39 39 47 35 55 36 C52 45 45 50 36 48Z"/><path d="M38 47 C43 44 47 41 52 37"/></g>`],
+      hex: [58, `<g fill="none" stroke="${ink}" stroke-width="1.15" stroke-linejoin="round"><path d="M29 5L49 16.5V39.5L29 51L9 39.5V16.5Z"/><path d="M0 29L10 23M48 23L58 29M29 51V58"/></g>`],
     };
     const t = T[key];
     if (!t) return null;
@@ -1237,23 +1341,50 @@
   // canvas-native tiles for export — SVG images taint the canvas on iOS Safari
   // (geometry mirrors textureSVG above; keep them in sync)
   const TEX_TILES = {
-    durians: { s: 96, lw: 2.4, join: "round", paths: [{ d: STAR, t: [8, 8, .5] }, { d: STAR, t: [56, 56, .5] }] },
-    topo: { s: 88, lw: 1.4, paths: [
-      { d: "M44 16 C60 16 70 28 68 42 C66 56 54 64 42 62 C28 60 18 50 20 38 C22 26 30 16 44 16 Z" },
-      { d: "M44 26 C54 26 60 33 59 42 C58 51 50 56 42 54 C33 52 28 46 29 38 C30 30 36 26 44 26 Z" },
-      { d: "M44 35 C49 35 52 38 51.5 42 C51 46 47 48 43 47 C39 46 37 43 37.5 40 C38 37 40 35 44 35 Z" }] },
-    dots: { s: 22, fill: true, paths: [
-      { d: "M5.5 5.5 m-1.8 0 a1.8 1.8 0 1 0 3.6 0 a1.8 1.8 0 1 0 -3.6 0" },
-      { d: "M16.5 16.5 m-1.8 0 a1.8 1.8 0 1 0 3.6 0 a1.8 1.8 0 1 0 -3.6 0" }] },
-    grid: { s: 22, lw: 1, paths: [{ d: "M22 .5H.5V22" }] },
-    stripes: { s: 22, lw: 1.6, paths: [{ d: "M-5 5L5 -5M0 22L22 0M17 27L27 17" }] },
-    waves: { s: 26, lw: 1.6, paths: [{ d: "M0 10 Q6.5 3 13 10 T26 10" }, { d: "M0 23 Q6.5 16 13 23 T26 23" }] },
-    crosses: { s: 28, lw: 1.8, cap: "round", paths: [{ d: "M7 3.5v7M3.5 7h7" }, { d: "M21 17.5v7M17.5 21h7" }] },
-    spikes: { s: 26, lw: 1.5, join: "round", paths: [{ d: "M7 4l4.5 8H2.5Z" }, { d: "M19 14l4.5 8h-9Z" }] },
-    leaves: { s: 30, lw: 1.5, paths: [
-      { d: "M4 13 C4 7 10 4 16 4 C16 10 10 13 4 13Z" },
-      { d: "M16 26 C16 20 21 17 27 17 C27 23 22 26 16 26Z" }] },
-    hex: { s: 32, lw: 1.4, paths: [{ d: "M16 3L27 9.5V22.5L16 29L5 22.5V9.5Z" }] },
+    durians: { s: 104, lw: 1.45, cap: "round", join: "round", paths: [
+      { d: "M25 18 C31 12 41 13 46 20 C53 30 49 44 37 50 C25 56 13 49 11 36 C9 27 15 20 25 18Z" },
+      { d: "M28 25 C33 21 40 23 42 30 C44 37 39 44 31 44 C23 44 18 37 20 30 C21 27 24 25 28 25Z" },
+      { d: "M35 16 C38 12 43 10 48 11M18 24 C15 22 12 20 9 17M18 45 C15 48 12 50 8 51" },
+      { d: "M75 65 C81 59 91 60 96 67 C103 77 99 91 87 97 C75 103 63 96 61 83 C59 74 65 67 75 65Z" },
+      { d: "M78 72 C83 68 90 70 92 77 C94 84 89 91 81 91 C73 91 68 84 70 77 C71 74 74 72 78 72Z" }] },
+    topo: { s: 112, lw: 1.15, cap: "round", paths: [
+      { d: "M18 38 C28 16 58 12 78 25 C99 39 99 70 79 85 C58 101 27 93 17 70 C12 58 12 48 18 38Z" },
+      { d: "M31 42 C39 28 59 25 73 34 C87 43 88 63 75 74 C61 86 41 80 33 65 C29 57 28 49 31 42Z" },
+      { d: "M44 47 C50 39 62 38 70 45 C78 52 77 63 69 69 C60 75 49 72 44 63 C41 57 41 52 44 47Z" },
+      { d: "M88 3 C102 12 111 26 110 43" },
+      { d: "M2 94 C18 102 34 107 53 105" }] },
+    dots: { s: 42, fill: true, paths: [
+      { d: "M10 10 m-1.35 0 a1.35 1.35 0 1 0 2.7 0 a1.35 1.35 0 1 0 -2.7 0" },
+      { d: "M31 13 m-1.05 0 a1.05 1.05 0 1 0 2.1 0 a1.05 1.05 0 1 0 -2.1 0" },
+      { d: "M19 29 m-1.2 0 a1.2 1.2 0 1 0 2.4 0 a1.2 1.2 0 1 0 -2.4 0" },
+      { d: "M38 35 m-.85 0 a.85 .85 0 1 0 1.7 0 a.85 .85 0 1 0 -1.7 0" }] },
+    grid: { s: 44, lw: .85, cap: "round", paths: [
+      { d: "M0 22H44M22 0V44" },
+      { d: "M44 11H33C27 11 22 16 22 22S17 33 11 33H0" },
+      { d: "M11 0V11C11 17 16 22 22 22S33 27 33 33V44" }] },
+    stripes: { s: 54, lw: 1.7, cap: "round", paths: [
+      { d: "M-8 42 C8 24 25 16 60 8" },
+      { d: "M-5 58 C14 39 33 31 62 25" },
+      { d: "M-10 20 C10 7 25 2 45 -2" }] },
+    waves: { s: 64, lw: 1.45, cap: "round", paths: [
+      { d: "M-4 18 C8 8 20 8 32 18S56 28 68 18" },
+      { d: "M-4 38 C8 28 20 28 32 38S56 48 68 38" },
+      { d: "M-4 58 C8 48 20 48 32 58S56 68 68 58" }] },
+    crosses: { s: 48, lw: 1.35, cap: "round", paths: [
+      { d: "M12 7v10M7 12h10" },
+      { d: "M35 28v8M31 32h8" },
+      { d: "M23 39l4 4M27 39l-4 4" }] },
+    spikes: { s: 52, lw: 1.25, cap: "round", join: "round", paths: [
+      { d: "M12 34 C16 24 22 20 31 18 C26 25 23 31 24 41 C20 36 17 34 12 34Z" },
+      { d: "M40 7 C43 14 43 20 39 27 C36 20 32 16 26 13 C32 13 36 11 40 7Z" }] },
+    leaves: { s: 56, lw: 1.35, cap: "round", join: "round", paths: [
+      { d: "M9 31 C14 16 27 10 43 13 C38 29 25 37 9 31Z" },
+      { d: "M14 29 C23 25 31 21 39 15" },
+      { d: "M36 48 C39 39 47 35 55 36 C52 45 45 50 36 48Z" },
+      { d: "M38 47 C43 44 47 41 52 37" }] },
+    hex: { s: 58, lw: 1.15, join: "round", paths: [
+      { d: "M29 5L49 16.5V39.5L29 51L9 39.5V16.5Z" },
+      { d: "M0 29L10 23M48 23L58 29M29 51V58" }] },
   };
   function textureTileCanvas(key) {
     const t = TEX_TILES[key];
@@ -1261,7 +1392,7 @@
     const c = document.createElement("canvas");
     c.width = c.height = t.s;
     const x = c.getContext("2d");
-    const ink = bgLum() < 140 ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.08)";
+    const ink = bgLum() < 140 ? "rgba(255,255,255,0.12)" : "rgba(32,33,36,0.055)";
     x.strokeStyle = ink; x.fillStyle = ink;
     x.lineWidth = t.lw || 1.5;
     x.lineJoin = t.join || "miter";
@@ -1393,8 +1524,9 @@
     const cap = state.caption.trim();
     const capGap = cap ? u * 0.075 : 0;
     const row = W >= H; // orientation follows the artboard
-    // slider maps 0→1 across the range that actually fits this artboard,
-    // so every position changes the size and 80% is always "largest possible"
+    // qrScale maps 0→1 across the range that actually fits this artboard.
+    // No UI sets it anymore (drag-to-place replaced resize) but shared links
+    // still carry it (hash key `a`), so the mapping must stay honored.
     const t = (state.qrScale - 0.35) / 0.45;
     let qsMax = Math.min(((H - capGap) / 1.2), W / 1.2) * 0.98;
     if (n > 1) { // n cards + 6%-of-card gaps must fit the long axis
@@ -1418,11 +1550,20 @@
       x: row ? gx + i * (cardSize + gap) : gx,
       y: row ? gy : gy + i * (cardSize + gap),
     }));
-    return { u, qs, pad, cardSize, capGap, x: cards[0].x, y: cards[0].y, cap, cards, gy, groupH };
+    state.qrPos.slice(0, n).forEach((p, i) => {
+      if (!p || typeof p.x !== "number" || typeof p.y !== "number") return;
+      const cx = p.x * W;
+      const cy = p.y * H;
+      cards[i] = { x: cx - cardSize / 2, y: cy - cardSize / 2 };
+    });
+    const minY = Math.min(...cards.map((c) => c.y));
+    const maxY = Math.max(...cards.map((c) => c.y + cardSize));
+    return { u, qs, pad, cardSize, capGap, x: cards[0].x, y: cards[0].y, cap, cards, gy: minY, groupH: maxY - minY };
   }
 
-  // paintBg=false for the live preview — the page itself provides the background
-  function drawScene(ctx, W, H, qrImage, paintBg = true, texImg = null) {
+  // Exports paint the artboard background into the file. Live preview lets the
+  // editor box paint that same scene once, behind the transparent canvas.
+  function drawScene(ctx, W, H, qrImage, paintBg = true, texImg = null, liveFx = false) {
     if (paintBg) {
       if (state.sceneBg === "solid") {
         ctx.fillStyle = state.bg;
@@ -1473,7 +1614,7 @@
       const img = imgs[i] || imgs[0];
       if (img) {
         drawQrRounded(ctx, img, c.x + pad, c.y + pad, qs, qs * 0.05,
-          paintBg ? 0 : fx.blur, paintBg ? 1 : fx.alpha);
+          liveFx ? fx.blur : 0, liveFx ? fx.alpha : 1);
       }
       if (capture) hitRects.qrs[i] = { x: c.x, y: c.y, w: cardSize, h: cardSize };
     });
@@ -1541,11 +1682,8 @@
     const fmt = studio ? FORMATS[state.format] : { w: 1, h: 1 };
     const wrap = $("artboardWrap");
     const desktop = window.innerWidth > 880;
-    // bar + looks rail stack along the bottom of the studio canvas zone
-    const railH = studio ? $("looksRail").offsetHeight : 0;
-    if (studio) $("editBar").style.bottom = (railH + 12) + "px"; // the bar rides the rail
-    const editBarReserve = studio ? ($("editBar").offsetHeight || 48) + railH + 40 : 0;
-    const wrapW = Math.min(wrap.clientWidth || wrap.parentElement.clientWidth, studio ? 680 : desktop ? 580 : 440);
+    const measuredWrapW = wrap.clientWidth || wrap.parentElement.clientWidth;
+    const wrapW = studio ? measuredWrapW : Math.min(measuredWrapW, desktop ? 580 : 440);
     // static: always leave room below for a sheet, so the QR never moves
     // must match the cards' CSS max-height — including desktop + short-landscape overrides
     // (studio reserves nothing below: the panel is docked left, not bottom)
@@ -1555,16 +1693,22 @@
       : desktop ? Math.min(window.innerHeight * 0.46, 360)
       : Math.min(window.innerHeight * 0.46, 420);
     const sat = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--sat")) || 0;
-    const stripH = studio ? 0 : $("looksStrip").offsetHeight; // studio hosts the gallery in the panel
-    const chrome = (studio
-      ? editBarReserve + 36 // no header, no top bar — just breathing room + the bar
-      : window.innerWidth >= 1400 ? 280 : desktop ? 250 : 205) + sat; // header grows with logo + notch
-    const zoneH = Math.max(150, window.innerHeight - sheetH - chrome);
+    // studio: the canvas fits the editor box's content area (padding stays visible);
+    // elsewhere the zone is what's left between the header and the docked sheet
+    let zoneH;
+    if (studio) {
+      const ed = wrap.parentElement, es = getComputedStyle(ed);
+      zoneH = Math.max(150, ed.clientHeight -
+        (parseFloat(es.paddingTop) || 0) - (parseFloat(es.paddingBottom) || 0));
+    } else {
+      const chrome = (window.innerWidth >= 1400 ? 280 : desktop ? 250 : 205) + sat; // header grows with logo + notch
+      zoneH = Math.max(150, window.innerHeight - sheetH - chrome);
+    }
     const ar = fmt.w / fmt.h;
 
     // start with a strict fit, then enlarge so the QR itself stays readable —
     // but never beyond what the zone can show (card + caption must fit the crop window).
-    // Studio always stays strict: the whole artboard must sit between the bars.
+    // Studio always stays strict: the whole artboard must fit the editor box.
     const ef = 0.32 + ((state.qrScale - 0.35) / 0.45) * 0.49; // effective scale of the slider mapping
     let w = Math.min(wrapW, zoneH * ar);
     const capRatio = state.caption.trim() ? 0.075 / ef : 0;
@@ -1573,7 +1717,7 @@
     if (w * ef < targetQR && !studio) w = Math.min(wrapW, targetQR / ef);
     const h = w / ar;
 
-    // non-square studio artboard: dash the file bounds (page bg bleeds past them)
+    // non-square studio artboard: dash the file bounds (editor bg bleeds past them)
     wrap.classList.toggle("framed", studio && ar !== 1);
     // if the full scene is taller than the zone, crop it — keep the QR card in view
     wrap.style.height = Math.min(h, zoneH) + "px";
@@ -1599,25 +1743,33 @@
     } else if (!document.body.classList.contains("sheet-open")) {
       const headTotal = document.querySelector("header").offsetHeight + (window.innerWidth <= 880 ? 16 : 8);
       const navTop = window.innerHeight - ((window.innerWidth > 880 ? 32 : 14) + 80);
-      shift = Math.max(0, (navTop - headTotal - Math.min(h, zoneH) - stripH) / 2);
+      shift = Math.max(0, (navTop - headTotal - Math.min(h, zoneH)) / 2);
     }
     canvas.closest(".preview").style.transform = `translateY(${shift}px)`;
   }
 
-  // the page itself becomes the scene background; chrome flips light/dark to match
+  // The design background lives inside the artboard. Chrome remains on the
+  // neumorphic surface, but selection helpers still adapt to dark artboards.
   function applyPageBg() {
     const tex = textureURI();
-    const texLayer = tex ? `url("${tex}"), ` : "";
-    document.body.style.background = state.sceneBg === "gradient"
-      ? `${texLayer}linear-gradient(180deg, ${shade(state.bg, 14)}, ${shade(state.bg, -14)})`
-      : (tex ? `url("${tex}") ${state.bg}` : state.bg);
+    const scenePaint = state.sceneBg === "gradient"
+      ? `linear-gradient(180deg, ${shade(state.bg, 14)}, ${shade(state.bg, -14)})`
+      : state.bg;
+    const editor = document.querySelector(".preview .editor-section");
+    if (editor) {
+      editor.style.background = tex ? `url("${tex}"), ${scenePaint}` : scenePaint;
+      editor.style.backgroundColor = state.bg;
+      editor.style.backgroundSize = tex ? "auto, cover" : "cover";
+      editor.style.backgroundRepeat = tex ? "repeat, no-repeat" : "no-repeat";
+      editor.style.backgroundPosition = "center";
+    }
     document.documentElement.setAttribute("data-theme", bgLum() < 140 ? "dark" : "light");
   }
 
   function drawPreview() {
     fitPreview();
     applyPageBg();
-    drawScene(ctx, canvas.width, canvas.height, qrImgs, false);
+    drawScene(ctx, canvas.width, canvas.height, qrImgs, false, null, true);
     drawSelection();
     positionMiniBar(); // the mini toolbar follows its selection
   }
@@ -1644,6 +1796,7 @@
       if (state.extra.length === 0) return; // the last code stays
       if (sel.i === 0) state.data = state.extra.shift();
       else state.extra.splice(sel.i - 1, 1);
+      state.qrPos.splice(sel.i, 1);
       $("content").value = state.data;
       syncQrBtn();
       sel = null;
@@ -1688,8 +1841,8 @@
       ctx.stroke();
       delBtn = { x: cx, y: cy, r: r * 1.5 }; // generous tap target
     }
-    // ⤡ resize grip at the bottom-right corner — everything but the caption
-    if (sel.kind !== "caption") {
+    // ⤡ resize grip at the bottom-right corner — text and stickers only
+    if (sel.kind !== "caption" && sel.kind !== "qr") {
       const gx = rct.x + rct.w + p, gy2 = rct.y + rct.h + p;
       ctx.beginPath(); ctx.arc(gx, gy2, r, 0, 7);
       ctx.fillStyle = "#ffffff"; ctx.fill();
@@ -1707,6 +1860,13 @@
     }
     ctx.restore();
   }
+  function setQrCenter(i, cx, cy) {
+    // clamp like texts/stickers — a card's center can never leave the artboard
+    state.qrPos[i] = {
+      x: Math.round(Math.min(0.98, Math.max(0.02, cx / canvas.width)) * 1000) / 1000,
+      y: Math.round(Math.min(0.98, Math.max(0.02, cy / canvas.height)) * 1000) / 1000,
+    };
+  }
 
   // larger screens: keep a card open so the sheet zone isn't dead whitespace
   let wasMobile = window.innerWidth <= 880;
@@ -1723,7 +1883,7 @@
     }
     wasStudio = isStudio();
     wasMobile = mobile;
-    placeLooks(); // gallery hops between sidebar (studio) and under-canvas dock
+    placeLooks(); // controls hop between mobile sheets and the studio sidebar
     drawPreview();
   });
 
@@ -1742,17 +1902,20 @@
     qrScale: { k: "a", ok: (v) => typeof v === "number" && v >= 0.35 && v <= 0.8 },
     extra:  { k: "e", ok: (v) => Array.isArray(v) && v.length <= 2 &&
       v.every((s) => typeof s === "string" && s.length <= 2000) },
+    qrPos: { k: "p", ok: (v) => Array.isArray(v) && v.length <= 3 && v.every((p) =>
+      !p || (typeof p.x === "number" && p.x >= 0 && p.x <= 1 &&
+             typeof p.y === "number" && p.y >= 0 && p.y <= 1)) },
     stickers: { k: "j", ok: (v) => Array.isArray(v) && v.length <= 10 && v.every((s) =>
       s && (s.t === "icon" ? STICKER_ICONS.includes(s.k)
             : s.t === "emoji" && typeof s.k === "string" && s.k.length <= 8) &&
       typeof s.x === "number" && s.x >= 0 && s.x <= 1 &&
       typeof s.y === "number" && s.y >= 0 && s.y <= 1 &&
-      typeof s.s === "number" && s.s >= 0.04 && s.s <= 0.4 && isHex(s.c)) },
+      typeof s.s === "number" && s.s >= 0.04 && s.s <= 0.5 && isHex(s.c)) },
     texts:  { k: "v", ok: (v) => Array.isArray(v) && v.length <= 8 && v.every((it) =>
       it && typeof it.t === "string" && it.t.length <= 80 &&
       typeof it.x === "number" && it.x >= 0 && it.x <= 1 &&
       typeof it.y === "number" && it.y >= 0 && it.y <= 1 &&
-      typeof it.s === "number" && it.s >= 0.02 && it.s <= 0.12 &&
+      typeof it.s === "number" && it.s >= 0.02 && it.s <= 0.2 &&
       it.f in FONT_DEFS && isHex(it.c)) },
     sceneBg:{ k: "s", ok: (v) => v === "gradient" || v === "solid" },
     format: { k: "z", ok: (v) => v in FORMATS },
@@ -1763,16 +1926,24 @@
   function encodeDesign() {
     const o = {};
     for (const [field, spec] of Object.entries(SHARE_FIELDS)) o[spec.k] = state[field];
+    // carry the takeover flags so an autosave restore keeps the user's intent
+    o._c = { n: !!custom.caption, q: !!custom.capFont, l: !!custom.logo };
     return btoa(unescape(encodeURIComponent(JSON.stringify(o))))
       .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
   }
-  function decodeDesign(h) {
+  function decodeDesign(h, fromShareLink = false) {
     try {
       const o = JSON.parse(decodeURIComponent(escape(atob(h.replace(/-/g, "+").replace(/_/g, "/")))));
       for (const [field, spec] of Object.entries(SHARE_FIELDS)) {
         if (spec.k in o && spec.ok(o[spec.k])) state[field] = o[spec.k];
       }
-      custom.caption = true; // a shared design's caption is intentional — looks shouldn't stomp it
+      if (o._c && typeof o._c === "object") {
+        custom.caption = !!o._c.n; custom.capFont = !!o._c.q; custom.logo = !!o._c.l;
+      }
+      // a SHARED design's caption is intentional — looks shouldn't stomp it.
+      // (an autosave restore keeps whatever the flags say, so dressed looks
+      // still swap captions for users who never customized theirs)
+      if (fromShareLink) custom.caption = true;
       return true;
     } catch (e) { return false; }
   }
@@ -1790,7 +1961,7 @@
   }
 
   // readable query-param API — ?data=...&look=kopitiam&ink=stamp (see API.md)
-  let bootLook = null; // look applied via URL — boot syncs the strip to it
+  let bootLook = null; // look applied via URL — boot syncs the theme slider to it
   function applyQueryParams() {
     const q = new URLSearchParams(location.search);
     if (![...q.keys()].length) return false;
@@ -2225,6 +2396,10 @@
     const it = selText(), st = selSticker();
     $("fontSelLabel").textContent = it ? it.f : state.capFont;
     $("tbCapDot").style.background = st ? st.c : it ? it.c : state.capColor;
+    // the Content field edits the selected code, or code #1 when nothing is —
+    // keep what it SHOWS in lockstep, or typing silently rewrites the wrong QR
+    const activeData = sel && sel.kind === "qr" && sel.i > 0 ? state.extra[sel.i - 1] : state.data;
+    if (typeof activeData === "string" && $("content").value !== activeData) $("content").value = activeData;
   }
 
   // ---- inline canvas text editing
@@ -2265,6 +2440,7 @@
       e.stopPropagation(); // typing must never trigger the canvas Delete handler
     });
     inp.addEventListener("blur", () => commitTextEdit());
+    inp.maxLength = 80; // the share codec caps captions/texts at 80 — never let the canvas editor exceed it
     document.body.appendChild(inp);
     editInput = inp;
     inp.focus();
@@ -2306,13 +2482,13 @@
   function positionMiniBar() {
     const rct = selRect();
     if (!rct || !sel || editing) { miniBar.hidden = true; return; }
+    if (sel.kind === "qr") { miniBar.hidden = true; return; } // QR: drag to place, colors in the Design panel
     miniBar.hidden = false;
     const isText = sel.kind === "text" || sel.kind === "caption";
-    const isQr = sel.kind === "qr";
     const resizable = sel.kind !== "caption"; // the caption's size is layout-driven
     $("mbFont").style.display = isText ? "" : "none";
-    $("mbColor").style.display = isQr ? "none" : ""; // QR colors live in the Design panel
-    $("mbSizeSep").style.display = resizable && !isQr ? "" : "none";
+    $("mbColor").style.display = "";
+    $("mbSizeSep").style.display = resizable ? "" : "none";
     $("mbSmaller").style.display = resizable ? "" : "none";
     $("mbBigger").style.display = resizable ? "" : "none";
     const st = selSticker(), it = selText();
@@ -2331,7 +2507,6 @@
     const st = selSticker(), it = selText();
     if (st) st.s = Math.max(0.04, Math.min(0.5, +(st.s + dir * 0.025).toFixed(3)));
     else if (it) it.s = Math.max(0.02, Math.min(0.2, +(it.s + dir * 0.007).toFixed(3)));
-    else if (sel && sel.kind === "qr") state.qrScale = Math.max(0.35, Math.min(0.8, +(state.qrScale + dir * 0.03).toFixed(3)));
     else return;
     update(false);
   }
@@ -2485,11 +2660,8 @@
     }
   });
 
-  // ---- the looks gallery lives under the canvas on mobile, inside the
-  // panel's Looks tab in studio — one DOM node, reparented on breakpoint change
-  // Studio reparent (name kept for existing call sites). At ≥1100px the looks gallery
-  // and the three control panels move into the left sidebar's slots; below 1100px each
-  // returns to its exact original spot (a permanent anchor comment marks the home index).
+  // ---- Studio reparent: at ≥1100px the three control panels move into the
+  // left sidebar's slots; below 1100px each returns to its exact original spot.
   let STUDIO_NODES = null;
   function placeLooks() {
     if (!STUDIO_NODES) {
@@ -2501,9 +2673,9 @@
         return { node, anchor, slotId };
       };
       STUDIO_NODES = [
-        reg("#looksStrip", "slotLooks"),
         reg("#contentPanel", "slotContent"),
         reg('.panel[data-panel="style"]', "slotStyle"),
+        reg("#colorPop", "slotStyle"), // the palette popover must follow its chips or studio color editing dies
         reg('.panel[data-panel="scene"]', "slotScene"),
         reg("#addTextBtn", "slotScene"),
         reg("#addStickerBtn", "slotScene"),
@@ -2605,7 +2777,7 @@
   // Addressable by name via ?look= (and legacy ?theme=).
   const LOOKS = [
     // the original twelve — palette looks, caption stays default
-    { name: "durian",    fg: "#18181b", base: "#ffffff", bg: "#FFE14D", out: "#18181b", tex: "waves" },
+    { name: "durian",    fg: "#18181b", base: "#ffffff", bg: "#F4F4EF", out: "#18181b", tex: "waves" },
     { name: "matcha",    fg: "#163300", base: "#E8F5D0", bg: "#9FE870", out: "#163300", tex: "leaves" },
     { name: "midnight",  fg: "#163300", base: "#9FE870", bg: "#0B1F00", out: "#9FE870", capc: "#9FE870", tex: "topo" },
     { name: "ocean",     fg: "#0B2942", base: "#ffffff", bg: "#8ED6F0", out: "#0B2942", tex: "waves" },
@@ -2631,6 +2803,13 @@
   // hasn't set their own — one custom edit and looks become visuals-only
   const custom = { caption: false, capFont: false, logo: false };
   let currentLook = "durian"; // last applied look — coarse analytics context only
+  function syncThemeUI(name = currentLook) {
+    document.querySelectorAll("#looksStrip .look").forEach((b) => {
+      const active = b.dataset.theme === name;
+      b.classList.toggle("active", active);
+      b.setAttribute("aria-selected", active ? "true" : "false");
+    });
+  }
   function lookState(t) { // pure state mutation — safe at boot, before UI sync
     currentLook = t.name;
     state.fg = t.fg; state.base = t.base; state.bg = t.bg; state.outline = t.out;
@@ -2654,8 +2833,7 @@
       b.classList.toggle("active", b.dataset.ink === state.inkMood));
     document.querySelectorAll("#cornerPresets .preset").forEach(b =>
       b.classList.toggle("active", b.dataset.corner === state.cornerType));
-    document.querySelectorAll("#looksStrip .look").forEach(b =>
-      b.classList.toggle("active", b.dataset.theme === t.name));
+    syncThemeUI(t.name);
     syncChips();
     setTexture(t.tex);
     update(true);
@@ -2698,7 +2876,7 @@
     });
   });
 
-  // ---- Looks strip: mini design thumbnails, tap to wear the whole look
+  // ---- Theme slider: mini design thumbnails, tap to wear the whole look
   // fixed module positions (x, y) inside the mini card — eye region kept clear
   const THUMB_MODS = [
     [60, 33], [72, 35], [66, 45], [33, 60], [44, 66],
@@ -2751,6 +2929,8 @@
     const b = document.createElement("button");
     b.className = "look" + (t.name === "durian" ? " active" : "");
     b.dataset.theme = t.name;
+    b.setAttribute("role", "option");
+    b.setAttribute("aria-selected", t.name === "durian" ? "true" : "false");
     const lbl = t.label || t.name;
     b.setAttribute("aria-label", lbl + " look");
     const chip = document.createElement("span");
@@ -2965,7 +3145,6 @@
       openPanel === n.dataset.nav ? closeSheet() : openSheet(n.dataset.nav);
     });
   });
-  $("sheetBackdrop").addEventListener("click", closeSheet);
   $("sheetClose").addEventListener("click", closeSheet);
   $("exportClose").addEventListener("click", closeSheet);
   // tapping the QR: select/deselect items (caption, texts, multi-code cards)
@@ -2980,22 +3159,17 @@
       deleteSelection();
       return;
     }
-    // 1b) the ⤡ resize grip — drag scales the item around its center
+    // 1b) the ⤡ resize grip — text/stickers scale around their center
     if (rzBtn && sel && Math.hypot(px - rzBtn.x, py - rzBtn.y) <= rzBtn.r) {
-      const rct = selRect();
-      let cx2, cy2;
-      if (sel.kind === "qr") { cx2 = rct.x + rct.w / 2; cy2 = rct.y + rct.h / 2; }
-      else {
-        const it = (sel.kind === "sticker" ? state.stickers : state.texts)[sel.i];
-        cx2 = it.x * canvas.width; cy2 = it.y * canvas.height;
-      }
+      const it = (sel.kind === "sticker" ? state.stickers : state.texts)[sel.i];
+      const cx2 = it.x * canvas.width, cy2 = it.y * canvas.height;
       dragRz = {
         kind: sel.kind, i: sel.i, cx: cx2, cy: cy2,
         d0: Math.max(8, Math.hypot(px - cx2, py - cy2)),
-        s0: sel.kind === "qr" ? state.qrScale
-          : (sel.kind === "sticker" ? state.stickers[sel.i] : state.texts[sel.i]).s,
+        s0: it.s,
       };
       suppressOpen = true;
+      e.preventDefault();
       try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
       return;
     }
@@ -3018,7 +3192,7 @@
     if (!hit && c && px >= c.x - pad && px <= c.x + c.w + pad && py >= c.y - pad && py <= c.y + c.h + pad) {
       hit = { kind: "caption" };
     }
-    // tapping a card selects that QR — resize grip, and edit/remove when multi
+    // tapping a card selects that QR for moving/editing/removal
     if (!hit) {
       for (let i = 0; i < hitRects.qrs.length; i++) {
         const q = hitRects.qrs[i];
@@ -3031,9 +3205,18 @@
       sel = hit; suppressOpen = true;
       syncBarToSelection();
       if (hit.kind === "qr") $("content").value = codes()[hit.i]; // the Content field edits this code now
-      if (hit.kind === "text" || hit.kind === "sticker") {
+      if (hit.kind === "qr") {
+        const q = hitRects.qrs[hit.i];
+        if (q) {
+          // sx/sy: a tap must stay a tap — only a real pull pins the card (see pointermove)
+          dragSel = { kind: "qr", i: hit.i, dx: px - (q.x + q.w / 2), dy: py - (q.y + q.h / 2), sx: px, sy: py, live: false };
+          e.preventDefault();
+          try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+        }
+      } else if (hit.kind === "text" || hit.kind === "sticker") {
         const it = (hit.kind === "text" ? state.texts : state.stickers)[hit.i];
         dragSel = { kind: hit.kind, i: hit.i, dx: px - it.x * canvas.width, dy: py - it.y * canvas.height };
+        e.preventDefault();
         try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
       }
       drawPreview();
@@ -3047,20 +3230,29 @@
   });
   $("artboard").addEventListener("pointermove", (e) => {
     if (!dragSel && !dragRz) return;
+    e.preventDefault();
     const r = canvas.getBoundingClientRect();
     const px = (e.clientX - r.left) * (canvas.width / r.width);
     const py = (e.clientY - r.top) * (canvas.height / r.height);
-    if (dragRz) { // resizing: scale follows the grip's distance from the item's center
+    if (dragRz) { // text/sticker resizing follows the grip's distance from center
       const f = Math.hypot(px - dragRz.cx, py - dragRz.cy) / dragRz.d0;
-      if (dragRz.kind === "qr") {
-        state.qrScale = Math.max(0.35, Math.min(0.8, +(dragRz.s0 * f).toFixed(3)));
-      } else if (dragRz.kind === "sticker") {
+      if (dragRz.kind === "sticker") {
         const st = state.stickers[dragRz.i];
         if (st) st.s = Math.max(0.04, Math.min(0.5, +(dragRz.s0 * f).toFixed(3)));
       } else {
         const it = state.texts[dragRz.i];
         if (it) it.s = Math.max(0.02, Math.min(0.2, +(dragRz.s0 * f).toFixed(3)));
       }
+      drawPreview();
+      return;
+    }
+    if (dragSel.kind === "qr") {
+      const q = hitRects.qrs[dragSel.i];
+      if (!q) { dragSel = null; return; }
+      // a select-tap shouldn't pin the card to a manual position — wait for a real pull
+      if (!dragSel.live && Math.hypot(px - dragSel.sx, py - dragSel.sy) < Math.max(8, canvas.width * 0.01)) return;
+      dragSel.live = true;
+      setQrCenter(dragSel.i, px - dragSel.dx, py - dragSel.dy);
       drawPreview();
       return;
     }
@@ -3082,7 +3274,10 @@
   });
   $("artboard").addEventListener("click", () => {
     if (suppressOpen) { suppressOpen = false; return; }
-    if (!openPanel && !isStudio()) openSheet("content"); // studio: canvas taps are for selecting items
+    if (isStudio()) return; // studio: canvas taps are for selecting items
+    // empty tap toggles: closed → open Content; sheet open → dismiss it
+    // (the artboard stays touch-editable behind open sheets — no backdrop)
+    openPanel ? closeSheet() : openSheet("content");
   });
 
   // step through the cards in order
@@ -3107,7 +3302,7 @@
       const k = Math.sin(t * Math.PI); // 0 → 1 → 0: melt then reform
       fx.blur = k * 7;
       fx.alpha = 1 - k * 0.4;
-      drawScene(ctx, canvas.width, canvas.height, qrImgs, false);
+      drawScene(ctx, canvas.width, canvas.height, qrImgs, false, null, true);
       drawSelection();
       if (t < 1) fxRaf = requestAnimationFrame(frame);
       else { fx.blur = 0; fx.alpha = 1; drawPreview(); }
@@ -3129,13 +3324,14 @@
     animateGenerate();
 
     setTimeout(() => {
-      b.textContent = "✓ Generated!";
-      $("genMsg").hidden = false;
+      // the 120ms-debounced encode has settled by now — tell the truth
+      b.textContent = qrOverflow ? "✗ Too much data" : "✓ Generated!";
+      $("genMsg").hidden = qrOverflow;
       setTimeout(() => {
         b.innerHTML = saved;
         b.disabled = false;
         $("genMsg").hidden = true;
-        if (openPanel === "content") openSheet("style"); // don't re-open if the user closed or moved on
+        if (!qrOverflow && openPanel === "content") openSheet("style"); // don't re-open if the user closed or moved on
       }, 1400);
     }, 1000);
   });
@@ -3149,7 +3345,7 @@
   // or the local autosave (so a refresh restores your last session)
   let fromShare = false;
   const booted =
-    (location.hash.startsWith("#d=") && (fromShare = decodeDesign(location.hash.slice(3)))) ||
+    (location.hash.startsWith("#d=") && (fromShare = decodeDesign(location.hash.slice(3), true))) ||
     applyQueryParams() ||
     (() => { try { const a = localStorage.getItem("qrd_autosave"); return a && decodeDesign(a); } catch (e) { return false; } })();
   // a shared link has been absorbed into state — clean it out of the address bar,
@@ -3177,8 +3373,7 @@
     document.querySelectorAll("#fmtChips .fmt-chip").forEach(x =>
       x.classList.toggle("active", x.dataset.fmt === state.format));
     if (state.logo) $("logoPrev").innerHTML = `<img src="${state.logo}" alt="logo" />`;
-    if (bootLook) document.querySelectorAll("#looksStrip .look").forEach(b =>
-      b.classList.toggle("active", b.dataset.theme === bootLook));
+    syncThemeUI(bootLook || currentLook);
   }
   // a fresh visit (no shared link / query / autosave) still shows the default
   // link in the field, so the box always matches the QR on open
@@ -3187,7 +3382,7 @@
   syncFmtSelect();
   syncGalleryUI();
   syncQrBtn(); // a shared multi-code design may already be at the 3-code cap
-  placeLooks(); // gallery into the panel tab (studio) or under the canvas (mobile)
+  placeLooks(); // controls into the studio sidebar, or back to mobile sheets
   $("fontSelLabel").textContent = state.capFont;
   fontList.querySelectorAll(".fmt-row").forEach(x =>
     x.classList.toggle("active", x.dataset.font === state.capFont));
