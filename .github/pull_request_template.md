@@ -1,0 +1,3 @@
+- [ ] `npm test` passes: every look scans, every hash key is in API.md
+- [ ] If a look was added or changed: `npm run looks` was run
+- [ ] Share link showing the change:

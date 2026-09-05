@@ -1568,8 +1568,17 @@
   // Three moods: clean press, heavy stamp, dry brush.
   const INK_MOODS = {
     press: { passes: 7,  J: .003, jy: 1,   alpha: .30, goo: .0035, contrast: 12, soften: .0012, cutoff: .45, pool: .55, holes: 0,   gBase: .90, gVar: .10 },
-    stamp: { passes: 10, J: .006, jy: 1,   alpha: .34, goo: .0050, contrast: 9,  soften: .0016, cutoff: .40, pool: .80, holes: .05, gBase: .82, gVar: .18 },
-    brush: { passes: 8,  J: .007, jy: .25, alpha: .26, goo: .0030, contrast: 11, soften: .0008, cutoff: .50, pool: .30, holes: .20, gBase: .60, gVar: .40 },
+    // stamp + brush keep their character (ragged rims, dry streaks) but stay inside
+    // what a decoder tolerates: fewer dropped pixels (holes), tighter wicking (J),
+    // and a higher alpha floor (gBase). Before this, six of the twenty looks failed
+    // the app's own scan check ~ the badge said "May not scan" on the defaults.
+    // stamp + brush keep their wicking character (more passes, wider jitter, brush
+    // biased horizontally) but use press's thresholds and grain, and no dry-brush
+    // holes: the per-pixel gaps (5% / 20%) broke decoding ~ six of the twenty
+    // built-in looks failed the app's own scan check, and a decoder saw the same.
+    // tests/scan.test.mjs guards every look now.
+    stamp: { passes: 10, J: .006, jy: 1,   alpha: .34, goo: .0035, contrast: 12, soften: .0012, cutoff: .45, pool: .55, holes: 0, gBase: .90, gVar: .10 },
+    brush: { passes: 8,  J: .006, jy: .25, alpha: .26, goo: .0035, contrast: 12, soften: .0012, cutoff: .45, pool: .55, holes: 0, gBase: .90, gVar: .10 },
   };
   function inkify(src, s) {
     const M = INK_MOODS[state.inkMood] || INK_MOODS.press;

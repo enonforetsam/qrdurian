@@ -1,13 +1,64 @@
-# 🍈 qrdurian
+<div align="center">
 
-**Design beautiful, custom QR codes in seconds. Free, no signup, open source.**
-Live at **[qrdurian.com](https://qrdurian.com)** · MIT licensed ([LICENSE](LICENSE)) · contributions welcome
+<img src="og.png" alt="QRDurian" width="560">
 
-qrdurian is a single-file, mobile-first QR code designer. You land on a clean warm-white
-studio with a live QR floating in the middle, walk through four steps — Content → Style →
-Artboard → Export — and leave with a print-ready PNG, JPG, or full-design vector SVG.
-Everything runs in the browser; nothing is uploaded anywhere. No account, no paywall —
-every feature is free.
+# QRDurian
+
+**QR codes that don't look like QR codes.** A single-file designer: pick a look, drop a
+logo, export a print-ready PNG or a clean vector SVG. Free, no signup, nothing leaves
+your browser.
+
+[![License: MIT](https://img.shields.io/badge/license-MIT-3a1f7a.svg)](LICENSE)
+&nbsp;[![Live](https://img.shields.io/badge/live-qrdurian.com-e8b300.svg)](https://qrdurian.com)
+&nbsp;[![Scan test](https://github.com/enonforetsam/qrdurian/actions/workflows/test.yml/badge.svg)](https://github.com/enonforetsam/qrdurian/actions/workflows/test.yml)
+&nbsp;[![No build step](https://img.shields.io/badge/build-none-2aa37a.svg)](#quick-start)
+
+[Design one](https://qrdurian.com) ·
+[20 looks](https://qrdurian.com/looks) ·
+[Templates](https://qrdurian.com/templates.html) ·
+[Share-link API](API.md)
+
+</div>
+
+## Quick start
+
+```sh
+git clone https://github.com/enonforetsam/qrdurian
+open qrdurian/index.html
+```
+
+That is the whole app. `npm test` renders every look in headless Chrome and checks that
+it scans; it is the gate for every change.
+
+## What it does
+
+- **Ink engine.** Modules are drawn as real ink: fibre wicking, ragged edges, coffee-ring
+  pooling, paper grain. Three moods (press, stamp, brush). SVG export stays clean vector.
+- **Scan check.** The rendered artwork is decoded offscreen after every edit; a badge
+  says "Scans" or tells you to raise contrast. Every built-in look passes.
+- **20 looks.** Twelve palettes and eight dressed looks (Kopitiam MENU, Wi-Fi, Pay Here,
+  Wedding, Receipt, Neon…). Shuffle rolls a random one.
+- **Content types.** Link, Wi-Fi, WhatsApp, vCard, event, DuitNow Pay Here, or restyle
+  an existing code from a photo.
+- **Export.** Square, phone wallpaper, A4 poster, story, sticker sheet, table tent,
+  counter card. PNG, JPG, SVG. Copy to clipboard, save to Photos, copy design link.
+- **Undo, stickers, free text, multi-code boards, caption fonts, textures, logos.**
+
+## Share links
+
+Every design is a URL: `#d=…` carries content, look, colours, texture, stickers and text
+items. The format is append-only and documented in [API.md](API.md).
+
+## What is open, what is hosted
+
+Everything in this repo runs from `file://`. qrdurian.com adds a small trace worker
+(origin verification and counts) and the `/looks/*` landing pages generated from the
+same `LOOKS` list. No backend, no account, no upload.
+
+## Contributing
+
+New looks are the easiest contribution: one entry in `LOOKS`, `npm test`, `npm run looks`.
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 
