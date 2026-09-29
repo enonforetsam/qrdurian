@@ -108,3 +108,84 @@ test("share-hash keys are documented in API.md", () => {
   const keys = new Set([...html.matchAll(/hash key `([a-z])`/g)].map((m) => m[1]));
   for (const k of keys) assert.ok(api.includes("`" + k + "`") || api.includes(k + "="), `hash key ${k} missing from API.md`);
 });
+
+test("editor content modes, imported payloads and exports stay consistent", { timeout: 120_000 }, async (t) => {
+  const { srv, port: httpPort } = await serve();
+  const { proc, ws } = await launchChrome(9833 + Math.floor(Math.random() * 500));
+  const c = cdp(ws); await c.ready;
+  t.after(() => { c.close(); proc.kill(); srv.close(); });
+  await c.send("Page.navigate", { url: `http://127.0.0.1:${httpPort}/` });
+  await c.evaluate(`new Promise((resolve, reject) => { let n = 0; const timer = setInterval(() => {
+    if (document.querySelectorAll('#looksStrip .look').length && document.querySelector('#content').value) { clearInterval(timer); resolve(); }
+    if (++n > 100) { clearInterval(timer); reject(Error('app not ready')); }
+  }, 100); })`);
+  const initial = await c.evaluate(`document.getElementById('content').value`);
+  const wifiEmpty = await c.evaluate(`(() => {
+    document.querySelector('[data-type="wifi"]').click();
+    return { rawHidden: document.getElementById('rawContentField').hidden,
+      disabled: document.getElementById('downloadBtn').disabled,
+      empty: !document.getElementById('previewEmpty').hidden };
+  })()`);
+  assert.deepEqual(wifiEmpty, { rawHidden: true, disabled: true, empty: true });
+  const wifi = await c.evaluate(`(() => {
+    const ssid = document.getElementById('tfWifiSsid'), password = document.getElementById('tfWifiPass');
+    ssid.value = 'Cafe;Guest'; password.value = 'test:1234';
+    password.dispatchEvent(new Event('input', { bubbles: true }));
+    return { data: document.getElementById('content').value, disabled: document.getElementById('downloadBtn').disabled,
+      summary: document.getElementById('destinationSummary').textContent };
+  })()`);
+  assert.equal(wifi.data, 'WIFI:T:WPA;S:Cafe\\;Guest;P:test\\:1234;;');
+  assert.equal(wifi.disabled, false);
+  assert.ok(!wifi.summary.includes('1234'), 'password must not appear in preview summary');
+  const restored = await c.evaluate(`(() => { document.querySelector('[data-type="link"]').click(); return document.getElementById('content').value; })()`);
+  assert.equal(restored, initial, 'switching types restores the link draft');
+  const invalidPhone = await c.evaluate(`(() => {
+    document.querySelector('[data-type="wa"]').click();
+    const el = document.getElementById('tfWaPhone'); el.value = '123'; el.dispatchEvent(new Event('input'));
+    return document.getElementById('downloadBtn').disabled;
+  })()`);
+  assert.equal(invalidPhone, true);
+  const validPhone = await c.evaluate(`(() => {
+    const el = document.getElementById('tfWaPhone'); el.value = '+60 123456789'; el.dispatchEvent(new Event('input'));
+    return document.getElementById('content').value;
+  })()`);
+  assert.equal(validPhone, 'https://wa.me/60123456789');
+  const savedStyle = await c.evaluate(`(() => {
+    document.getElementById('saveStyle').click();
+    const saved = JSON.parse(localStorage.getItem('qrd_saved_style'));
+    const before = state.data;
+    state.fg = '#123456';
+    document.getElementById('useStyle').click();
+    return { noContent: !('data' in saved) && !('extra' in saved),
+      contentPreserved: state.data === before, restored: state.fg === saved.fg };
+  })()`);
+  assert.deepEqual(savedStyle, { noContent: true, contentPreserved: true, restored: true });
+  // Import a real image with a payload the generic URL input would normalize.
+  // Exact preservation protects arbitrary codes, including payment payloads.
+  const imported = 'https://example.com/one\nhttps://example.com/two';
+  await c.evaluate(`(async () => {
+    const blob = await new QRCodeStyling({width: 700, height: 700, margin: 30, data: ${JSON.stringify(imported)}, dotsOptions: {color:'#000000'}, backgroundOptions: {color:'#ffffff'}}).getRawData('png');
+    const transfer = new DataTransfer(); transfer.items.add(new File([blob], 'roundtrip.png', {type:'image/png'}));
+    const input = document.getElementById('qrUpload'); input.files = transfer.files; input.dispatchEvent(new Event('change'));
+    await new Promise((resolve, reject) => { let n = 0; const timer = setInterval(() => {
+      if (document.getElementById('content').value === ${JSON.stringify(imported)}) { clearInterval(timer); resolve(); }
+      if (++n > 100) { clearInterval(timer); reject(Error('import did not preserve payload')); }
+    }, 100); });
+  })()`);
+  const roundtrip = await c.evaluate(`(async () => {
+    await loadJsQR();
+    const output = await renderSceneCanvas();
+    const pixels = output.getContext('2d').getImageData(0,0,output.width,output.height);
+    const decoded = jsQR(pixels.data,pixels.width,pixels.height);
+    return { width: output.width, height: output.height, data: decoded?.data,
+      rawVisible: !document.getElementById('rawContentField').hidden };
+  })()`);
+  assert.deepEqual(roundtrip, { width: 2048, height: 2048, data: imported, rawVisible: true });
+  // Changing output format must change the on-screen artboard too.
+  const portrait = await c.evaluate(`(() => {
+    setFormat('wallpaper'); drawPreview();
+    const r = document.getElementById('artboard').getBoundingClientRect();
+    return { ratio: r.width/r.height, expected: designDims().w/designDims().h };
+  })()`);
+  assert.ok(Math.abs(portrait.ratio - portrait.expected) < .01);
+});

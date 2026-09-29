@@ -28,23 +28,23 @@
     /* ---- clean white neumorphism — the chrome surface is FIXED (it does not
        flip with the canvas); every panel & control is extruded from / pressed
        into this one neutral field. Contrast-verified AA (type-and-color). ---- */
-    --surface: #F4F4EF;          /* warm white — every chrome panel & control */
+    --surface: #FFFFFF;          /* warm white — every chrome panel & control */
     --nl: #FFFFFF;               /* neumorphic highlight (top-left, light) */
     --nd: #D7D9D2;               /* neumorphic shadow  (bottom-right, soft) */
 
-    --bg: var(--surface);
+    --bg: #F7F9F3;
     --panel: var(--surface);
-    --panel-2: var(--surface);   /* inset controls share the surface colour */
-    --text: #202124;             /* ink — 14:1 on surface */
-    --muted: #62645F;            /* secondary ink — 5.4:1 */
-    --border: transparent;       /* neumorphism speaks in shadow, not borders */
+    --panel-2: #EEF3E7;   /* inset controls share the surface colour */
+    --text: #243B2E;             /* ink — 14:1 on surface */
+    --muted: #626B62;            /* secondary ink — 5.4:1 */
+    --border: #DCE3D8;       /* neumorphism speaks in shadow, not borders */
     --border-2: rgba(32,33,36,.12);
-    --accent: #3A3D40;           /* graphite accent — clean, neutral */
+    --accent: #244937;           /* graphite accent — clean, neutral */
     --accent-ink: #ffffff;       /* text/icons on accent */
-    --char: #1C1D20;             /* near-black — the Download colour, 16.9:1 */
-    --char-hover: #2b2d31;
+    --char: #244937;             /* near-black — the Download colour, 16.9:1 */
+    --char-hover: #183527;
     --char-ink: #ffffff;
-    --ring: rgba(58,61,64,.30);
+    --ring: #244937;
     --radius: 22px;
     --sat: env(safe-area-inset-top, 0px);
 
@@ -55,7 +55,9 @@
     --n-inset-sm:  inset 0 1px 3px rgba(32,33,36,.10), inset 0 -1px 0 rgba(255,255,255,.62);
     --n-line: rgba(32,33,36,.10);
     --n-float: 0 1px 0 rgba(255,255,255,.78), 0 14px 28px rgba(32,33,36,.12);
-    --shadow: var(--n-raised);
+    --shadow: 0 16px 48px rgba(36,59,46,.10);
+    --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-6: 24px; --space-8: 32px;
+    --control: 44px; --chrome-height: 76px; --ease-out: cubic-bezier(0,0,.2,1); --duration: 180ms;
   }
   /* The chrome stays white regardless of the design background. Only
      canvas-area helpers still read data-theme. */
@@ -984,15 +986,18 @@
   /* the Artboard card's mobile text tools ~ the studio bar owns the originals */
   @media (min-width: 1100px) { #mTextTools { display: none !important; } }
 </style>
+<link rel="stylesheet" href="editor.css">
 </head>
 <body>
   <header>
     <div class="brand" aria-label="qrdurian">
-      <span class="mark"><img src="durian.svg" alt="qrdurian" /></span>
+      <span class="mark"><img src="durian.svg" alt="" /></span><span>qrdurian</span><span class="studio-label">STUDIO</span>
     </div>
+    <div class="header-actions"><span class="local-first">Free to create. Yours to keep.</span>
     <button class="shuffle-btn hist-btn hist-undo" id="undoBtn" aria-label="Undo" disabled><i data-lucide="undo-2"></i></button>
     <button class="shuffle-btn hist-btn" id="redoBtn" aria-label="Redo" disabled><i data-lucide="redo-2"></i></button>
-    <button class="shuffle-btn" id="shuffleBtn" aria-label="Random design"><i data-lucide="refresh-cw"></i></button>
+    <button class="shuffle-btn" id="shuffleBtn" aria-label="Random design"><i data-lucide="shuffle"></i></button>
+    <button class="btn primary header-export" data-nav="export"><i data-lucide="download"></i><span>Export</span></button></div>
   </header>
 
   <div class="promo" id="remixPromo" hidden>
@@ -1003,15 +1008,12 @@
   <main>
     <!-- STUDIO sidebar (≥1100px only): controls are reparented into the slots by placeStudio() -->
     <aside id="studioPanel" aria-label="Studio controls">
-      <header class="sp-brand">
-        <span class="sp-mark"><img src="durian.svg" alt="qrdurian" /></span>
-        <span class="sp-word">qr<b>durian</b></span>
-        <span class="sp-grow"></span>
-        <button class="sp-icon" id="spUndo" title="Undo" aria-label="Undo" disabled><i data-lucide="undo-2"></i></button>
-        <button class="sp-icon" id="spRedo" title="Redo" aria-label="Redo" disabled><i data-lucide="redo-2"></i></button>
-        <button class="sp-icon" id="spShuffle" title="Random design" aria-label="Random design"><i data-lucide="shuffle"></i></button>
-        <button class="sp-icon" id="spCollapse" title="Hide panel" aria-label="Hide panel"><i data-lucide="panel-left-close"></i></button>
-      </header>
+      <div class="studio-intro"><p class="eyebrow">SMALL CODE. BIG POSSIBILITIES.</p><h1>Make a connection.</h1><p>A QR that feels like you.<br>Ready in a few little steps.</p></div>
+      <nav class="studio-tabs" aria-label="Editor sections">
+        <button data-nav="content" aria-pressed="true">01 Content</button>
+        <button data-nav="style" aria-pressed="false">02 Design</button>
+        <button data-nav="export" aria-pressed="false">03 Export</button>
+      </nav>
       <div id="studioScroll">
         <button class="sp-sec" type="button" data-sec="content">Content<i data-lucide="chevron-down" class="sp-sec-chev"></i></button>
         <div class="sp-slot" id="slotContent"></div>
@@ -1019,16 +1021,15 @@
         <div class="sp-slot" id="slotStyle"></div>
         <button class="sp-sec" type="button" data-sec="artboard">Artboard<i data-lucide="chevron-down" class="sp-sec-chev"></i></button>
         <div class="sp-slot" id="slotScene"></div>
-        <button class="sp-sec" type="button" data-sec="share">Share link<i data-lucide="chevron-down" class="sp-sec-chev"></i></button>
-        <div class="sp-slot" style="padding:0;background:none;border:none"><div class="sp-code" id="spCode"></div></div>
+        <div class="sp-dock" id="slotExport"></div>
       </div>
-      <div class="sp-dock" id="slotExport"></div>
+
       <a class="sp-sig" href="https://krackeddevs.com" target="_blank" rel="noopener">made by KrackedDevs · free &amp; open source</a>
     </aside>
     <button id="reopen" title="Show panel" aria-label="Show panel"><i data-lucide="panel-left-open"></i></button>
     <!-- LEFT: controls (desktop column / mobile bottom sheets) -->
     <section class="card controls" id="controlsCard">
-      <button class="sheet-close corner" id="sheetClose">✕</button>
+      <button class="sheet-close corner" id="sheetClose" aria-label="Close editor">✕</button>
       <div class="steps" aria-hidden="true">
         <span class="step" data-step="content"></span>
         <span class="step" data-step="style"></span>
@@ -1037,15 +1038,15 @@
       </div>
 
       <div class="panel active" data-panel="content" id="contentPanel" data-ctab="link">
-      <div class="panel-title">Content</div>
+      <div class="panel-title">Where are we going?</div><p class="panel-description">Choose what happens after the scan.</p>
       <div class="ct-tabs">
-        <button class="ct-tab active" data-ctab="link">New link</button>
-        <button class="ct-tab" data-ctab="existing">Existing QR</button>
+        <button class="ct-tab active" data-ctab="link" aria-pressed="true">Create new</button>
+        <button class="ct-tab" data-ctab="existing" aria-pressed="false">Restyle existing</button>
       </div>
 
       <div class="ct-view" data-view="link">
       <div class="type-chips" id="typeChips" aria-label="Content type">
-        <button class="type-chip active" data-type="link">Link</button>
+        <button class="type-chip active" data-type="link">Link / text</button>
         <button class="type-chip" data-type="wifi">Wi-Fi</button>
         <button class="type-chip" data-type="wa">WhatsApp</button>
         <button class="type-chip" data-type="vcard">vCard</button>
@@ -1053,48 +1054,49 @@
         <button class="type-chip" data-type="pay">Pay Here</button>
       </div>
       <div class="type-form" id="tfWifi" hidden>
-        <input type="text" id="tfWifiSsid" placeholder="Network name (SSID)" autocomplete="off" />
-        <input type="text" id="tfWifiPass" placeholder="Password" autocomplete="off" />
+        <div class="form-field"><label for="tfWifiSsid">Network name (SSID)</label><input type="text" id="tfWifiSsid" placeholder="Network name (SSID)" autocomplete="off" /></div>
+        <div class="form-field"><label for="tfWifiPass">Password (optional)</label><input type="password" id="tfWifiPass" placeholder="Password" autocomplete="off" /></div>
       </div>
       <div class="type-form" id="tfWa" hidden>
-        <input type="text" id="tfWaPhone" placeholder="Phone with country code ~ 60123456789" autocomplete="off" />
-        <input type="text" id="tfWaMsg" placeholder="Pre-filled message (optional)" autocomplete="off" />
+        <div class="form-field"><label for="tfWaPhone">Phone with country code</label><input type="tel" id="tfWaPhone" placeholder="Phone with country code ~ 60123456789" autocomplete="off" /></div>
+        <div class="form-field"><label for="tfWaMsg">Message (optional)</label><input type="text" id="tfWaMsg" placeholder="Pre-filled message (optional)" autocomplete="off" /></div>
       </div>
       <div class="type-form" id="tfVcard" hidden>
-        <input type="text" id="tfVcName" placeholder="Full name" autocomplete="off" />
+        <div class="form-field"><label for="tfVcName">Full name</label><input type="text" id="tfVcName" placeholder="Full name" autocomplete="off" /></div>
         <div class="row">
-          <input type="text" id="tfVcTel" placeholder="Phone" autocomplete="off" />
-          <input type="text" id="tfVcEmail" placeholder="Email" autocomplete="off" />
+          <div class="form-field"><label for="tfVcTel">Phone</label><input type="tel" id="tfVcTel" placeholder="Phone" autocomplete="off" /></div>
+          <div class="form-field"><label for="tfVcEmail">Email</label><input type="email" id="tfVcEmail" placeholder="Email" autocomplete="off" /></div>
         </div>
         <div class="row">
-          <input type="text" id="tfVcOrg" placeholder="Company (optional)" autocomplete="off" />
-          <input type="text" id="tfVcUrl" placeholder="Website (optional)" autocomplete="off" />
+          <div class="form-field"><label for="tfVcOrg">Company (optional)</label><input type="text" id="tfVcOrg" placeholder="Company (optional)" autocomplete="off" /></div>
+          <div class="form-field"><label for="tfVcUrl">Website (optional)</label><input type="text" id="tfVcUrl" placeholder="Website (optional)" autocomplete="off" /></div>
         </div>
       </div>
       <div class="type-form" id="tfEvent" hidden>
-        <input type="text" id="tfEvTitle" placeholder="Event title" autocomplete="off" />
+        <div class="form-field"><label for="tfEvTitle">Event title</label><input type="text" id="tfEvTitle" placeholder="Event title" autocomplete="off" /></div>
         <div class="row">
-          <input type="datetime-local" id="tfEvStart" aria-label="Starts" />
-          <input type="datetime-local" id="tfEvEnd" aria-label="Ends" />
+          <div class="form-field"><label for="tfEvStart">Starts</label><input type="datetime-local" id="tfEvStart" aria-label="Starts" /></div>
+          <div class="form-field"><label for="tfEvEnd">Ends</label><input type="datetime-local" id="tfEvEnd" aria-label="Ends" /></div>
         </div>
-        <input type="text" id="tfEvLoc" placeholder="Location (optional)" autocomplete="off" />
+        <div class="form-field"><label for="tfEvLoc">Location (optional)</label><input type="text" id="tfEvLoc" placeholder="Location (optional)" autocomplete="off" /></div>
       </div>
       <div class="type-form" id="tfPay" hidden>
         <div class="tf-note">Your bank app can export your DuitNow QR ~ save it, upload it here, and we restyle it.</div>
         <button class="mini-btn" id="payGoBtn"><i data-lucide="scan-line"></i> Upload &amp; restyle my DuitNow QR</button>
       </div>
-      <div class="field">
-        <label class="lbl" for="content">What should the code open?</label>
+      <div class="field" id="rawContentField">
+        <label class="lbl" for="content">Website address or text</label>
         <textarea id="content" placeholder="https://your-link.com" style="min-height:44px;"></textarea>
-        <div class="hint">A link, plain text, email, or Wi-Fi details — the code updates live.</div>
+        <div class="hint">Your QR updates as you type. No generate button needed.</div>
         <div class="hint" id="contentHint" hidden style="color:var(--accent); font-weight:600;"></div>
-        <div style="display:flex; align-items:center; gap:8px; margin-top:12px; flex-wrap:wrap;">
+      </div>
+      <p class="content-feedback" id="contentFeedback" role="status" hidden></p>
+        <div class="content-actions">
           <button class="mini-btn" id="addQrBtn"><i data-lucide="plus"></i> Add another QR</button>
           <span style="flex:1"></span>
-          <button class="btn primary" id="generateBtn" style="flex:0 0 auto;"><i data-lucide="qr-code"></i> Generate QR</button>
+          <button class="btn primary" id="generateBtn">Make it yours <i data-lucide="arrow-right"></i></button>
         </div>
-        <div class="gen-msg" id="genMsg" hidden>✓ QR Generated Successfully!</div>
-      </div>
+
       </div>
 
       <div class="ct-view" data-view="existing">
@@ -1109,7 +1111,8 @@
       </div>
 
       <div class="panel" data-panel="style">
-      <div class="panel-title">QR style</div>
+      <div class="panel-title">A little personality.</div><p class="panel-description">Start with a look. Make it your own.</p>
+      <div class="design-tabs"><button data-nav="style" aria-pressed="true">QR style</button><button data-nav="scene" aria-pressed="false">Artboard</button></div>
       <div class="theme-head">Themes</div>
       <div class="looks" id="looksStrip" aria-label="Theme slider" role="listbox"></div>
       <div class="crow">
@@ -1146,14 +1149,19 @@
       <div class="crow">
         <span class="clabel">QR Outline</span>
         <button class="chip-color compact" id="outChip" aria-label="Outline color"><span class="cdot" id="outDot"></span></button>
-        <input type="range" id="outlineW" min="0" max="10" value="7" />
+        <input type="range" id="outlineW" aria-label="QR outline width" min="0" max="10" value="7" />
         <span class="val" id="outlineWVal">7</span>
       </div>
-
+      <details class="saved-style"><summary>Your reusable style</summary>
+        <p class="hint">Keep your colors, font and QR styling on this device.</p>
+        <div class="row"><button class="mini-btn" id="saveStyle">Save this style</button><button class="mini-btn" id="useStyle" disabled>Apply saved style</button></div>
+        <p class="hint" id="styleFeedback" role="status">Save a style to use it again.</p>
+      </details>
       </div>
 
       <div class="panel" data-panel="scene">
-      <div class="panel-title">Artboard</div>
+      <div class="panel-title">Make it yours.</div><p class="panel-description">The finishing touches, all in one place.</p>
+      <div class="design-tabs"><button data-nav="style" aria-pressed="false">QR style</button><button data-nav="scene" aria-pressed="true">Artboard</button></div>
       <div class="crow">
         <span class="clabel">Background</span>
         <div class="mini-presets" id="bgStylePresets">
@@ -1170,20 +1178,20 @@
       </div>
       <div class="crow">
         <span class="clabel">Margin</span>
-        <input type="range" id="margin" min="0" max="10" value="2" />
+        <input type="range" id="margin" aria-label="QR margin" min="0" max="10" value="2" />
         <span class="val" id="marginVal">2</span>
       </div>
       <div class="crow">
         <span class="clabel">Caption</span>
         <button class="chip-color compact" id="capChip" aria-label="Caption color"><span class="cdot" id="capDot"></span></button>
-        <input type="text" id="caption" placeholder="None" value="SCAN ME" maxlength="80" style="flex:1; max-width:190px;" />
+        <input type="text" id="caption" aria-label="Caption" placeholder="None" value="SCAN ME" maxlength="80" style="flex:1; max-width:190px;" />
       </div>
       <div class="crow">
         <span class="clabel">Logo</span>
         <div class="logo-mini">
           <div class="logo-prev" id="logoPrev">—</div>
           <button class="mini-btn" id="logoBtn">Upload</button>
-          <button class="mini-btn ghost" id="logoClear">✕</button>
+          <button class="mini-btn ghost" id="logoClear" aria-label="Remove logo">✕</button>
           <input type="file" id="logoInput" accept="image/*" hidden />
         </div>
       </div>
@@ -1201,7 +1209,7 @@
       <div class="color-pop" id="colorPop" hidden>
         <div class="swatches" id="popSwatches"></div>
         <button class="mini-btn" id="popCustom">Custom…</button>
-        <input type="color" id="popInput" class="vhid" />
+        <input type="color" id="popInput" class="vhid" tabindex="-1" aria-hidden="true" />
       </div>
 
       <div class="sheet-foot">
@@ -1212,13 +1220,16 @@
 
     <!-- Artboard -->
     <section class="preview" aria-label="Editor">
+      <div class="preview-heading"><span class="eyebrow">LIVE PREVIEW</span><div class="preview-verdict"><span id="renderStatus" role="status">Preparing your QR…</span><span class="scan-badge" id="scanBadge" role="status" aria-live="polite"></span></div></div>
       <div class="editor-section">
         <div class="artboard-wrap" id="artboardWrap">
-          <canvas id="artboard"></canvas>
-          <div class="scan-badge" id="scanBadge" role="status" aria-live="polite"></div>
+          <canvas id="artboard" aria-label="QR design preview"></canvas>
+          <div id="previewEmpty" hidden><strong>Your QR starts here.</strong><span>Complete the details to see your code.</span></div>
           <div class="sheet-tag" id="sheetTag" hidden></div>
         </div>
       </div>
+      <div class="preview-footer"><span id="destinationSummary"></span><span id="previewFormat"></span></div>
+      <p class="preview-note">From the café counter to your next big thing.</p>
     </section>
 
     <!-- Studio bottom bar (≥1100px only): THE bar — logo, sections, text tools,
@@ -1245,18 +1256,20 @@
     </div>
 
     <!-- shared color input — outside the studio-only bar so it works on mobile too -->
-    <input type="color" id="tbCapInput" class="vhid" />
+    <input type="color" id="tbCapInput" class="vhid" tabindex="-1" aria-hidden="true" />
   </main>
 
 
   <div class="export-sheet" id="exportSheet">
-    <button class="sheet-close corner" id="exportClose">✕</button>
+    <button class="sheet-close corner" id="exportClose" aria-label="Close export">✕</button>
     <div class="steps" aria-hidden="true">
       <span class="step" data-step="content"></span>
       <span class="step" data-step="style"></span>
       <span class="step" data-step="scene"></span>
       <span class="step" data-step="export"></span>
     </div>
+    <h2 class="export-title">Out into the world.</h2><p class="panel-description">Your design, ready for any surface.</p>
+    <p id="exportFeedback" role="status">Test the downloaded file on your phone before printing.</p>
     <label class="lbl">Size</label>
     <button class="select" id="fmtSelect">
       <span id="fmtSelLabel">Square · 2048 × 2048 px</span>
@@ -1284,11 +1297,10 @@
     </div>
   </div>
 
-  <nav class="bottom-nav" id="bottomNav">
-    <button class="nav-item" data-nav="content" aria-label="Content"><i data-lucide="link-2"></i></button>
-    <button class="nav-item" data-nav="style" aria-label="QR style"><i data-lucide="palette"></i></button>
-    <button class="nav-item" data-nav="scene" aria-label="Artboard"><i data-lucide="image"></i></button>
-    <button class="nav-item export" data-nav="export" aria-label="Export"><i data-lucide="download"></i></button>
+  <nav class="bottom-nav" id="bottomNav" aria-label="Editor sections">
+    <button class="nav-item" data-nav="content" aria-label="Content"><i data-lucide="link-2"></i><span>Content</span></button>
+    <button class="nav-item" data-nav="style" aria-label="Design"><i data-lucide="palette"></i><span>Design</span></button>
+    <button class="nav-item export" data-nav="export" aria-label="Export"><i data-lucide="download"></i><span>Export</span></button>
   </nav>
 
   <!-- embed mode only (?embed=1): quiet attribution in the corner -->
@@ -1403,25 +1415,31 @@
     return img;
   }
 
-  let qrImgs = [null], qrToken = 0, qrTimer = null, firstInk = true, qrOverflow = false;
+  let qrImgs = [null], qrToken = 0, qrTimer = null, firstInk = true, qrOverflow = false, qrPending = false;
+  let contentReady = true;
   function queueQr() {
     clearTimeout(qrTimer);
+    const t = ++qrToken;
+    qrPending = true;
+    $("renderStatus").textContent = "Updating…";
+    $("scanBadge").classList.remove("show"); $("scanBadge").textContent = "";
     qrTimer = setTimeout(async () => {
-      const t = ++qrToken;
       try {
         const imgs = await Promise.all(codes().map((d) => qrImageAt(1024, true, d)));
         if (t === qrToken) {
-          qrOverflow = false;
+          qrOverflow = false; qrPending = false;
+          $("renderStatus").textContent = "Ready · checking scan";
           qrImgs = imgs.map((img) => inkify(img, 1024));
           drawPreview();
-          if (firstInk) { firstInk = false; animateGenerate(900); } // the QR is born, not loaded
+          if (firstInk) { firstInk = false; } // the QR is born, not loaded
         }
       } catch (e) {
         // mid-typing garbage keeps the last good image silently, but a real
         // capacity overflow must not masquerade as success
-        if (t === qrToken && /overflow/i.test(String(e))) {
-          qrOverflow = true;
-          flashHint("Too much data for one QR — shorten the content.");
+        if (t === qrToken) {
+          qrOverflow = true; qrPending = false;
+          $("renderStatus").textContent = /overflow/i.test(String(e)) ? "Too much data — shorten the content" : "Could not render — edit the content to retry";
+          setContentReady(false, $("renderStatus").textContent);
         }
       }
     }, 120);
@@ -1528,7 +1546,10 @@
       { d: "M29 5L49 16.5V39.5L29 51L9 39.5V16.5Z" },
       { d: "M0 29L10 23M48 23L58 29M29 51V58" }] },
   };
+  const textureCache = new Map();
   function textureTileCanvas(key) {
+    const cacheKey = key + (bgLum() < 140 ? ":dark" : ":light");
+    if (textureCache.has(cacheKey)) return textureCache.get(cacheKey);
     const t = TEX_TILES[key];
     if (!t) return null;
     const c = document.createElement("canvas");
@@ -1546,6 +1567,7 @@
       t.fill ? x.fill(pp) : x.stroke(pp);
       x.restore();
     });
+    textureCache.set(cacheKey, c);
     return c;
   }
 
@@ -1712,8 +1734,8 @@
     return { u, qs, pad, cardSize, capGap, x: cards[0].x, y: cards[0].y, cap, cards, gy: minY, groupH: maxY - minY };
   }
 
-  // Exports paint the artboard background into the file. Live preview lets the
-  // editor box paint that same scene once, behind the transparent canvas.
+  // Preview and exports paint the same complete scene inside the artboard.
+  // Workspace chrome never takes on the design's background or texture.
   function drawScene(ctx, W, H, qrImage, paintBg = true, texImg = null, liveFx = false) {
     if (paintBg) {
       if (state.sceneBg === "solid") {
@@ -1826,104 +1848,38 @@
 
   const isStudio = () => window.innerWidth >= 1100; // must match the studio CSS media query
   function fitPreview() {
-    // mobile/tablet: preview is format-independent — the QR stays put, aspect applies
-    // only to the exported file. Studio: the canvas IS the artboard — it reshapes live
-    // to the chosen format (sceneLayout keeps preview/export parity either way).
-    const studio = isStudio() || document.body.classList.contains("embed"); // embed: the canvas IS the artboard at any width
-    const fmt = studio ? designDims() : { w: 1, h: 1 };
-    const wrap = $("artboardWrap");
-    const desktop = window.innerWidth > 880;
-    const measuredWrapW = wrap.clientWidth || wrap.parentElement.clientWidth;
-    const wrapW = studio ? measuredWrapW : Math.min(measuredWrapW, desktop ? 580 : 440);
-    // static: always leave room below for a sheet, so the QR never moves
-    // must match the cards' CSS max-height — including desktop + short-landscape overrides
-    // (studio reserves nothing below: the panel is docked left, not bottom)
-    const sheetH = studio ? 0
-      : window.innerHeight <= 500
-      ? window.innerHeight * 0.62
-      : desktop ? Math.min(window.innerHeight * 0.46, 360)
-      : Math.min(window.innerHeight * 0.46, 420);
-    const sat = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--sat")) || 0;
-    // studio: the canvas fits the editor box's content area (padding stays visible);
-    // elsewhere the zone is what's left between the header and the docked sheet
-    let zoneH;
-    if (studio) {
-      const ed = wrap.parentElement, es = getComputedStyle(ed);
-      zoneH = Math.max(150, ed.clientHeight -
-        (parseFloat(es.paddingTop) || 0) - (parseFloat(es.paddingBottom) || 0));
-    } else {
-      const chrome = (window.innerWidth >= 1400 ? 280 : desktop ? 250 : 205) + sat; // header grows with logo + notch
-      zoneH = Math.max(150, window.innerHeight - sheetH - chrome);
-    }
-    const ar = fmt.w / fmt.h;
-
-    // start with a strict fit, then enlarge so the QR itself stays readable —
-    // but never beyond what the zone can show (card + caption must fit the crop window).
-    // Studio always stays strict: the whole artboard must fit the editor box.
-    const ef = 0.32 + ((state.qrScale - 0.35) / 0.45) * 0.49; // effective scale of the slider mapping
-    let w = Math.min(wrapW, zoneH * ar);
-    const capRatio = state.caption.trim() ? 0.075 / ef : 0;
-    const fitCap = zoneH / (1.3 + capRatio);
-    const targetQR = Math.min(desktop ? 430 : 300, fitCap, Math.max(120, zoneH * 0.62));
-    if (w * ef < targetQR && !studio) w = Math.min(wrapW, targetQR / ef);
-    const h = w / ar;
-
-    // non-square studio artboard: dash the file bounds (editor bg bleeds past them)
-    wrap.classList.toggle("framed", studio && ar !== 1);
-    // if the full scene is taller than the zone, crop it — keep the QR card in view
-    wrap.style.height = Math.min(h, zoneH) + "px";
-    let offset = 0;
-    if (h > zoneH) {
-      const L = sceneLayout(w, h);
-      const cy = L.y + (L.cardSize + L.capGap) / 2;
-      offset = Math.min(0, Math.max(zoneH - h, zoneH / 2 - cy));
-    }
-    canvas.style.marginTop = offset + "px";
-
-    canvas.style.width = w + "px";
-    canvas.style.height = h + "px";
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.round(w * dpr);
-    canvas.height = Math.round(h * dpr);
-
-    // no card open → float the QR to the center of the free space; card open → dock up top
-    // (studio always centers: the panel sits beside the canvas, never over it)
-    let shift = 0;
-    if (studio) {
-      shift = 0; // the .preview grid cell flex-centers the canvas; no manual offset
-    } else if (!document.body.classList.contains("sheet-open")) {
-      const headTotal = document.querySelector("header").offsetHeight + (window.innerWidth <= 880 ? 16 : 8);
-      const navTop = window.innerHeight - ((window.innerWidth > 880 ? 32 : 14) + 80);
-      shift = Math.max(0, (navTop - headTotal - Math.min(h, zoneH)) / 2);
-    }
-    canvas.closest(".preview").style.transform = `translateY(${shift}px)`;
+    const wrap = $("artboardWrap"), editor = wrap.parentElement;
+    const dims = designDims(), ar = dims.w / dims.h;
+    const es = getComputedStyle(editor);
+    const availableW = editor.clientWidth - parseFloat(es.paddingLeft) - parseFloat(es.paddingRight);
+    const availableH = editor.clientHeight - parseFloat(es.paddingTop) - parseFloat(es.paddingBottom);
+    const w = Math.max(1, Math.min(availableW, availableH * ar, 720));
+    const h = w / ar, dpr = Math.min(window.devicePixelRatio || 1, 2);
+    wrap.style.width = w + "px"; wrap.style.height = h + "px";
+    canvas.style.width = w + "px"; canvas.style.height = h + "px";
+    canvas.style.marginTop = "0";
+    const width = Math.round(w * dpr), height = Math.round(h * dpr);
+    if (canvas.width !== width) canvas.width = width;
+    if (canvas.height !== height) canvas.height = height;
+    canvas.closest(".preview").style.transform = "none";
+    $("previewFormat").textContent = FORMAT_NAMES[state.format] + " · " + FORMATS[state.format].label;
   }
-
-  // The design background lives inside the artboard. Chrome remains on the
-  // neumorphic surface, but selection helpers still adapt to dark artboards.
   function applyPageBg() {
-    const tex = textureURI();
-    const scenePaint = state.sceneBg === "gradient"
-      ? `linear-gradient(180deg, ${shade(state.bg, 14)}, ${shade(state.bg, -14)})`
-      : state.bg;
-    const editor = document.querySelector(".preview .editor-section");
-    if (editor) {
-      editor.style.background = tex ? `url("${tex}"), ${scenePaint}` : scenePaint;
-      editor.style.backgroundColor = state.bg;
-      editor.style.backgroundSize = tex ? "auto, cover" : "cover";
-      editor.style.backgroundRepeat = tex ? "repeat, no-repeat" : "no-repeat";
-      editor.style.backgroundPosition = "center";
-    }
     document.documentElement.setAttribute("data-theme", bgLum() < 140 ? "dark" : "light");
   }
-
+  let previewFrame = null;
+  function requestPreview() {
+    if (previewFrame !== null) return;
+    previewFrame = requestAnimationFrame(() => { previewFrame = null; drawPreview(); });
+  }
   function drawPreview() {
     fitPreview();
     applyPageBg();
-    drawScene(ctx, canvas.width, canvas.height, qrImgs, false, null, true);
+    drawScene(ctx, canvas.width, canvas.height, qrImgs, true, textureTileCanvas(state.texture), true);
     drawSelection();
     positionMiniBar(); // the mini toolbar follows its selection
-    scheduleScanCheck(); // every visual change funnels through here — debounced inside
+    updateDestinationSummary();
+    scheduleScanCheck(); // one decode after the visual changes settle
   }
 
   // ---- click-to-select: caption, text items and (multi-code) QR cards get a
@@ -2026,7 +1982,7 @@
   window.addEventListener("resize", () => {
     const mobile = window.innerWidth <= 880;
     if (wasMobile && !mobile && !openPanel && !isStudio()) openSheet("content"); // mid-desktop keeps a card open
-    if (!wasStudio && isStudio() && openPanel) closeSheet(); // crossing into studio: start clean
+    if (!wasStudio && isStudio() && openPanel) document.body.classList.remove("sheet-open"); // crossing into studio: start clean
     if (wasStudio && !isStudio()) {
       // leaving studio: inline anchors (popovers, bar) hand back to CSS
       [$("controlsCard"), $("exportSheet"), $("editBar")].forEach((c) => {
@@ -2036,6 +1992,7 @@
     wasStudio = isStudio();
     wasMobile = mobile;
     placeLooks(); // controls hop between mobile sheets and the studio sidebar
+    if (!document.body.classList.contains("embed")) openSheet(openPanel || "content");
     drawPreview();
   });
 
@@ -2125,13 +2082,19 @@
   // or Ctrl+Y walks forward. Capped at 50 entries.
   const HIST_MAX = 50;
   const histStack = [];
-  let histPos = -1, histLock = false;
+  let histPos = -1, histLock = false, histControl = null, histTime = 0;
   function histPush() {
     if (histLock) return; // a restore re-fires syncURL ~ don't record it
     let snap; try { snap = encodeDesign(); } catch (e) { return; }
     if (histStack[histPos] === snap) return; // coalesce identical states
-    histStack.length = histPos + 1; // a fresh edit clears the redo tail
-    histStack.push(snap);
+    const active = document.activeElement;
+    const control = active && /^(INPUT|TEXTAREA)$/.test(active.tagName) ? active.id : null;
+    const now = performance.now();
+    const coalesce = control && control === histControl && now - histTime < 700 && histPos > 0 && histPos === histStack.length - 1;
+    histStack.length = histPos + 1;
+    if (coalesce) histStack[histPos] = snap;
+    else histStack.push(snap);
+    histControl = control; histTime = now;
     if (histStack.length > HIST_MAX) histStack.shift();
     histPos = histStack.length - 1;
     histButtons();
@@ -2149,7 +2112,7 @@
       decodeDesign(snap); // fields + custom flags back into state
       sel = null; // restored arrays may no longer contain the old selection
       // same re-init path boot uses after decode
-      $("content").value = state.data;
+      syncContentFromState();
       $("caption").value = state.caption;
       $("margin").value = state.margin; $("marginVal").textContent = state.margin;
       $("outlineW").value = state.outlineW; $("outlineWVal").textContent = state.outlineW;
@@ -2177,8 +2140,8 @@
     } finally { histLock = false; }
     histButtons();
   }
-  function histUndo() { if (histPos > 0) { histPos--; histApply(histStack[histPos]); } }
-  function histRedo() { if (histPos < histStack.length - 1) { histPos++; histApply(histStack[histPos]); } }
+  function histUndo() { histControl = null; if (histPos > 0) { histPos--; histApply(histStack[histPos]); } }
+  function histRedo() { histControl = null; if (histPos < histStack.length - 1) { histPos++; histApply(histStack[histPos]); } }
   [["undoBtn", histUndo], ["redoBtn", histRedo], ["spUndo", histUndo], ["spRedo", histRedo],
    ["tbUndo", histUndo], ["tbRedo", histRedo]].forEach(([id, fn]) => {
     const b = $(id); if (b) b.addEventListener("click", fn);
@@ -2262,13 +2225,16 @@
   // Content tabs: New link / Existing QR — two journeys, clearly separated
   function setContentTab(name) {
     $("contentPanel").dataset.ctab = name;
-    document.querySelectorAll(".ct-tab").forEach((b) => b.classList.toggle("active", b.dataset.ctab === name));
+    document.querySelectorAll(".ct-tab").forEach((b) => { b.classList.toggle("active", b.dataset.ctab === name); b.setAttribute("aria-pressed", b.dataset.ctab === name); });
   }
   document.querySelectorAll(".ct-tab").forEach((b) => {
     b.addEventListener("click", () => setContentTab(b.dataset.ctab));
   });
   $("content").addEventListener("input", (e) => {
-    let v = e.target.value.trim() || "https://qrdurian.com";
+    let v = e.target.value.trim();
+    contentDrafts.link = v;
+    setContentReady(!!v, "Add a website address or text to create your QR.");
+    if (!v) return;
     const single = enforceSingleLink(v);
     if (single !== v) { v = single; e.target.value = v; }
     if (sel && sel.kind === "qr" && sel.i > 0) state.extra[sel.i - 1] = v;
@@ -2283,11 +2249,63 @@
   const escWifi = (v) => v.replace(/([\\;,:"])/g, "\\$1");
   const escVc = (v) => v.replace(/([\\;,])/g, "\\$1");
   const icsStamp = (v) => { const d = v.replace(/[-:]/g, ""); return d.length === 13 ? d + "00" : d; };
-  function setContentType(name) {
+  const contentDrafts = { link: "" };
+  function setContentReady(ready, message = "") {
+    contentReady = ready;
+    $("contentFeedback").textContent = message;
+    $("contentFeedback").hidden = ready;
+    $("previewEmpty").hidden = ready;
+    canvas.style.visibility = ready ? "visible" : "hidden";
+    ["downloadBtn", "copyImgBtn", "shareBtn", "copyLinkBtn", "generateBtn"].forEach(id => { $(id).disabled = !ready; });
+    $("exportFeedback").textContent = ready ? "Test the downloaded file on your phone before printing." : message;
+    if (!ready) { ++qrToken; clearTimeout(qrTimer); qrPending = false; $("renderStatus").textContent = "Add your details"; $("scanBadge").classList.remove("show"); $("scanBadge").textContent = ""; }
+    updateDestinationSummary();
+  }
+  function updateDestinationSummary() {
+    const data = (sel?.kind === "qr" ? codes()[sel.i] : state.data) || "";
+    let summary = data;
+    if (/^WIFI:/i.test(data)) summary = "Wi-Fi connection";
+    else if (/^BEGIN:VCARD/i.test(data)) summary = "Contact card";
+    else if (/^BEGIN:VEVENT/i.test(data)) summary = "Calendar event";
+    else if (/^https:\/\/wa.me\//i.test(data)) summary = "WhatsApp conversation";
+    else if (/^000201/.test(data)) summary = "Payment QR · original encoded content";
+    else if (/^https?:/.test(data)) { try { const u = new URL(data); summary = u.host + (u.pathname === "/" ? "" : u.pathname); } catch {} }
+    $("destinationSummary").textContent = contentReady ? summary : "Waiting for content";
+  }
+  function showContentType(name) {
     contentType = name;
-    document.querySelectorAll("#typeChips .type-chip").forEach((b) => b.classList.toggle("active", b.dataset.type === name));
+    document.querySelectorAll("#typeChips .type-chip").forEach(b => { b.classList.toggle("active", b.dataset.type === name); b.setAttribute("aria-pressed", b.dataset.type === name); });
     Object.entries(TYPE_FORMS).forEach(([k, id]) => { $(id).hidden = k !== name; });
-    composeType();
+    $("rawContentField").hidden = name !== "link";
+  }
+  function syncContentFromState() {
+    showContentType("link");
+    const data = (sel?.kind === "qr" ? codes()[sel.i] : state.data) || "";
+    contentDrafts.link = data; $("content").value = data;
+    // Restore forms for the payloads this editor can represent without dropping fields.
+    // Unknown/imported formats remain visible as raw content rather than being rewritten.
+    const unescapeField = value => value.replace(/\\(.)/g, "$1");
+    if (/^WIFI:T:(WPA|nopass);/.test(data) && !/;H:/.test(data)) {
+      const ssid = data.match(/;S:((?:\\.|[^;])*)/), password = data.match(/;P:((?:\\.|[^;])*)/);
+      if (ssid) {
+        $("tfWifiSsid").value = unescapeField(ssid[1]);
+        $("tfWifiPass").value = password ? unescapeField(password[1]) : "";
+        showContentType("wifi");
+      }
+    } else if (/^https:\/\/wa\.me\/\d{8,15}(?:\?text=[^#]*)?$/.test(data)) {
+      const url = new URL(data);
+      $("tfWaPhone").value = url.pathname.slice(1); $("tfWaMsg").value = url.searchParams.get("text") || "";
+      showContentType("wa");
+    }
+    setContentReady(!!data);
+  }
+  function setContentType(name) {
+    if (contentType === "link") contentDrafts.link = $("content").value;
+    showContentType(name);
+    if (name === "link") {
+      $("content").value = contentDrafts.link;
+      $("content").dispatchEvent(new Event("input", { bubbles: true }));
+    } else composeType();
   }
   function composeType() {
     let out = null;
@@ -2296,7 +2314,7 @@
       if (s) out = "WIFI:T:" + (p ? "WPA" : "nopass") + ";S:" + escWifi(s) + ";" + (p ? "P:" + escWifi(p) + ";" : "") + ";";
     } else if (contentType === "wa") {
       const d = $("tfWaPhone").value.replace(/\D/g, ""), m = $("tfWaMsg").value.trim();
-      if (d) out = "https://wa.me/" + d + (m ? "?text=" + encodeURIComponent(m) : "");
+      if (/^\d{8,15}$/.test(d)) out = "https://wa.me/" + d + (m ? "?text=" + encodeURIComponent(m) : "");
     } else if (contentType === "vcard") {
       const n = $("tfVcName").value.trim(), tel = $("tfVcTel").value.trim(),
         em = $("tfVcEmail").value.trim(), org = $("tfVcOrg").value.trim(), url = $("tfVcUrl").value.trim();
@@ -2311,7 +2329,7 @@
       }
     } else if (contentType === "event") {
       const t = $("tfEvTitle").value.trim(), s = $("tfEvStart").value, e = $("tfEvEnd").value, loc = $("tfEvLoc").value.trim();
-      if (t && s) {
+      if (t && s && (!e || e >= s)) {
         const L = ["BEGIN:VEVENT", "SUMMARY:" + escVc(t), "DTSTART:" + icsStamp(s)];
         if (e) L.push("DTEND:" + icsStamp(e));
         if (loc) L.push("LOCATION:" + escVc(loc));
@@ -2319,7 +2337,9 @@
         out = L.join("\n");
       }
     }
-    if (out === null || $("content").value === out) return;
+    const hints = { wifi: "Enter the network name to create your Wi-Fi QR.", wa: "Enter a phone number with its country code.", vcard: "Add a name, phone number or email.", event: "Add an event title and start time.", pay: "Upload your existing payment QR to restyle it." };
+    setContentReady(out !== null, hints[contentType] || "Complete your details.");
+    if (out === null) return;
     $("content").value = out;
     if (sel && sel.kind === "qr" && sel.i > 0) state.extra[sel.i - 1] = out;
     else state.data = out;
@@ -2363,12 +2383,14 @@
     scheduleScanCheck();
   }
   function scheduleScanCheck() {
-    if (!scanArmed || document.hidden) return;
+    ++scanToken;
+    if (!scanArmed || document.hidden || qrPending || !contentReady) return;
+    $("scanBadge").classList.remove("show"); $("scanBadge").textContent = "";
     clearTimeout(scanTimer);
     scanTimer = setTimeout(runScanCheck, 600); // slider drags settle before we decode
   }
   async function runScanCheck() {
-    if (document.hidden) return;
+    if (document.hidden || qrPending || !contentReady) return;
     if (scanBusy) { scanAgain = true; return; } // one decode at a time — rerun after
     scanBusy = true;
     const t = ++scanToken;
@@ -2405,7 +2427,7 @@
       if (t !== scanToken) return;
       setScanBadge(!!hit && hit.data === codes()[0], codes().length > 1);
     } catch (e) {
-      /* decoder unavailable or render hiccup — leave the badge as it was */
+      if (t === scanToken) { $("scanBadge").classList.remove("show"); $("scanBadge").textContent = ""; $("renderStatus").textContent = "Ready · scan check unavailable"; }
     } finally {
       scanBusy = false;
       if (scanAgain) { scanAgain = false; scheduleScanCheck(); }
@@ -2414,6 +2436,8 @@
   function setScanBadge(ok, multi) {
     const b = $("scanBadge");
     b.textContent = ok ? (multi ? "✓ Code 1 scans" : "✓ Scans") : "⚠ May not scan ~ raise contrast";
+    $("renderStatus").textContent = ok ? "Ready to export" : "Check contrast before exporting";
+    b.title = "Software scan check of the rendered design. Test the downloaded file on your phone before printing.";
     b.classList.toggle("warn", !ok);
     b.classList.add("show");
   }
@@ -2456,8 +2480,11 @@
       }
       URL.revokeObjectURL(url);
       if (found && found.data) {
-        $("content").value = found.data;
-        $("content").dispatchEvent(new Event("input", { bubbles: true }));
+        // Imported payloads must survive byte-for-byte, including payment codes.
+        if (sel?.kind === "qr" && sel.i > 0) state.extra[sel.i - 1] = found.data;
+        else state.data = found.data;
+        syncContentFromState();
+        update(true);
         animateGenerate(900);
         setContentTab("link"); // show what we read, right in the link field
         flashHint("Got it — your code, beautified ✨");
@@ -2476,8 +2503,9 @@
     if (codes().length >= 3) return;
     state.extra.push("https://qrdurian.com");
     sel = { kind: "qr", i: codes().length - 1 };
-    $("content").value = codes()[sel.i];
-    $("content").select();
+    syncContentFromState();
+    openSheet("content");
+    $("content").focus(); $("content").select();
     syncQrBtn();
     update(true);
   });
@@ -2643,7 +2671,8 @@
     $("tbCapDot").style.background = state.capColor;
   }
   swatchSet.forEach((c) => {
-    const d = document.createElement("div");
+    const d = document.createElement("button");
+    d.type = "button"; d.setAttribute("aria-label", "Use color " + c);
     d.className = "dot"; d.style.background = c; d.title = c;
     d.addEventListener("click", () => {
       state[popTarget] = c;
@@ -2659,11 +2688,16 @@
     $("outChip").classList.toggle("editing", open && popTarget === "outline");
     $("capChip").classList.toggle("editing", open && popTarget === "capColor");
   }
+  document.body.appendChild($("colorPop"));
   function showPop(target) {
     const pop = $("colorPop");
     if (!pop.hidden && popTarget === target) { hidePop(); return; } // tap again to close
     popTarget = target;
     pop.hidden = false;
+    const ids = { fg: "fgChip", base: "baseChip", bg: "bgChip", outline: "outChip", capColor: "capChip" };
+    const r = $(ids[target]).getBoundingClientRect();
+    pop.style.left = Math.max(12, Math.min(r.left, innerWidth - pop.offsetWidth - 12)) + "px";
+    pop.style.top = Math.max(12, Math.min(r.bottom + 8, innerHeight - pop.offsetHeight - 90)) + "px";
     setChipEditing();
   }
   function hidePop() { $("colorPop").hidden = true; setChipEditing(); }
@@ -3077,7 +3111,6 @@
       STUDIO_NODES = [
         reg("#contentPanel", "slotContent"),
         reg('.panel[data-panel="style"]', "slotStyle"),
-        reg("#colorPop", "slotStyle"), // the palette popover must follow its chips or studio color editing dies
         reg('.panel[data-panel="scene"]', "slotScene"),
         reg("#addTextBtn", "slotScene"),
         reg("#addStickerBtn", "slotScene"),
@@ -3240,6 +3273,38 @@
     setTexture(t.tex);
     update(true);
   }
+  const STYLE_FIELDS = ["fg", "base", "bg", "outline", "outlineW", "capColor", "capFont", "cornerType", "dotType", "texture", "inkMood", "sceneBg", "margin"];
+  function readSavedStyle() {
+    try {
+      const value = JSON.parse(localStorage.getItem("qrd_saved_style"));
+      if (!value || !STYLE_FIELDS.every(key => SHARE_FIELDS[key].ok(value[key]))) return null;
+      return value;
+    } catch { return null; }
+  }
+  $("saveStyle").addEventListener("click", () => {
+    try {
+      localStorage.setItem("qrd_saved_style", JSON.stringify(Object.fromEntries(STYLE_FIELDS.map(key => [key, state[key]]))));
+      $("useStyle").disabled = false;
+      $("styleFeedback").textContent = "Style saved on this device. Your QR content is not included.";
+    } catch { $("styleFeedback").textContent = "Could not save here. Your current design is still available."; }
+  });
+  $("useStyle").addEventListener("click", () => {
+    const saved = readSavedStyle();
+    if (!saved) { $("styleFeedback").textContent = "No saved style available. Save this one first."; return; }
+    STYLE_FIELDS.forEach(key => { state[key] = saved[key]; });
+    custom.capFont = true;
+    $("fontSelLabel").textContent = state.capFont;
+    $("margin").value = state.margin; $("marginVal").textContent = state.margin;
+    $("outlineW").value = state.outlineW; $("outlineWVal").textContent = state.outlineW;
+    [["inkPresets", "ink", "inkMood"], ["cornerPresets", "corner", "cornerType"], ["bgStylePresets", "scenebg", "sceneBg"]].forEach(([id, attr, key]) => {
+      $(id).querySelectorAll(".preset").forEach(b => b.classList.toggle("active", b.dataset[attr] === state[key]));
+    });
+    syncChips(); syncThemeUI(""); setTexture(state.texture);
+    ensureFont(state.capFont).then(requestPreview);
+    update(true);
+    $("styleFeedback").textContent = "Saved style applied. Your content and layout stay yours.";
+  });
+  if (readSavedStyle()) { $("useStyle").disabled = false; $("styleFeedback").textContent = "Your saved style is ready to apply."; }
   let lastTheme = -1;
   function doShuffle() {
     let i;
@@ -3351,12 +3416,15 @@
 
   // ================= Export =================
   async function busy(btn, fn) {
+    if (!contentReady || qrOverflow) return;
+    btn.style.minWidth = btn.getBoundingClientRect().width + "px";
+    btn.setAttribute("aria-busy", "true");
     btn.disabled = true;
     const saved = btn.innerHTML;
     btn.textContent = "Rendering…";
     try { await fn(); }
-    catch (e) { alert("Export failed: " + e.message); }
-    finally { btn.innerHTML = saved; btn.disabled = false; }
+    catch (e) { $("exportFeedback").textContent = "Export failed. Try again, or choose another file type."; }
+    finally { btn.innerHTML = saved; btn.disabled = !contentReady; btn.removeAttribute("aria-busy"); btn.style.minWidth = ""; }
   }
 
   function downloadCanvas(c, name, mime = "image/png", quality) {
@@ -3503,7 +3571,8 @@
     out.push(`<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`);
     const imports = [...fams].map((f) => (FONT_DEFS[f] && FONT_DEFS[f].gf) || GF_URLS[f]).filter(Boolean)
       .map((gf) => `@import url('https://fonts.googleapis.com/css2?family=${gf}&amp;display=swap');`).join("");
-    if (imports) out.push(`<style>${imports}</style>`);
+    if (imports) out.push(`<style>${imports}</style>
+<link rel="stylesheet" href="editor.css">`);
 
     out.push("<defs>");
     if (state.sceneBg !== "solid") {
@@ -3659,93 +3728,40 @@
   // card bounces via Web Animations API — plays unconditionally, no class juggling
   let cardAnim = null;
   const REDUCED_MOTION = matchMedia("(prefers-reduced-motion: reduce)");
-  function bounceCard(el, fromScale, fromOpacity, duration) {
-    if (REDUCED_MOTION.matches) return;
+  function bounceCard(el) {
     if (cardAnim) cardAnim.cancel();
-    cardAnim = el.animate([
-      { transform: `scale(${fromScale})`, opacity: fromOpacity, easing: "cubic-bezier(.2,.6,.35,1)" },
-      { transform: "scale(1.022)", opacity: 1, offset: .52, easing: "cubic-bezier(.4,0,.5,1)" },
-      { transform: "scale(.996)", offset: .8, easing: "cubic-bezier(.4,0,.55,1)" },
-      { transform: "scale(1)", opacity: 1 }
-    ], { duration });
+    if (REDUCED_MOTION.matches || isStudio()) return;
+    cardAnim = el.animate([{ opacity: .65, transform: "translateY(6px)" }, { opacity: 1, transform: "none" }], { duration: 180, easing: "cubic-bezier(0,0,.2,1)" });
   }
-
   function closeSheet() {
+    if (isStudio()) return;
     openPanel = null;
-    if (cardAnim) cardAnim.cancel(); // let the exit transition own the element
     document.body.classList.remove("sheet-open");
-    $("controlsCard").classList.remove("visible");
-    $("exportSheet").classList.remove("visible");
-    document.querySelectorAll(".nav-item, .stb-icon, .stb-export").forEach(n => n.classList.remove("active"));
-    $("fmtList").hidden = true;
-    $("fmtSelect").classList.remove("open");
-    $("texList").hidden = true;
-    $("texSelect").classList.remove("open");
-    drawPreview(); // QR floats back to center
+    $("controlsCard").classList.remove("visible"); $("exportSheet").classList.remove("visible");
+    document.querySelectorAll("[data-nav]").forEach(b => { b.classList.remove("active"); b.setAttribute("aria-pressed", "false"); });
+    ["fmtList", "texList", "fontList", "colorPop"].forEach(id => { if ($(id)) $(id).hidden = true; });
+    document.querySelector('.bottom-nav [data-nav="content"]')?.focus();
+    drawPreview();
   }
   function openSheet(name) {
-    const prev = openPanel;
     openPanel = name;
-    document.body.classList.add("sheet-open");
-    document.querySelectorAll(".nav-item, .stb-icon[data-nav], .stb-export[data-nav]").forEach(n =>
-      n.classList.toggle("active", n.dataset.nav === name));
-    const isExport = name === "export";
-    $("exportSheet").classList.toggle("visible", isExport);
-    $("controlsCard").classList.toggle("visible", !isExport);
-    if (!isExport) {
-      document.querySelectorAll("#controlsCard .panel").forEach(p =>
-        p.classList.toggle("active", p.dataset.panel === name));
-    }
-    // studio: in the Design popover show both style + scene panels stacked
-    if (isStudio() && (name === "style" || name === "scene")) {
-      document.querySelectorAll("#controlsCard .panel").forEach(p =>
-        p.classList.toggle("active", p.dataset.panel === "style" || p.dataset.panel === "scene"));
-    }
-    // studio: the popover rises from its button in the bottom bar
-    if (isStudio()) {
-      const card = isExport ? $("exportSheet") : $("controlsCard");
-      const btn = document.querySelector(`#editBar [data-nav="${name}"]`);
-      if (btn) {
-        const r = btn.getBoundingClientRect();
-        const popW = parseInt(getComputedStyle(card).width, 10) || 360;
-        // clamp so the popover never overflows the viewport
-        const left = Math.max(12, Math.min(r.left, window.innerWidth - popW - 12));
-        card.style.left = left + "px";
-        card.style.top = "auto";
-        // clear the whole bar, not just the button
-        card.style.bottom = (window.innerHeight - $("editBar").getBoundingClientRect().top + 10) + "px";
-      }
-    }
+    document.body.dataset.section = name;
+    document.body.classList.toggle("sheet-open", !isStudio());
+    document.querySelectorAll("[data-nav]").forEach(b => {
+      const mainNav = b.closest(".studio-tabs, .bottom-nav");
+      const active = b.dataset.nav === name || (mainNav && b.dataset.nav === "style" && name === "scene");
+      b.classList.toggle("active", active); b.setAttribute("aria-pressed", String(!!active));
+    });
+    $("exportSheet").classList.toggle("visible", name === "export");
+    $("controlsCard").classList.toggle("visible", name !== "export");
+    document.querySelectorAll(".panel[data-panel]").forEach(p => p.classList.toggle("active", p.dataset.panel === name));
+    ["fmtList", "texList", "fontList", "colorPop"].forEach(id => { if ($(id)) $(id).hidden = true; });
     $("navBack").disabled = name === "content";
-    if (!isExport) { $("fmtList").hidden = true; $("fmtSelect").classList.remove("open"); }
-    const idx = PANEL_ORDER.indexOf(name);
-    document.querySelectorAll(".step").forEach((s) => {
-      const i = PANEL_ORDER.indexOf(s.dataset.step);
-      s.classList.toggle("current", i === idx);
-      s.classList.toggle("done", i < idx);
-    });
-    const target = isExport ? $("exportSheet") : $("controlsCard");
-    if (prev && prev !== name) {
-      // switching while already open: snap the old card away, bounce the new one
-      const outgoing = prev === "export" ? $("exportSheet") : $("controlsCard");
-      if (outgoing !== target) {
-        outgoing.style.transition = "none";
-        outgoing.classList.remove("visible");
-        void outgoing.offsetWidth;
-        outgoing.style.transition = "";
-      }
-      bounceCard(target, .96, .65, 440);
-    } else if (!prev) {
-      // opening from closed: full entrance bounce; QR docks up top
-      bounceCard(target, .92, 0, 520);
-      drawPreview();
-    }
+    bounceCard(name === "export" ? $("exportSheet") : $("controlsCard"));
+    drawPreview();
   }
-  document.querySelectorAll(".nav-item, .stb-icon[data-nav], .stb-export[data-nav]").forEach(n => {
-    n.addEventListener("click", () => {
-      openPanel === n.dataset.nav ? closeSheet() : openSheet(n.dataset.nav);
-    });
-  });
+  document.querySelectorAll("[data-nav]").forEach(b => b.addEventListener("click", () => openSheet(b.dataset.nav)));
+  document.addEventListener("keydown", e => { if (e.key === "Escape") { hidePop(); if (!isStudio()) closeSheet(); } });
   $("sheetClose").addEventListener("click", closeSheet);
   $("exportClose").addEventListener("click", closeSheet);
   // tapping the QR: select/deselect items (caption, texts, multi-code cards)
@@ -3805,7 +3821,7 @@
     if (hit) {
       sel = hit; suppressOpen = true;
       syncBarToSelection();
-      if (hit.kind === "qr") $("content").value = codes()[hit.i]; // the Content field edits this code now
+      if (hit.kind === "qr") syncContentFromState(); // the Content field edits this code now
       if (hit.kind === "qr") {
         const q = hitRects.qrs[hit.i];
         if (q) {
@@ -3844,7 +3860,7 @@
         const it = state.texts[dragRz.i];
         if (it) it.s = Math.max(0.02, Math.min(0.2, +(dragRz.s0 * f).toFixed(3)));
       }
-      drawPreview();
+      requestPreview();
       return;
     }
     if (dragSel.kind === "qr") {
@@ -3854,14 +3870,14 @@
       if (!dragSel.live && Math.hypot(px - dragSel.sx, py - dragSel.sy) < Math.max(8, canvas.width * 0.01)) return;
       dragSel.live = true;
       setQrCenter(dragSel.i, px - dragSel.dx, py - dragSel.dy);
-      drawPreview();
+      requestPreview();
       return;
     }
     const it = (dragSel.kind === "sticker" ? state.stickers : state.texts)[dragSel.i];
     if (!it) { dragSel = null; return; }
     it.x = Math.round(Math.min(0.98, Math.max(0.02, (px - dragSel.dx) / canvas.width)) * 1000) / 1000;
     it.y = Math.round(Math.min(0.98, Math.max(0.02, (py - dragSel.dy) / canvas.height)) * 1000) / 1000;
-    drawPreview();
+    requestPreview();
   });
   ["pointerup", "pointercancel"].forEach((ev) => $("artboard").addEventListener(ev, () => {
     if (dragSel || dragRz) { dragSel = null; dragRz = null; syncURL(); }
@@ -3893,49 +3909,11 @@
 
   // generate = melt the code into ink, reform it. The animation drives its
   // own frames — there's no always-on render loop; drawPreview repaints on demand.
-  let fxRaf = null;
-  function animateGenerate(duration = 950) {
-    cancelAnimationFrame(fxRaf);
-    if (REDUCED_MOTION.matches) { fx.blur = 0; fx.alpha = 1; drawPreview(); return; }
-    const start = performance.now();
-    function frame(now) {
-      const t = Math.min(1, (now - start) / duration);
-      const k = Math.sin(t * Math.PI); // 0 → 1 → 0: melt then reform
-      fx.blur = k * 7;
-      fx.alpha = 1 - k * 0.4;
-      drawScene(ctx, canvas.width, canvas.height, qrImgs, false, null, true);
-      drawSelection();
-      if (t < 1) fxRaf = requestAnimationFrame(frame);
-      else { fx.blur = 0; fx.alpha = 1; drawPreview(); }
-    }
-    fxRaf = requestAnimationFrame(frame);
+  function animateGenerate() {
+    if (REDUCED_MOTION.matches) return;
+    canvas.animate([{ opacity: .75 }, { opacity: 1 }], { duration: 160, easing: "ease-out" });
   }
-
-  $("generateBtn").addEventListener("click", () => {
-    const b = $("generateBtn");
-    if (b.disabled) return;
-    b.disabled = true;
-    const saved = b.innerHTML;
-    b.textContent = "Generating…";
-    $("genMsg").hidden = true;
-
-    update(true); // fresh QR swaps in mid-melt, while everything is ink
-    canvas.classList.add("shaking");
-    canvas.addEventListener("animationend", () => canvas.classList.remove("shaking"), { once: true });
-    animateGenerate();
-
-    setTimeout(() => {
-      // the 120ms-debounced encode has settled by now — tell the truth
-      b.textContent = qrOverflow ? "✗ Too much data" : "✓ Generated!";
-      $("genMsg").hidden = qrOverflow;
-      setTimeout(() => {
-        b.innerHTML = saved;
-        b.disabled = false;
-        $("genMsg").hidden = true;
-        if (!qrOverflow && openPanel === "content") openSheet("style"); // don't re-open if the user closed or moved on
-      }, 1400);
-    }, 1000);
-  });
+  $("generateBtn").addEventListener("click", () => { if (contentReady) openSheet("style"); });
 
   // remix CTA — shown only when the editor boots from a shared #d= link (set in Boot)
   $("promoClose").addEventListener("click", () => { $("remixPromo").hidden = true; });
@@ -3992,7 +3970,9 @@
   const bootFonts = [state.capFont, ...state.texts.map((it) => it.f)].filter((f) => f !== "Urbanist");
   if (bootFonts.length) Promise.all(bootFonts.map(ensureFont)).then(() => drawPreview());
   rebuildStickerSprites(); // shared designs carry sticker names only — sprites build here
-  if (!isStudio() && !document.body.classList.contains("embed")) openSheet("content"); // mobile/tablet land with the Content card; studio + embed land clean
+  syncContentFromState();
+  if (!document.body.classList.contains("embed")) openSheet("content"); // mobile/tablet land with the Content card; studio + embed land clean
+  if (window.ResizeObserver) new ResizeObserver(requestPreview).observe(document.querySelector(".editor-section"));
   drawPreview();
   queueQr();
   histPush(); // seed undo history with the boot state ~ the first undo returns here

@@ -66,7 +66,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 | Step | Card | What you control |
 |---|---|---|
-| 1 | **Content** | Two tabs. **New link**: type chips (Link / Wi-Fi / WhatsApp / vCard / Event / Pay Here) compose the standard payload live into the content field. **Existing QR**: upload a photo or screenshot of any code ~ jsQR reads it and qrdurian restyles it. "Generate QR" melts the code into ink and reforms it. |
+| 1 | **Content** | Two tabs. **New link**: type chips (Link / Wi-Fi / WhatsApp / vCard / Event / Pay Here) compose the standard payload live into the content field. **Existing QR**: upload a photo or screenshot of any code ~ jsQR reads it and qrdurian restyles it. Generation is automatic; “Make it yours” opens Design immediately. |
 | 2 | **Style** | Corner style, the color trio (Ink / Base / Background), QR Outline color + thickness. |
 | 3 | **Artboard** | Background fill (gradient/solid), texture, quiet margin, caption text + color, center logo, free text items + stickers (compact "+ Text" / "+ Sticker" twins on mobile). |
 | 4 | **Export** | Seven sizes ~ Square / Phone wallpaper / Poster A4 / Story plus three print sheets (Sticker sheet, Table tent, Counter card). File type PNG / JPG / SVG. Download, **Copy** (PNG to clipboard), **Save to Photos** (share sheet, where supported), **Copy design link**. |
@@ -74,8 +74,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 Signature touches:
 
 - **Ink engine** — QR modules are rendered as realistic ink: fiber-wicking jitter, ragged
-  "goo" edges, coffee-ring rim pooling, paper grain. Every Generate press produces a subtly
-  unique impression. (SVG export stays clean vector by design.)
+  "goo" edges, coffee-ring rim pooling, paper grain. Live editing produces a subtly
+  textured impression. (SVG export stays clean vector by design.)
 - **Scan check** ~ the actual rendered artwork (real format, texture, ink) is decoded
   offscreen with jsQR after every edit; a badge on the artboard reads "✓ Scans"
   ("✓ Code 1 scans" on multi-code boards) or warns "⚠ May not scan ~ raise contrast".
@@ -101,16 +101,13 @@ Signature touches:
   (session-only, never serialized into a URL).
 - **Stickers** ~ 28 Lucide icons + 12 emojis, dropped on the artboard, tinted, dragged,
   and resized via a corner grip; they serialize by name (hash key `j`), never as pixels.
-- **Soft neumorphic studio** — the editor chrome sits on a fixed warm-white surface, with
-  raised and pressed controls. A dedicated editor section frames the artboard; the design
+- **Calm green studio** — the editor chrome sits on a fixed warm-white surface, with
+  clear borders, readable labels and 44px controls. A dedicated editor section frames the artboard; the design
   background lives inside the artboard preview, so the exported file
   reproduces the artboard 1:1 without recoloring the UI around it.
-- **Studio layout** (≥1100px) — full Canva anatomy: Content / Style / Artboard / Export
-  controls fill the left side; the whole
-  right side is the editor — a horizontal bar (caption text, font, color, artboard size
-  chips) over the live canvas. The canvas reshapes to the chosen format; non-square gets a
-  dashed file-bounds frame. Themes live in the Style section as a horizontal slider on
-  mobile/tablet and in studio.
+- **Bounded artboard** — the full canvas, including its background and texture, is shown inside a neutral workspace. All formats use their real aspect ratio on desktop and phone; print sheets preview their single design cell.
+- **Reusable style** — save colors, font, shape, texture and ink preferences locally. Applying the style preserves QR content and layout; the preset never stores QR payloads.
+- **Smoother editing** — generation is debounced with immediate request invalidation, pointer paints are coalesced into animation frames, texture tiles are cached, and typing bursts share an undo entry. Scan results are invalidated while artwork changes.
 - **Caption fonts** — five curated faces (Urbanist, Playfair Display, Caveat, Bebas Neue,
   Space Mono), lazy-loaded from Google Fonts on first use; dressed looks pick their own
   (Wedding→Playfair, Receipt→Space Mono, Neon→Bebas, Makan→Caveat). `font=` query param,
@@ -132,24 +129,15 @@ Signature touches:
   marks). The artboard previews the single design cell; sheets export PNG/JPG only.
 - **Embed mode** ~ `?embed=1` strips every scrap of chrome and renders just the artboard
   (a quiet "Designed on qrdurian" badge sits in the corner) ~ made for iframes.
-- **Studio panel density** — Content / QR style / Artboard stack in the full-height panel
-  with section titles. Theme thumbnails stay inside QR style as a horizontal slider.
+- **Studio navigation** — Content / Design / Export share one navigation model on desktop and phone. Design has QR style and Artboard tabs; export uses its own panel. Mobile tabs have visible labels.
 
 ## Design system
 
-- **Palette**: warm white `#F4F4EF` (chrome surface and default artboard) · graphite
-  `#3A3D40` (accents) · near-black `#1C1D20`
-  reserved for generate/download actions.
-- **Type**: Urbanist (display: brand, labels, buttons) + Open Sans (body) — Google Fonts.
-- **Icons**: [Lucide](https://lucide.dev), pinned at `0.452.0` via unpkg.
-- **Surfaces**: clean borderless neumorphic cards, raised circular icon controls, and subtle
-  inset active states tuned from one shared chrome material.
-- **Motion**: Web Animations API spring bounces for the cards (scale-from-center, no
-  vertical travel), QR shake + ink melt on Generate, `prefers-reduced-motion` respected.
+The editor uses white panels, a warm neutral workspace, forest green actions, persistent labels, and a compact shared header. `editor.css` contains the studio layout and component rules; canonical color/spacing tokens live in `index.html`. Urbanist and Open Sans remain the app typefaces. Motion uses brief transform/opacity feedback with a reduced-motion override.
 
 ## Architecture
 
-The app lives in **`index.html`** (CSS + vanilla JS, no build step). Marketing/SEO pages
+The app lives in **`index.html`** (vanilla JS and base CSS) plus **`editor.css`** (studio chrome), with no build step. Marketing/SEO pages
 (`about.html`, `looks.html`, `templates.html`, `404.html`) share `design-system.css` +
 `design-system.js` (tokens + a Müller-Brockmann editorial grid); the per-look pages and
 use-case landers are generated, self-contained HTML (see below). Three runtime
@@ -161,16 +149,8 @@ Key invariants — **do not break these**:
 1. **One layout function.** `sceneLayout(W,H)` is the single source of truth for where the
    QR card, caption, and outline sit. Preview, crop math, and exports all call it; preview
    and file can never disagree.
-2. **CSS/JS height pairing.** The cards' CSS `max-height` (`min(46vh, 420px)`, and the
-   `max-height: 500px` landscape override) must match `sheetH` in `fitPreview()` — that's
-   what guarantees an open card never covers the QR or its caption.
-3. **The QR never moves while editing.** Mobile/tablet: it centers in the artboard zone when no card
-   is open, docks to a fixed upper position when one opens, and ignores export-size changes
-   (format applies to the file only). Studio (≥1100px, Canva-style): the design card docks
-   as a left panel, the canvas centers in the remaining zone regardless of panel state, and
-   the canvas DOES reshape to the chosen format (the sidebar's Size picker drives it;
-   non-square formats get a dashed file-bounds frame).
-   `isStudio()` in JS must match the studio CSS media query (`min-width: 1100px`).
+2. **Measure the actual artboard zone.** `fitPreview()` uses the editor container’s available dimensions and `designDims()` on every viewport. A ResizeObserver keeps the backing canvas in sync. Mobile sheet height is defined in `editor.css`.
+3. **Responsive panel reparenting.** `isStudio()` and the studio media query both use 1100px. `placeLooks()` moves existing controls between sidebar slots and phone sheets without replacing their nodes. `openSheet()` keeps the active section consistent across both.
 4. **Textures are defined twice on purpose.** `textureSVG()` (CSS tiles for the page) and
    `TEX_TILES` (canvas-native `Path2D` for exports) mirror each other — SVG images taint the
    canvas on iOS Safari and break `toBlob`. New textures must be added to both.
@@ -213,7 +193,7 @@ Full reference: **[API.md](API.md)**
 
 | File | Purpose |
 |---|---|
-| `index.html` | The editor app (CSS + vanilla JS, no build) |
+| `index.html` · `editor.css` | The editor engine and responsive studio chrome (no build) |
 | `about.html` · `looks.html` · `templates.html` | About + FAQ · the 20-design gallery · 10 print-ready template deep links (SEO pages, on the shared grid) |
 | `looks/*.html` (20) · `wifi-qr-code.html` `whatsapp-qr-code.html` `pay-here-qr-code.html` `wedding-qr-code.html` | Generated SEO pages: one per look + four use-case landers, each deep-linking the editor prefilled |
 | `scripts/gen-look-pages.mjs` | Zero-dep generator: reads `LOOKS` out of `looks.html`, emits the look pages, landers, and `sitemap.xml` |
